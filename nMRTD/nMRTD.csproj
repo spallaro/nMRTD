@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Trimming friendliness: the ILLink trim analyzer works from net6.0 onward, so this applies
+         to both target frameworks. -->
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <RootNamespace>nMRTD</RootNamespace>
+    <AssemblyName>nMRTD</AssemblyName>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- Native AOT is only officially supported by the SDK starting with .NET 7/8; net6.0 has no
+       first-class PublishAot/AOT-analyzer support, so these apply to the net8.0 target only. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+  </PropertyGroup>
+
+  <!-- NuGet package metadata -->
+  <PropertyGroup>
+    <PackageId>nMRTD</PackageId>
+    <Version>0.2.0-alpha</Version>
+    <Title>nMRTD</Title>
+    <Description>.NET 6/8 port of JMRTD: reads ICAO 9303 electronic machine-readable travel documents (ePassports/eID cards) over NFC/PC-SC, with BAC, PACE, EAC, Active/Passive Authentication, and LDS/CBEFF biometric (ISO/IEC 19794 and 39794) support.</Description>
+    <Authors>Sebastiano Pallaro</Authors>
+    <Copyright>(C) 2026 Sebastiano Pallaro</Copyright>
+    <PackageTags>mrtd emrtd epassport eid</PackageTags>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/spallaro/nMRTD</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/spallaro/nMRTD</PackageProjectUrl>
+  </PropertyGroup>
+
+  <!-- Build the .nupkg automatically, but only for Release builds. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageReference Include="PCSC" Version="7.0.1" />
+    <PackageReference Include="PCSC.Iso7816" Version="7.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

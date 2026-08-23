@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <RootNamespace>nMRTD.Cli</RootNamespace>
+    <AssemblyName>nMRTD.Cli</AssemblyName>
+
+    <!-- Test/demo console app, not part of the published NuGet package. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Native AOT publish is only officially supported by the SDK starting with .NET 7/8, so it's
+       enabled for the net8.0 target only; net6.0 publishes as a regular (optionally trimmed,
+       self-contained) build. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\nMRTD\nMRTD.csproj" />
+  </ItemGroup>
+
+</Project>
