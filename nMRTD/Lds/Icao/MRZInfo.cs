@@ -1079,7 +1079,12 @@ public class MRZInfo : AbstractLDSInfo
 
         if (documentType == DocumentType.Td3 && optionalData1.Length < 15)
         {
-            personalNumberCheckDigit = CheckDigit(MrzFormat(optionalData1, 14), true); /* FIXME: Uses '<' over '0'. Where specified? */
+            /*
+             * ICAO Doc 9303 Part 4, TD3 personal number check digit: '<' is only used in place of a
+             * calculated '0' when the personal number field itself is empty, not whenever it computes to 0.
+             */
+            bool isPersonalNumberEmpty = EqualsModuloFillerChars(optionalData1, "");
+            personalNumberCheckDigit = CheckDigit(MrzFormat(optionalData1, 14), isPersonalNumberEmpty);
         }
 
         compositeCheckDigit = CheckDigit(GetComposite(documentType));
