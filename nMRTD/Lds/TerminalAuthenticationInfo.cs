@@ -133,16 +133,9 @@ public class TerminalAuthenticationInfo : SecurityInfo
             return false;
         }
         var otherTerminalAuthenticationInfo = (TerminalAuthenticationInfo)other;
-        if (efCVCA == null && otherTerminalAuthenticationInfo.efCVCA != null)
-        {
-            return false;
-        }
-        if (efCVCA != null && otherTerminalAuthenticationInfo.efCVCA == null)
-        {
-            return false;
-        }
-
-        return GetDERObject().Equals(otherTerminalAuthenticationInfo.GetDERObject());
+        return Equals(oid, otherTerminalAuthenticationInfo.oid)
+            && version == otherTerminalAuthenticationInfo.version
+            && Equals(efCVCA, otherTerminalAuthenticationInfo.efCVCA);
     }
 
     /// <summary>Checks whether the given object identifier identifies a TerminalAuthenticationInfo structure.</summary>

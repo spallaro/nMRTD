@@ -124,7 +124,9 @@ public class ActiveAuthenticationInfo : SecurityInfo
             return false;
         }
         var otherActiveAuthenticationInfo = (ActiveAuthenticationInfo)other;
-        return GetDERObject().Equals(otherActiveAuthenticationInfo.GetDERObject());
+        return Equals(oid, otherActiveAuthenticationInfo.oid)
+            && version == otherActiveAuthenticationInfo.version
+            && Equals(signatureAlgorithmOID, otherActiveAuthenticationInfo.signatureAlgorithmOID);
     }
 
     public override int GetHashCode()

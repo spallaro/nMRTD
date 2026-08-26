@@ -172,7 +172,9 @@ public class PACEDomainParameterInfo : SecurityInfo
         }
 
         var otherPACEDomainParameterInfo = (PACEDomainParameterInfo)other;
-        return GetDERObject().Equals(otherPACEDomainParameterInfo.GetDERObject());
+        return Equals(oid, otherPACEDomainParameterInfo.oid)
+            && Equals(domainParameter, otherPACEDomainParameterInfo.domainParameter)
+            && Equals(parameterId, otherPACEDomainParameterInfo.parameterId);
     }
 
     /// <summary>Checks whether the object identifier is an allowed PACE related object identifier.</summary>
