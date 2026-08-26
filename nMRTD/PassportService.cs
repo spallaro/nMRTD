@@ -407,12 +407,14 @@ public class PassportService : AbstractMRTDCardService
         AsymmetricKeyParameter? terminalKey,
         string? taAlg,
         EACCAResult? chipAuthenticationResult,
-        string? documentNumber)
+        string? documentNumber,
+        TerminalKeySigner? terminalKeySigner = null,
+        ECDomainParameters? terminalKeyEcDomainParameters = null)
     {
         lock (_lock)
         {
             return new EACTAProtocol(_eacTaSender, GetWrapper()!, _secureMessagingSender.Log)
-                .DoEACTA(caReference, terminalCertificates, terminalKey, taAlg, chipAuthenticationResult, documentNumber);
+                .DoEACTA(caReference, terminalCertificates, terminalKey, taAlg, chipAuthenticationResult, documentNumber, terminalKeySigner, terminalKeyEcDomainParameters);
         }
     }
 
@@ -423,12 +425,14 @@ public class PassportService : AbstractMRTDCardService
         AsymmetricKeyParameter? terminalKey,
         string? taAlg,
         EACCAResult? chipAuthenticationResult,
-        PACEResult paceResult)
+        PACEResult paceResult,
+        TerminalKeySigner? terminalKeySigner = null,
+        ECDomainParameters? terminalKeyEcDomainParameters = null)
     {
         lock (_lock)
         {
             return new EACTAProtocol(_eacTaSender, GetWrapper()!, _secureMessagingSender.Log)
-                .DoTA(caReference, terminalCertificates, terminalKey, taAlg, chipAuthenticationResult, paceResult);
+                .DoTA(caReference, terminalCertificates, terminalKey, taAlg, chipAuthenticationResult, paceResult, terminalKeySigner, terminalKeyEcDomainParameters);
         }
     }
 

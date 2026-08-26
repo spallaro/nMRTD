@@ -124,6 +124,12 @@ public abstract class AbstractMRTDCardService : FileSystemCardService
     /// <param name="taAlg">algorithm</param>
     /// <param name="chipAuthenticationResult">the chip authentication result</param>
     /// <param name="documentNumber">the document number</param>
+    /// <param name="terminalKeySigner">when <paramref name="terminalKey"/> is <c>null</c>, used instead to sign
+    /// the challenge with a terminal key that lives outside BouncyCastle's key model (e.g. an HSM/smart-card
+    /// key exposed through .NET's <c>ECDsa</c>/<c>RSA</c>)</param>
+    /// <param name="terminalKeyEcDomainParameters">for an ECDSA terminal certificate signed via
+    /// <paramref name="terminalKeySigner"/>, the terminal key's public curve parameters (never the private
+    /// scalar), needed to determine the raw ECDSA signature length</param>
     /// <returns>the Terminal Authentication result</returns>
     /// <exception cref="CardServiceException">on error</exception>
     public abstract EACTAResult DoEACTA(
@@ -132,7 +138,9 @@ public abstract class AbstractMRTDCardService : FileSystemCardService
         AsymmetricKeyParameter? terminalKey,
         string? taAlg,
         EACCAResult? chipAuthenticationResult,
-        string? documentNumber);
+        string? documentNumber,
+        TerminalKeySigner? terminalKeySigner = null,
+        ECDomainParameters? terminalKeyEcDomainParameters = null);
 
     /// <summary>
     /// Performs <i>Terminal Authentication</i> (TA) part of EAC (version 1). For details see TR-03110 ver.
@@ -146,6 +154,12 @@ public abstract class AbstractMRTDCardService : FileSystemCardService
     /// <param name="taAlg">algorithm</param>
     /// <param name="chipAuthenticationResult">the chip authentication result</param>
     /// <param name="paceResult">the PACE result</param>
+    /// <param name="terminalKeySigner">when <paramref name="terminalKey"/> is <c>null</c>, used instead to sign
+    /// the challenge with a terminal key that lives outside BouncyCastle's key model (e.g. an HSM/smart-card
+    /// key exposed through .NET's <c>ECDsa</c>/<c>RSA</c>)</param>
+    /// <param name="terminalKeyEcDomainParameters">for an ECDSA terminal certificate signed via
+    /// <paramref name="terminalKeySigner"/>, the terminal key's public curve parameters (never the private
+    /// scalar), needed to determine the raw ECDSA signature length</param>
     /// <returns>the Terminal Authentication result</returns>
     /// <exception cref="CardServiceException">on error</exception>
     public abstract EACTAResult DoEACTA(
@@ -154,7 +168,9 @@ public abstract class AbstractMRTDCardService : FileSystemCardService
         AsymmetricKeyParameter? terminalKey,
         string? taAlg,
         EACCAResult? chipAuthenticationResult,
-        PACEResult paceResult);
+        PACEResult paceResult,
+        TerminalKeySigner? terminalKeySigner = null,
+        ECDomainParameters? terminalKeyEcDomainParameters = null);
 
     /// <summary>Returns the secure messaging wrapper currently in use.</summary>
     /// <returns>the secure messaging wrapper</returns>

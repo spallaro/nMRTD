@@ -22,6 +22,17 @@ using nMRTD.SmartCards;
 
 namespace nMRTD.Protocol;
 
+/// <summary>
+/// Signs the EAC-TA challenge (<c>dataToBeSigned</c>) with a terminal private key that is not available as an
+/// in-memory <see cref="AsymmetricKeyParameter"/> -- e.g. a key backed by an HSM or smart card, exposed through
+/// .NET's own <c>ECDsa</c>/<c>RSA</c> abstractions (which can themselves be CNG/PKCS#11-backed and never export
+/// the private key material). The returned signature must use the same encoding a BouncyCastle
+/// <see cref="ISigner"/> for <paramref name="sigAlg"/> would produce (DER-encoded for ECDSA, raw for RSA).
+/// </summary>
+/// <param name="sigAlg">the signature algorithm name, as reported by the terminal certificate</param>
+/// <param name="dataToBeSigned">the challenge bytes to sign</param>
+public delegate byte[] TerminalKeySigner(string sigAlg, byte[] dataToBeSigned);
+
 /// <summary>Port of <c>org.jmrtd.protocol.EACTAProtocol</c>: the EAC Terminal Authentication protocol.</summary>
 public class EACTAProtocol
 {
@@ -71,13 +82,21 @@ public class EACTAProtocol
     /// <param name="taAlg">the algorithm</param>
     /// <param name="chipAuthenticationResult">the chip authentication result</param>
     /// <param name="documentNumber">the document number from which the chip key hash will be derived</param>
+    /// <param name="terminalKeySigner">when <paramref name="terminalKey"/> is <c>null</c>, used instead to sign
+    /// the challenge with a terminal key that lives outside BouncyCastle's key model (e.g. an HSM/smart-card
+    /// key exposed through .NET's <c>ECDsa</c>/<c>RSA</c>)</param>
+    /// <param name="terminalKeyEcDomainParameters">for an ECDSA terminal certificate signed via
+    /// <paramref name="terminalKeySigner"/>, the terminal key's public curve parameters (never the private
+    /// scalar), needed to determine the raw ECDSA signature length; unused for RSA or when
+    /// <paramref name="terminalKey"/> is a BouncyCastle <see cref="ECPrivateKeyParameters"/></param>
     /// <returns>the Terminal Authentication result</returns>
     /// <exception cref="CardServiceException">on error</exception>
     public EACTAResult DoEACTA(CVCPrincipal? caReference, IReadOnlyList<CardVerifiableCertificate> terminalCertificates,
-        AsymmetricKeyParameter? terminalKey, string? taAlg, EACCAResult? chipAuthenticationResult, string? documentNumber)
+        AsymmetricKeyParameter? terminalKey, string? taAlg, EACCAResult? chipAuthenticationResult, string? documentNumber,
+        TerminalKeySigner? terminalKeySigner = null, ECDomainParameters? terminalKeyEcDomainParameters = null)
     {
         byte[]? idPICC = DeriveIdentifier(documentNumber);
-        return DoTA(caReference, terminalCertificates, terminalKey, taAlg, chipAuthenticationResult, idPICC);
+        return DoTA(caReference, terminalCertificates, terminalKey, taAlg, chipAuthenticationResult, idPICC, terminalKeySigner, terminalKeyEcDomainParameters);
     }
 
     /// <summary>
@@ -92,15 +111,23 @@ public class EACTAProtocol
     /// <param name="taAlg">the algorithm</param>
     /// <param name="chipAuthenticationResult">the chip authentication result</param>
     /// <param name="paceResult">the PACE result from which the chip key hash will be derived</param>
+    /// <param name="terminalKeySigner">when <paramref name="terminalKey"/> is <c>null</c>, used instead to sign
+    /// the challenge with a terminal key that lives outside BouncyCastle's key model (e.g. an HSM/smart-card
+    /// key exposed through .NET's <c>ECDsa</c>/<c>RSA</c>)</param>
+    /// <param name="terminalKeyEcDomainParameters">for an ECDSA terminal certificate signed via
+    /// <paramref name="terminalKeySigner"/>, the terminal key's public curve parameters (never the private
+    /// scalar), needed to determine the raw ECDSA signature length; unused for RSA or when
+    /// <paramref name="terminalKey"/> is a BouncyCastle <see cref="ECPrivateKeyParameters"/></param>
     /// <returns>the Terminal Authentication result</returns>
     /// <exception cref="CardServiceException">on error</exception>
     public EACTAResult DoTA(CVCPrincipal? caReference, IReadOnlyList<CardVerifiableCertificate> terminalCertificates,
-        AsymmetricKeyParameter? terminalKey, string? taAlg, EACCAResult? chipAuthenticationResult, PACEResult paceResult)
+        AsymmetricKeyParameter? terminalKey, string? taAlg, EACCAResult? chipAuthenticationResult, PACEResult paceResult,
+        TerminalKeySigner? terminalKeySigner = null, ECDomainParameters? terminalKeyEcDomainParameters = null)
     {
         try
         {
             byte[]? idPICC = DeriveIdentifier(paceResult.PiccPublicKey);
-            return DoTA(caReference, terminalCertificates, terminalKey, taAlg, chipAuthenticationResult, idPICC);
+            return DoTA(caReference, terminalCertificates, terminalKey, taAlg, chipAuthenticationResult, idPICC, terminalKeySigner, terminalKeyEcDomainParameters);
         }
         catch (ArgumentException e)
         {
@@ -121,10 +148,18 @@ public class EACTAProtocol
     /// own <c>EACTAProtocol.doTA(CVCPrincipal, List, PrivateKey, String, EACCAResult, byte[])</c>.</param>
     /// <param name="chipAuthenticationResult">the result of the Chip Authentication protocol execution</param>
     /// <param name="idPICC">the chip identifier</param>
+    /// <param name="terminalKeySigner">when <paramref name="terminalKey"/> is <c>null</c>, used instead to sign
+    /// the challenge with a terminal key that lives outside BouncyCastle's key model (e.g. an HSM/smart-card
+    /// key exposed through .NET's <c>ECDsa</c>/<c>RSA</c>)</param>
+    /// <param name="terminalKeyEcDomainParameters">for an ECDSA terminal certificate signed via
+    /// <paramref name="terminalKeySigner"/>, the terminal key's public curve parameters (never the private
+    /// scalar), needed to determine the raw ECDSA signature length; unused for RSA or when
+    /// <paramref name="terminalKey"/> is a BouncyCastle <see cref="ECPrivateKeyParameters"/></param>
     /// <returns>the result of Terminal Authentication</returns>
     /// <exception cref="CardServiceException">on error</exception>
     public EACTAResult DoTA(CVCPrincipal? caReference, IReadOnlyList<CardVerifiableCertificate> terminalCertificates,
-        AsymmetricKeyParameter? terminalKey, string? taAlg, EACCAResult? chipAuthenticationResult, byte[]? idPICC)
+        AsymmetricKeyParameter? terminalKey, string? taAlg, EACCAResult? chipAuthenticationResult, byte[]? idPICC,
+        TerminalKeySigner? terminalKeySigner = null, ECDomainParameters? terminalKeyEcDomainParameters = null)
     {
         _log.Info(LogCategory, $"Starting Terminal Authentication ({terminalCertificates?.Count ?? 0} certificate(s)).");
         try
@@ -236,7 +271,7 @@ public class EACTAProtocol
                 }
             }
 
-            if (terminalKey == null)
+            if (terminalKey == null && terminalKeySigner == null)
             {
                 throw new CardServiceException("No terminal key");
             }
@@ -287,19 +322,36 @@ public class EACTAProtocol
                     throw new InvalidOperationException($"Could not determine signature algorithm for terminal certificate {terminalCert.HolderReference.Name}");
                 }
 
-                ISigner sig = SignerUtilities.GetSigner(sigAlg);
-                sig.Init(forSigning: true, terminalKey);
-                sig.BlockUpdate(dtbsBytes, 0, dtbsBytes.Length);
-                byte[] signedData = sig.GenerateSignature();
+                byte[] signedData;
+                if (terminalKeySigner != null)
+                {
+                    /*
+                     * External signer path (HSM/smart-card-backed terminal key, e.g. .NET's ECDsa/RSA over
+                     * CNG/PKCS#11): never touch a private scalar here, the delegate itself owns signing.
+                     */
+                    signedData = terminalKeySigner(sigAlg, dtbsBytes);
+                }
+                else
+                {
+                    ISigner sig = SignerUtilities.GetSigner(sigAlg);
+                    sig.Init(forSigning: true, terminalKey);
+                    sig.BlockUpdate(dtbsBytes, 0, dtbsBytes.Length);
+                    signedData = sig.GenerateSignature();
+                }
 
                 if (sigAlg.ToUpperInvariant().EndsWith("ECDSA", StringComparison.Ordinal))
                 {
-                    if (terminalKey is not ECPrivateKeyParameters ecTerminalKey)
-                    {
-                        throw new InvalidOperationException("Expected an EC private key for an ECDSA terminal signature algorithm.");
-                    }
+                    /*
+                     * Field size only, deliberately not the private scalar: terminalKey may be null (external
+                     * signer path) or, per upstream jMRTD Bug #45, a non-extractable HSM/smart-card key whose
+                     * private material must never be materialized just to size the signature.
+                     */
+                    ECDomainParameters ecDomainParameters = terminalKey is ECPrivateKeyParameters ecTerminalKey
+                        ? ecTerminalKey.Parameters
+                        : terminalKeyEcDomainParameters
+                            ?? throw new InvalidOperationException("Expected an EC private key, or terminalKeyEcDomainParameters, for an ECDSA terminal signature algorithm.");
 
-                    int keySize = (int)Math.Ceiling(ecTerminalKey.Parameters.Curve.FieldSize / 8.0);
+                    int keySize = (int)Math.Ceiling(ecDomainParameters.Curve.FieldSize / 8.0);
                     signedData = Util.GetRawECDSASignature(signedData, keySize);
                 }
 
