@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.4.1-alpha (2026-09-01)
+
+### Added
+
+- **Set the NuGet package icon.** The `nMRTD` package now carries `nMRTD.png` as its icon
+  (`PackageIcon`), packed alongside the existing `LICENSE` and `README.md`.
+
 ## 0.4.0-alpha (2026-09-01)
 
 **JMRTD upstream alignment status:** nMRTD has been reviewed against upstream JMRTD up to commit
