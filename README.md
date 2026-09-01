@@ -6,6 +6,8 @@
 
 > **Status:** THIS IS AN EARLY-STAGE PORT: the core protocol stack (BAC, PACE, EAC, Active/Passive Authentication) and the LDS/biometric data model are implemented and build cleanly, but the library has not yet been exercised against a broad range of real-world documents or covered by an automated test suite. Treat it as a foundation to build on and validate for your own use case, not as a production-hardened SDK yet.
 
+> **Please note:** this project is AI-assisted.
+
 **nMRTD** is a .NET 6/8 library for reading electronic Machine Readable Travel Documents (eMRTDs) — biometric passports, electronic ID cards, and similar ICAO-compliant documents — over NFC/contactless smart card readers, implementing the [ICAO Doc 9303](https://www.icao.int/publications/doc-series/doc-9303) specification.
 
 It is a from-scratch **C# port of [JMRTD](https://jmrtd.org/)**, the reference Java implementation of the MRTD standards, targeting **.NET 6/8**, **Native AOT** (.NET 8 only), and cross-platform smart card access (Windows, Linux, macOS) via PC/SC.
