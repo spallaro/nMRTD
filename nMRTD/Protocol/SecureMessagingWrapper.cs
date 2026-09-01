@@ -159,14 +159,12 @@ public abstract class SecureMessagingWrapper : IApduWrapper
     /// <returns>whether the computed MAC is identical</returns>
     protected bool CheckMac(byte[] rapdu, byte[] cc)
     {
-        using var stream = new MemoryStream();
-        stream.Write(GetEncodedSendSequenceCounter());
         byte[] paddedData = Util.Pad(rapdu, 0, rapdu.Length - 2 - 8 - 2, GetPadLength());
-        stream.Write(paddedData, 0, paddedData.Length);
 
         _mac.Init(MacKey);
-        byte[] toMac = stream.ToArray();
-        _mac.BlockUpdate(toMac, 0, toMac.Length);
+        byte[] ssc = GetEncodedSendSequenceCounter();
+        _mac.BlockUpdate(ssc, 0, ssc.Length);
+        _mac.BlockUpdate(paddedData, 0, paddedData.Length);
         byte[] cc2 = new byte[_mac.GetMacSize()];
         _mac.DoFinal(cc2, 0);
 

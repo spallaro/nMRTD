@@ -1,5 +1,45 @@
 # Release Notes
 
+## Unreleased
+
+**JMRTD upstream alignment status:** nMRTD has been reviewed against upstream JMRTD up to commit
+`277cd364` ("Version 0.8.8", 2026-08-26 16:53), the latest commit on the upstream `jmrtd-jmrtd`
+repository as of this review. Every commit up to and including that one has been evaluated for
+applicability to nMRTD.
+
+### Internal
+
+- **Align `Util.Pad`, `Util.Os2i`, `Util.I2os`, and `SecureMessagingWrapper.CheckMac` with upstream
+  performance improvements** *(ported from JMRTD)*. No functional/behavioral change: verified via a
+  randomized cross-check (1300+ cases, including zero, power-of-256 boundaries, and both
+  under-and-over-sized fixed lengths) confirming the new implementations are byte-for-byte identical
+  to the previous ones.
+  - `Util.Pad`: precomputes the padded length and does a single `Array.Copy`, instead of appending
+    to a `MemoryStream` byte-by-byte.
+  - `Util.Os2i`: builds the result directly via `new BigInteger(1, bytes)`, instead of an explicit
+    `Multiply`/`Add` loop over each input byte.
+  - `Util.I2os(BigInteger, int)`: derives the output from `val.ToByteArray()` via `Array.Copy`,
+    instead of an explicit `Mod`/`Divide` loop over each output byte.
+  - `Util.I2os(BigInteger)`: sizes the output from `val.BitLength`, instead of
+    `val.ToString(16).Length` (mathematically equivalent for non-negative integers, but avoids a
+    string allocation).
+  - `SecureMessagingWrapper.CheckMac`: feeds the send sequence counter and the padded response data
+    to the MAC via two consecutive `BlockUpdate` calls, instead of concatenating them into an
+    intermediate buffer first.
+
+  Ported from upstream JMRTD commit `de36540c58bd3badacc095639c32325acb934f80`, "Prefer arraycopy
+  over ByteArrayOutputStream writing and other minor perf improvements", and commit
+  `e5a69adc20b8217b05859855d7ef2bac9dd86f5e`, "Use bitLength()-based sizing instead of toString(16)
+  in i2os".
+
+  Two further upstream commits in this range were reviewed and found not applicable. Commit
+  `4559ee00541d3c9ce9894b5272b3b6ad4b0a4444`, "Correct logger names", only renames
+  `java.util.logging` logger categories (e.g. `"org.jmrtd"` to `"org.jmrtd.cert"`); nMRTD's
+  `LogSource` (`nMRTD/Logging/LogSource.cs`) is deliberately independent of any such static,
+  per-class logger registry -- every log call already takes an explicit `category` string, so this
+  class of bug cannot occur by construction. Commit `277cd36445d63e037498dae2463cb44bd155f897`,
+  "Version 0.8.8", is only a Maven `pom.xml` version bump; nMRTD has its own independent versioning.
+
 ## 0.3.0-alpha (2026-08-26)
 
 This release was prompted by a review of six commits pushed to the upstream

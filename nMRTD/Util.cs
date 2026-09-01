@@ -308,15 +308,17 @@ public static class Util
     /// <paramref name="length"/> according to ISO9797-1 padding method 2, using the given block size.</summary>
     public static byte[] Pad(byte[] bytes, int offset, int length, int blockSize)
     {
-        using var outputStream = new MemoryStream();
-        outputStream.Write(bytes, offset, length);
-        outputStream.WriteByte(0x80);
-        while (outputStream.Length % blockSize != 0)
+        int paddedLength = length + 1; // At least 1 byte for 0x80.
+        int remainder = paddedLength % blockSize;
+        if (remainder != 0)
         {
-            outputStream.WriteByte(0x00);
+            paddedLength += blockSize - remainder;
         }
 
-        return outputStream.ToArray();
+        byte[] padded = new byte[paddedLength];
+        Array.Copy(bytes, offset, padded, 0, length);
+        padded[length] = 0x80;
+        return padded;
     }
 
     /// <summary>Unpads the input <paramref name="bytes"/> according to ISO9797-1 padding method 2.</summary>
@@ -474,13 +476,25 @@ public static class Util
     /// <returns>octet string</returns>
     public static byte[] I2os(BigInteger val, int length)
     {
-        BigInteger base256 = BigInteger.ValueOf(256);
+        byte[] bytes = val.ToByteArray();
         byte[] result = new byte[length];
-        for (int i = 0; i < length; i++)
+        int bytesLen = bytes.Length;
+        int srcOffset = 0;
+
+        // BigInteger.ToByteArray() adds a leading zero byte to preserve sign; skip it if present.
+        if (bytesLen > 0 && bytes[0] == 0)
         {
-            BigInteger remainder = val.Mod(base256);
-            val = val.Divide(base256);
-            result[length - 1 - i] = (byte)remainder.IntValue;
+            srcOffset = 1;
+            bytesLen--;
+        }
+
+        if (bytesLen > length)
+        {
+            Array.Copy(bytes, srcOffset + (bytesLen - length), result, 0, length);
+        }
+        else
+        {
+            Array.Copy(bytes, srcOffset, result, length - bytesLen, bytesLen);
         }
 
         return result;
@@ -491,13 +505,7 @@ public static class Util
     /// <returns>the octet string</returns>
     public static byte[] I2os(BigInteger val)
     {
-        int sizeInNibbles = val.ToString(16).Length;
-        if (sizeInNibbles % 2 != 0)
-        {
-            sizeInNibbles++;
-        }
-
-        int length = sizeInNibbles / 2;
+        int length = Math.Max(1, (val.BitLength + 7) / 8);
         return I2os(val, length);
     }
 
@@ -519,15 +527,14 @@ public static class Util
     {
         ArgumentNullException.ThrowIfNull(bytes);
 
-        BigInteger result = BigInteger.Zero;
-        BigInteger base256 = BigInteger.ValueOf(256);
-        for (int i = offset; i < offset + length; i++)
+        if (offset == 0 && length == bytes.Length)
         {
-            result = result.Multiply(base256);
-            result = result.Add(BigInteger.ValueOf(bytes[i] & 0xFF));
+            return new BigInteger(1, bytes);
         }
 
-        return result;
+        byte[] slice = new byte[length];
+        Array.Copy(bytes, offset, slice, 0, length);
+        return new BigInteger(1, slice);
     }
 
     /// <summary>Converts an octet string to a field element via OS2FE as specified in BSI TR-03111.</summary>
