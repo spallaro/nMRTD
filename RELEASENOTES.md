@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.4.0-alpha (2026-09-01)
 
 **JMRTD upstream alignment status:** nMRTD has been reviewed against upstream JMRTD up to commit
 `277cd364` ("Version 0.8.8", 2026-08-26 16:53), the latest commit on the upstream `jmrtd-jmrtd`
