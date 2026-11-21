@@ -18,6 +18,7 @@ namespace nMRTD.Tests.Jmrtd.Lds;
 /// Bouncy Castle's <c>X509Name</c>. Java-only, not ported: <c>testSerializable</c> (Java serialization)
 /// and <c>testBCX500Name</c> (JCA <c>X500Principal</c> RFC 1779/RFC 2253 formatting).
 /// </remarks>
+[Collection(nMRTD.Tests.Helpers.CbeffDataGroupCollection.Name)]
 public class SODFileTest
 {
 

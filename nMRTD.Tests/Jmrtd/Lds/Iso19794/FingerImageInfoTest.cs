@@ -9,6 +9,7 @@ using nMRTD.Tests.Helpers;
 namespace nMRTD.Tests.Jmrtd.Lds.Iso19794;
 
 /// <summary>Port of JMRTD's <c>org.jmrtd.lds.iso19794.FingerImageInfoTest</c>.</summary>
+[Collection(nMRTD.Tests.Helpers.CbeffDataGroupCollection.Name)]
 public class FingerImageInfoTest
 {
 

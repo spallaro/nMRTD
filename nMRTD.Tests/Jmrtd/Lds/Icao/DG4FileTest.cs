@@ -10,6 +10,7 @@ using nMRTD.Tests.Jmrtd.Lds.Iso19794;
 namespace nMRTD.Tests.Jmrtd.Lds.Icao;
 
 /// <summary>Port of JMRTD's <c>org.jmrtd.lds.icao.DG4FileTest</c>.</summary>
+[Collection(nMRTD.Tests.Helpers.CbeffDataGroupCollection.Name)]
 public class DG4FileTest
 {
 

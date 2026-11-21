@@ -14,6 +14,7 @@ namespace nMRTD.Tests.Jmrtd.Lds.Icao;
 
 
 
+[Collection(nMRTD.Tests.Helpers.CbeffDataGroupCollection.Name)]
 public class DG2FileTest
 {
 
