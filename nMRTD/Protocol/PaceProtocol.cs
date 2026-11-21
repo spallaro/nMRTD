@@ -864,19 +864,25 @@ public class PaceProtocol
             throw new ArgumentException($"Invalid generator: {g}");
         }
 
-        BigInteger p = staticParameters.P;
+        if (staticParameters.Q == null)
+        {
+            // With q = 1 the mapped generator would always be x^(p - 1) mod p = 1.
+            throw new ArgumentException("PACE-IM with DH requires the subgroup order q");
+        }
 
-        // NOTE: preserved Java quirk/FIXME -- if q is unavailable, Java falls back to 1 (upstream comment:
-        // "What if q not available? We use 1 here? Should be p-1? -- MO"). BC's DHParameters built by this
-        // port (see PACEInfo.cs) always carries Q, but the fallback is kept for 1:1 traceability.
-        BigInteger q = staticParameters.Q ?? BigInteger.One;
+        BigInteger p = staticParameters.P;
+        BigInteger q = staticParameters.Q;
 
         BigInteger x = Util.Os2i(PseudoRandomFunction(nonceS, nonceT, p, cipherAlgorithm));
 
         BigInteger a = p.Subtract(BigInteger.One).Divide(q);
 
         BigInteger mappedGenerator = x.ModPow(a, p);
-        return new DHParameters(p, mappedGenerator, null, staticParameters.L);
+        if (mappedGenerator.Equals(BigInteger.One))
+        {
+            throw new InvalidOperationException("Mapped generator is 1");
+        }
+        return new DHParameters(p, mappedGenerator, q, staticParameters.L);
     }
 
     /*
