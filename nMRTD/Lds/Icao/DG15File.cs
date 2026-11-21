@@ -11,8 +11,10 @@
  * See LICENSE for more information.
  */
 
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.X509;
 
 namespace nMRTD.Lds.Icao;
 
@@ -31,6 +33,13 @@ namespace nMRTD.Lds.Icao;
 public class DG15File : DataGroup
 {
     private AsymmetricKeyParameter? publicKey;
+
+    /// <summary>
+    /// The X.509 SubjectPublicKeyInfo bytes as read from the document, written back unchanged so that a
+    /// DG15 read from a document re-encodes byte for byte (Java writes the key's own encoding).
+    /// <c>null</c> for a file built from a key.
+    /// </summary>
+    private byte[]? encodedPublicKey;
 
     /// <summary>Constructs a new file.</summary>
     /// <param name="publicKey">the key to store in this file</param>
@@ -65,6 +74,7 @@ public class DG15File : DataGroup
             }
 
             publicKey = GetPublicKey(value);
+            encodedPublicKey = value;
         }
         catch (Exception)
         {
@@ -85,7 +95,10 @@ public class DG15File : DataGroup
 
     protected override void WriteContent(Stream outputStream)
     {
-        byte[] encoded = Util.ToSubjectPublicKeyInfo(publicKey!)!.GetEncoded();
+        /* Java writes publicKey.getEncoded(), the key's X.509 encoding. Util.ToSubjectPublicKeyInfo is not
+         * used here: it is meant for EAC and handles only EC (always with explicit parameters) and DH. */
+        byte[] encoded = encodedPublicKey
+            ?? SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(publicKey!).GetEncoded(Asn1Encodable.Der);
         outputStream.Write(encoded, 0, encoded.Length);
     }
 
