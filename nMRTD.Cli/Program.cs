@@ -29,7 +29,11 @@ using nMRTD.Lds.Iso19794;
 using nMRTD.Logging;
 using nMRTD.SmartCards;
 
+using Org.BouncyCastle.Asn1.Pkcs;
+using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Signers;
 using Org.BouncyCastle.Security;
 
 return await RunAsync(args);
@@ -675,13 +679,13 @@ static void VerifyPassiveAuthentication(SODFile sodFile, IReadOnlyDictionary<int
     try
     {
         AsymmetricKeyParameter publicKey = docSigningCertificate.GetPublicKey();
-        ISigner verifier = SignerUtilities.GetSigner(digestEncryptionAlgorithm);
+        (ISigner verifier, string algorithmDescription) = CreateSodSignatureVerifier(sodFile, digestEncryptionAlgorithm);
         verifier.Init(forSigning: false, publicKey);
         verifier.BlockUpdate(eContent, 0, eContent.Length);
         bool signatureValid = verifier.VerifySignature(encryptedDigest);
 
         Console.WriteLine(signatureValid
-            ? $"EF.SOD signature is VALID ({digestEncryptionAlgorithm}, signed by: {docSigningCertificate.SubjectDN})."
+            ? $"EF.SOD signature is VALID ({algorithmDescription}, signed by: {docSigningCertificate.SubjectDN})."
             : "EF.SOD signature is INVALID -- the security object may have been tampered with!");
     }
     catch (Exception e)
@@ -693,6 +697,35 @@ static void VerifyPassiveAuthentication(SODFile sodFile, IReadOnlyDictionary<int
         "NOTE: this only proves EF.SOD and the data groups above are internally consistent and unmodified. "
         + "The document signing certificate itself was NOT validated against a trusted CSCA root (no trust "
         + "store is configured by this CLI), so this does NOT prove the document was issued by a legitimate authority.");
+}
+
+/// <summary>
+/// Creates the verifier for the EF.SOD signature. For RSASSA-PSS, <see cref="SODFile.GetDigestEncryptionAlgorithm"/>
+/// only returns the generic name "SSAwithRSA/PSS" (as JMRTD does); the hash algorithm, the MGF1 hash and the
+/// salt length come from the algorithm parameters in the signer info.
+/// </summary>
+static (ISigner Verifier, string Description) CreateSodSignatureVerifier(SODFile sodFile, string digestEncryptionAlgorithm)
+{
+    RsassaPssParameters? pssParameters = sodFile.GetDigestEncryptionAlgorithmParams();
+    if (pssParameters == null)
+    {
+        return (SignerUtilities.GetSigner(digestEncryptionAlgorithm), digestEncryptionAlgorithm);
+    }
+
+    if (!PkcsObjectIdentifiers.IdMgf1.Equals(pssParameters.MaskGenAlgorithm.Algorithm))
+    {
+        throw new NotSupportedException($"Unsupported RSASSA-PSS mask generation function {pssParameters.MaskGenAlgorithm.Algorithm}");
+    }
+    if (!pssParameters.TrailerField.HasValue(1))
+    {
+        throw new NotSupportedException($"Unsupported RSASSA-PSS trailer field {pssParameters.TrailerField}");
+    }
+
+    IDigest contentDigest = DigestUtilities.GetDigest(pssParameters.HashAlgorithm.Algorithm);
+    IDigest mgfDigest = DigestUtilities.GetDigest(AlgorithmIdentifier.GetInstance(pssParameters.MaskGenAlgorithm.Parameters).Algorithm);
+    int saltLength = pssParameters.SaltLength.IntValueExact;
+    var verifier = new PssSigner(new RsaBlindedEngine(), contentDigest, mgfDigest, saltLength, PssSigner.TrailerImplicit);
+    return (verifier, $"RSASSA-PSS, {contentDigest.AlgorithmName}, MGF1 {mgfDigest.AlgorithmName}, salt {saltLength} bytes");
 }
 
 static byte[] ComputeDigest(string digestAlgorithm, byte[] data)

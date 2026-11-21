@@ -51,6 +51,39 @@ public class SodTests
         Assert.True(SignatureIsValid(ReadBack()));
     }
 
+    /// <summary>
+    /// RSASSA-PSS with SHA-512 (as on Italian CIE 3.0 documents): the generic algorithm name plus the PSS
+    /// parameters from the signer info are enough to verify the signature. Mirrors the CLI's verifier.
+    /// </summary>
+    [Fact]
+    public void RsassaPssSignatureVerifiesWithTheParametersFromTheSod()
+    {
+        var sha512 = new Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier(Org.BouncyCastle.Asn1.Nist.NistObjectIdentifiers.IdSha512, Org.BouncyCastle.Asn1.DerNull.Instance);
+        var pss = new Org.BouncyCastle.Asn1.Pkcs.RsassaPssParameters(sha512,
+            new Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier(Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.IdMgf1, sha512),
+            new Org.BouncyCastle.Asn1.DerInteger(64), new Org.BouncyCastle.Asn1.DerInteger(1));
+        byte[] encoded = new SODFile("SHA-512", "SSAwithRSA/PSS", pss, DataGroupHashes,
+            SigningFixtures.KeyPair.Private, SigningFixtures.Certificate).GetEncoded()!;
+
+        var sod = new SODFile(new MemoryStream(encoded));
+
+        Assert.Equal("SSAwithRSA/PSS", sod.GetDigestEncryptionAlgorithm());
+        var parameters = sod.GetDigestEncryptionAlgorithmParams();
+        Assert.NotNull(parameters);
+        Assert.Equal(64, parameters!.SaltLength.IntValueExact);
+        // The generic name alone is not a BouncyCastle signer name; the parameters are needed.
+        Assert.ThrowsAny<Exception>(() => SignerUtilities.GetSigner(sod.GetDigestEncryptionAlgorithm()!));
+
+        var verifier = new Org.BouncyCastle.Crypto.Signers.PssSigner(new Org.BouncyCastle.Crypto.Engines.RsaBlindedEngine(),
+            DigestUtilities.GetDigest(parameters.HashAlgorithm.Algorithm),
+            DigestUtilities.GetDigest(Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier.GetInstance(parameters.MaskGenAlgorithm.Parameters).Algorithm),
+            parameters.SaltLength.IntValueExact, Org.BouncyCastle.Crypto.Signers.PssSigner.TrailerImplicit);
+        byte[] eContent = sod.GetEContent();
+        verifier.Init(false, sod.GetDocSigningCertificate()!.GetPublicKey());
+        verifier.BlockUpdate(eContent, 0, eContent.Length);
+        Assert.True(verifier.VerifySignature(sod.GetEncryptedDigest()));
+    }
+
     [Fact]
     public void TamperedDataGroupHashIsDetected()
     {
