@@ -669,8 +669,8 @@ public sealed class CardVerifiableCertificate
 ```
 
 ECDSA signatures use TR-03110's raw `r‖s` convention rather than BouncyCastle's default DER
-`SEQUENCE{r,s}`; the class converts between the two internally. Dates are packed-BCD
-`YYMMDD` fields (2000+YY).
+`SEQUENCE{r,s}`; the class converts between the two internally. Dates are `YYMMDD` fields in unpacked BCD,
+one digit per byte (6 bytes, TR-03110-3 D.2.1.3), with years 2000+YY.
 
 `CVCertificateBuilder.CreateCertificate(publicKey, signerKey, algorithmName, caRef,
 holderRef, authorizationTemplate, validFrom, validTo)` builds and signs a new certificate —

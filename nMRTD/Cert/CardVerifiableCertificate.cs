@@ -456,28 +456,52 @@ public sealed class CardVerifiableCertificate : IEquatable<CardVerifiableCertifi
         return result;
     }
 
-    /// <summary>Packed-BCD <c>YYMMDD</c> encoding (BSI TR-03110), 3 bytes -- see docs/cvc-api-surface.md section 5. Two-digit years are interpreted as 2000-2099.</summary>
+    /// <summary>
+    /// Unpacked-BCD <c>YYMMDD</c> encoding of a certificate date (BSI TR-03110-3, D.2.1.3): 6 bytes, one
+    /// decimal digit (0x00-0x09) per byte. Two-digit years are interpreted as 2000-2099.
+    /// </summary>
     private static byte[] EncodeBcdDate(DateOnly date)
     {
-        int yy = date.Year % 100;
-        return [EncodeBcdByte(yy), EncodeBcdByte(date.Month), EncodeBcdByte(date.Day)];
+        if (date.Year < 2000 || date.Year > 2099)
+        {
+            throw new ArgumentOutOfRangeException(nameof(date), date, "Certificate dates must be in 2000-2099.");
+        }
 
-        static byte EncodeBcdByte(int value) => (byte)(((value / 10) << 4) | (value % 10));
+        int yy = date.Year % 100;
+        return
+        [
+            (byte)(yy / 10), (byte)(yy % 10),
+            (byte)(date.Month / 10), (byte)(date.Month % 10),
+            (byte)(date.Day / 10), (byte)(date.Day % 10),
+        ];
     }
 
     private static DateOnly DecodeBcdDate(byte[] value)
     {
-        if (value.Length != 3)
+        if (value.Length != 6)
         {
-            throw new IOException($"Expected a 3-byte packed BCD date, found {value.Length} bytes.");
+            throw new IOException($"Expected a 6-byte unpacked BCD date, found {value.Length} bytes.");
         }
 
-        int yy = DecodeBcdByte(value[0]);
-        int mm = DecodeBcdByte(value[1]);
-        int dd = DecodeBcdByte(value[2]);
-        return new DateOnly(2000 + yy, mm, dd);
+        foreach (byte digit in value)
+        {
+            if (digit > 9)
+            {
+                throw new IOException($"Invalid unpacked BCD digit 0x{digit:X2} in date.");
+            }
+        }
 
-        static int DecodeBcdByte(byte b) => (10 * ((b >> 4) & 0x0F)) + (b & 0x0F);
+        int yy = (10 * value[0]) + value[1];
+        int mm = (10 * value[2]) + value[3];
+        int dd = (10 * value[4]) + value[5];
+        try
+        {
+            return new DateOnly(2000 + yy, mm, dd);
+        }
+        catch (ArgumentOutOfRangeException e)
+        {
+            throw new IOException($"Invalid date {yy:D2}{mm:D2}{dd:D2}.", e);
+        }
     }
 
     /// <summary>Resolves an EAC OID to the <see cref="AsymmetricKeyParameter"/>'s public key fields, given a JCE-style algorithm mnemonic.</summary>
