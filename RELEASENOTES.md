@@ -1,5 +1,66 @@
 # Release Notes
 
+## Unreleased
+
+This release comes from a file-by-file review of nMRTD against JMRTD (at upstream commit
+`2c08440a`) and SCUBA. The core protocols (secure messaging, BAC, PACE, EAC, AA) were confirmed
+against the ICAO Doc 9303-11 worked examples; the problems below were found elsewhere, and most of
+them date back to the initial port.
+
+### Fixed
+
+- **`DG14File` read from a document was always empty.** The stream constructor reset the set of
+  security infos after the base constructor had parsed it, so no Chip Authentication, Terminal
+  Authentication or Active Authentication info was ever returned.
+- **CV certificate dates used the wrong encoding.** TR-03110-3 encodes the effective and expiration
+  dates (tags `5F25`, `5F24`) as 6 bytes of unpacked BCD; the port used 3 bytes of packed BCD.
+  Parsing any real CVCA, DV or IS certificate failed, so Terminal Authentication was unusable, and
+  certificates built by `CVCertificateBuilder` were malformed. Verified with the EJBCA-generated
+  certificates in the JMRTD repository: they parse, re-encode byte for byte, and the chain
+  (including a link certificate) verifies. **Certificates built with nMRTD 0.6.1-alpha or earlier
+  have 3-byte dates and no longer parse.**
+- **A `DG12File` built from data was encoded with the DG11 tag.** `DG11File`/`DG12File` hid
+  `GetTag()` instead of overriding it; JMRTD overrides it and writes `6C`. The comment and
+  `DOCUMENTATION.md`, which described the wrong tag as inherited from JMRTD, are corrected.
+- **`CardFileInputStream` truncated files and could read the wrong file.** When a card rejected a
+  long READ BINARY, `DefaultFileSystem` lowered its read length and returned no bytes so that the
+  read would be retried; the stream treated that as the end of the file. The stream also used
+  whatever file was selected when it first read. It now binds to the selected file when it is
+  created (path and length), re-selects it before reading if needed, retries empty reads, and runs
+  select-and-read under a lock on the file system, as SCUBA does. It can now throw
+  `CardServiceException` at creation if no file is selected.
+- **`DG15File.GetEncoded()` threw `NullReferenceException` for RSA keys**, and a DG15 with a named EC
+  curve did not re-encode to the bytes read. A DG15 read from a document now writes back the bytes it
+  read; one built from a key uses BouncyCastle's `SubjectPublicKeyInfoFactory`.
+- **`PaceProtocol.DoPace` with a plain `BacKey` failed** before sending any APDU (key reference 0).
+  As in JMRTD, a key without a PACE key reference now uses the MRZ reference.
+- **Wrapped `CardServiceException`s lost the card's status word.** `CardServiceException(message,
+  cause)` now takes the status word from the cause, as SCUBA does, so the
+  `CardServiceProtocolException`s thrown by PACE, BAC and EAC carry it (for example `63Cx` for a
+  wrong CAN).
+
+### Changed
+
+- **The ISO/IEC 39794 block types are public, as in JMRTD.** A DG2, DG3 or DG4 encoded per ISO/IEC
+  39794 could be read, but its images and metadata could not be reached from outside the library.
+  The block types, their nested types, `FingerImagePositionCode`, `FaceImageLandmarkCoordinates`,
+  `GetRepresentationBlocks()`, `GetVersionBlock()`, the build-from-parts constructors of the face
+  and finger data blocks, and the decoding constructors that are public in JMRTD are now public.
+  The other decoding constructors, the decoders, `ISO39794Util` and the encoding methods stay
+  internal, as they are package-private in JMRTD.
+
+### Internal
+
+- Internal callers no longer use obsolete APIs: the BouncyCastle 2.x names (`Issuer`,
+  `SignatureAlgorithm`, `SignedAttrs`, `Signature`) replace the obsolete ones, internal callers of
+  the obsolete `SecurityInfo.GetDERObject()` and `PACEDomainParameterInfo.ToECDomainParameters()` go
+  through internal helpers, and the explicit EC parameters parser builds `FpCurve` with order and
+  cofactor.
+- `AbstractImageInfo` no longer ports JMRTD's `SplittableInputStream` path, which is dead upstream
+  (its setup code is commented out).
+- Smaller cleanups: unambiguous and resolvable `cref`s, an explicit unsigned byte in the READ BINARY
+  length parser, `new` on `DG11File.TAG_LIST_TAG`, and awaited error output in the CLI.
+
 ## 0.6.1-alpha (2026-11-21)
 
 ### Fixed
