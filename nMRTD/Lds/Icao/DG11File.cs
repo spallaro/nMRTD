@@ -39,7 +39,7 @@ namespace nMRTD.Lds.Icao;
 /// </summary>
 public class DG11File : AdditionalDetailDataGroup
 {
-    public const int TAG_LIST_TAG = 0x5C;
+    public new const int TAG_LIST_TAG = 0x5C;
 
     public const int FULL_NAME_TAG = 0x5F0E;
     public const int OTHER_NAME_TAG = 0x5F0F;

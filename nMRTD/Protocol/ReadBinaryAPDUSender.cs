@@ -226,7 +226,7 @@ public class ReadBinaryAPDUSender : IApduLevelReadBinaryCapable
             long longValueLength = 0;
             for (int i = 0; i < lengthByteCount; i++)
             {
-                longValueLength = (longValueLength << 8) | (data[index++] & 0xFF);
+                longValueLength = (longValueLength << 8) | data[index++];
             }
             if (longValueLength < 128 || longValueLength > int.MaxValue)
             {
