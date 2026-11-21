@@ -43,6 +43,7 @@
 
   <ItemGroup>
     <None Include="certs\**\*.cvcert" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="fixtures\**\*" Exclude="fixtures\README.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

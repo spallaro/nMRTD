@@ -1,1 +1,6 @@
 *.cvcert binary
+*.bin binary
+*.der binary
+*.dump binary
+*.jp2 binary
+*.wsq binary
