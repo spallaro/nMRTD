@@ -83,6 +83,11 @@ public class SODFile : AbstractTaggedLDSFile
     }
 
     /// <summary>Constructs a Security Object data structure.</summary>
+    /// <param name="digestAlgorithm">a digest algorithm, such as "SHA-1" or "SHA-256"</param>
+    /// <param name="digestEncryptionAlgorithm">a digest encryption algorithm, such as "SHA256withRSA"</param>
+    /// <param name="dataGroupHashes">maps data group numbers (1 to 16) to hashes of the data groups</param>
+    /// <param name="privateKey">private key to sign the contents</param>
+    /// <param name="docSigningCertificate">the document signing certificate to embed</param>
     /// <param name="ldsVersion">LDS version</param>
     /// <param name="unicodeVersion">Unicode version</param>
     public SODFile(string digestAlgorithm, string digestEncryptionAlgorithm,
@@ -95,6 +100,12 @@ public class SODFile : AbstractTaggedLDSFile
     }
 
     /// <summary>Constructs a Security Object data structure.</summary>
+    /// <param name="digestAlgorithm">a digest algorithm, such as "SHA-1" or "SHA-256"</param>
+    /// <param name="digestEncryptionAlgorithm">a digest encryption algorithm, such as "SHA256withRSA"</param>
+    /// <param name="digestEncryptionParameters">the digest encryption algorithm parameters (for RSASSA-PSS), or <see langword="null"/></param>
+    /// <param name="dataGroupHashes">maps data group numbers (1 to 16) to hashes of the data groups</param>
+    /// <param name="privateKey">private key to sign the contents</param>
+    /// <param name="docSigningCertificate">the document signing certificate to embed</param>
     /// <param name="ldsVersion">LDS version</param>
     /// <param name="unicodeVersion">Unicode version</param>
     public SODFile(string digestAlgorithm, string digestEncryptionAlgorithm,
@@ -116,7 +127,11 @@ public class SODFile : AbstractTaggedLDSFile
     }
 
     /// <summary>Constructs a Security Object data structure with an already-computed (externally signed) signature.</summary>
+    /// <param name="digestAlgorithm">a digest algorithm, such as "SHA-1" or "SHA-256"</param>
+    /// <param name="digestEncryptionAlgorithm">a digest encryption algorithm, such as "SHA256withRSA"</param>
+    /// <param name="dataGroupHashes">maps data group numbers (1 to 16) to hashes of the data groups</param>
     /// <param name="encryptedDigest">externally signed contents</param>
+    /// <param name="docSigningCertificate">the document signing certificate to embed</param>
     public SODFile(string digestAlgorithm, string digestEncryptionAlgorithm,
         IReadOnlyDictionary<int, byte[]> dataGroupHashes,
         byte[] encryptedDigest,
@@ -126,7 +141,12 @@ public class SODFile : AbstractTaggedLDSFile
     }
 
     /// <summary>Constructs a Security Object data structure with an already-computed (externally signed) signature.</summary>
+    /// <param name="digestAlgorithm">a digest algorithm, such as "SHA-1" or "SHA-256"</param>
+    /// <param name="digestEncryptionAlgorithm">a digest encryption algorithm, such as "SHA256withRSA"</param>
+    /// <param name="digestEncryptionParameters">the digest encryption algorithm parameters (for RSASSA-PSS), or <see langword="null"/></param>
+    /// <param name="dataGroupHashes">maps data group numbers (1 to 16) to hashes of the data groups</param>
     /// <param name="encryptedDigest">externally signed contents</param>
+    /// <param name="docSigningCertificate">the document signing certificate to embed</param>
     public SODFile(string digestAlgorithm, string digestEncryptionAlgorithm,
         RsassaPssParameters? digestEncryptionParameters,
         IReadOnlyDictionary<int, byte[]> dataGroupHashes,
