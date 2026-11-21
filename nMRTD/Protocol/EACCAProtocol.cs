@@ -52,7 +52,7 @@ public class EACCAProtocol
 
     private SecureMessagingWrapper _wrapper;
 
-    private readonly int _maxTranceiveLength;
+    private readonly int _maxTransceiveLength;
 
     private readonly bool _shouldCheckMac;
 
@@ -61,16 +61,16 @@ public class EACCAProtocol
     /// <summary>Constructs a protocol instance.</summary>
     /// <param name="service">the card service</param>
     /// <param name="wrapper">the existing secure messaging wrapper</param>
-    /// <param name="maxTranceiveLength">the maximal tranceive length (on responses to <c>READ BINARY</c>)
+    /// <param name="maxTransceiveLength">the maximal transceive length (on responses to <c>READ BINARY</c>)
     /// to use in the resulting secure messaging channel</param>
     /// <param name="shouldCheckMac">whether the resulting secure messaging channel should apply strict
     /// MAC checking on response APDUs</param>
     /// <param name="log">the log/trace registry to raise protocol-step and error events on, or <c>null</c> for a private (unobserved) one</param>
-    public EACCAProtocol(IApduLevelEacCACapable service, SecureMessagingWrapper wrapper, int maxTranceiveLength, bool shouldCheckMac, LogSource? log = null)
+    public EACCAProtocol(IApduLevelEacCACapable service, SecureMessagingWrapper wrapper, int maxTransceiveLength, bool shouldCheckMac, LogSource? log = null)
     {
         _service = service;
         _wrapper = wrapper;
-        _maxTranceiveLength = maxTranceiveLength;
+        _maxTransceiveLength = maxTransceiveLength;
         _shouldCheckMac = shouldCheckMac;
         _log = log ?? new LogSource();
     }
@@ -126,7 +126,7 @@ public class EACCAProtocol
 
             byte[] sharedSecret = ComputeSharedSecret(agreementAlg, piccPublicKey, pcdPrivateKey);
 
-            _wrapper = RestartSecureMessaging(oid!, sharedSecret, _maxTranceiveLength, _shouldCheckMac);
+            _wrapper = RestartSecureMessaging(oid!, sharedSecret, _maxTransceiveLength, _shouldCheckMac);
 
             _log.Info(LogCategory, "Chip Authentication completed; secure messaging restarted.");
             return new EACCAResult(keyId, piccPublicKey, keyHash, pcdPublicKey, pcdPrivateKey, _wrapper);
@@ -249,10 +249,10 @@ public class EACCAProtocol
     /// <summary>Restarts secure messaging based on the shared secret.</summary>
     /// <param name="oid">the Chip Authentication object identifier</param>
     /// <param name="sharedSecret">the shared secret</param>
-    /// <param name="maxTranceiveLength">the maximum APDU tranceive length</param>
+    /// <param name="maxTransceiveLength">the maximum APDU transceive length</param>
     /// <param name="shouldCheckMac">whether to check MAC</param>
     /// <returns>the secure messaging wrapper</returns>
-    public static SecureMessagingWrapper RestartSecureMessaging(string oid, byte[] sharedSecret, int maxTranceiveLength, bool shouldCheckMac)
+    public static SecureMessagingWrapper RestartSecureMessaging(string oid, byte[] sharedSecret, int maxTransceiveLength, bool shouldCheckMac)
     {
         string cipherAlg = ChipAuthenticationInfo.ToCipherAlgorithm(oid);
         int keyLength = ChipAuthenticationInfo.ToKeyLength(oid);
@@ -263,12 +263,12 @@ public class EACCAProtocol
 
         if (cipherAlg.StartsWith("DESede", StringComparison.Ordinal))
         {
-            return new DESedeSecureMessagingWrapper(ksEnc, ksMac, maxTranceiveLength, shouldCheckMac, 0L);
+            return new DESedeSecureMessagingWrapper(ksEnc, ksMac, maxTransceiveLength, shouldCheckMac, 0L);
         }
 
         if (cipherAlg.StartsWith("AES", StringComparison.Ordinal))
         {
-            return new AESSecureMessagingWrapper(ksEnc, ksMac, maxTranceiveLength, shouldCheckMac, 0L);
+            return new AESSecureMessagingWrapper(ksEnc, ksMac, maxTransceiveLength, shouldCheckMac, 0L);
         }
 
         throw new InvalidOperationException($"Unsupported cipher algorithm {cipherAlg}");

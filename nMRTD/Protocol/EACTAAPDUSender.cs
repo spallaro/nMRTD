@@ -119,7 +119,7 @@ public class EACTAAPDUSender : IApduLevelEacTACapable
     /// <summary>Sends a <c>GET CHALLENGE</c> command to the passport.</summary>
     /// <param name="wrapper">secure messaging wrapper</param>
     /// <returns>a byte array of length 8 containing the challenge</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     public byte[] SendGetChallenge(IApduWrapper? wrapper)
     {
         lock (_lock)

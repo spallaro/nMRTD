@@ -86,13 +86,8 @@ internal class FingerImageRepresentationBlock : Block, ImageInfo
     /// here); see <c>ScoreOrError.ScoringErrorCode</c>'s doc comment for the fuller rationale and
     /// <see cref="FromCode"/> for the shared "decode from code" replacement.
     ///
-    /// NOTE: preserved Java quirk -- Java's <c>ImageDataFormatCode(int code, String mimeType)</c>
-    /// constructor takes a <c>mimeType</c> parameter but never assigns it to the <c>mimeType</c> field (only
-    /// <c>this.code = code;</c> runs), so Java's <c>getMimeType()</c> always returns <see langword="null"/>
-    /// for every constant regardless of the (dead) string literal each declares
-    /// (<c>"image/pgm"</c>/<c>"image/x-wsq"</c>/<c>"image/jp2"</c>/<c>"image/png"</c>). This port has no
-    /// per-enum-member data at all to preserve that dead field faithfully -- <see cref="GetMimeType()"/>
-    /// below reproduces the resulting always-<see langword="null"/> observable behavior directly instead.
+    /// Java's version additionally carries a per-constant <c>mimeType</c> string; C# enums cannot carry
+    /// members, so that mapping is <see cref="GetMimeType(ImageDataFormatCode)"/> below instead.
     /// </summary>
     public enum ImageDataFormatCode
     {
@@ -102,6 +97,16 @@ internal class FingerImageRepresentationBlock : Block, ImageInfo
         Jpeg2000Lossless = 3,
         Png = 4,
     }
+
+    private static string GetMimeType(ImageDataFormatCode code) => code switch
+    {
+        ImageDataFormatCode.Pgm => "image/pgm",
+        ImageDataFormatCode.Wsq => "image/x-wsq",
+        ImageDataFormatCode.Jpeg2000Lossy => "image/jp2",
+        ImageDataFormatCode.Jpeg2000Lossless => "image/jp2",
+        ImageDataFormatCode.Png => "image/png",
+        _ => throw new ArgumentOutOfRangeException(nameof(code), code, null),
+    };
 
     private static ImageDataFormatCode? FromImageDataFormatCode(int code) =>
         Enum.IsDefined(typeof(ImageDataFormatCode), code) ? (ImageDataFormatCode)code : null;
@@ -267,10 +272,11 @@ internal class FingerImageRepresentationBlock : Block, ImageInfo
 
     public List<ExtendedDataBlock>? GetVendorSpecificDataBlocks() => _vendorSpecificDataBlocks;
 
-    /// <summary>ADAPTATION: preserved Java quirk -- named after Java's own typo'd <c>geImageData()</c>
-    /// accessor (missing the "t" in "get"); kept verbatim rather than "fixed" since this is a faithful,
-    /// mechanical port and nothing outside this file yet depends on the name.</summary>
-    public byte[] GeImageData() => _imageData;
+    public byte[] GetImageData() => _imageData;
+
+    /// <summary>Misspelled, use <see cref="GetImageData"/> instead.</summary>
+    [Obsolete("Misspelled, use GetImageData() instead.")]
+    public byte[] GeImageData() => GetImageData();
 
     public override int GetHashCode()
     {
@@ -353,7 +359,7 @@ internal class FingerImageRepresentationBlock : Block, ImageInfo
 
     public int GetImageType() => ImageInfo.TYPE_FINGER;
 
-    public string? GetMimeType() => _imageDataFormat == null ? "image/raw" : null;
+    public string? GetMimeType() => _imageDataFormat == null ? "image/raw" : GetMimeType(_imageDataFormat.Value);
 
     public int GetWidth() => 0;
 

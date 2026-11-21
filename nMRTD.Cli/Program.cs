@@ -77,7 +77,7 @@ static async Task<int> RunAsync(string[] args)
     PcscCardService cardService = new(readerName);
     PassportService passportService = new(
         cardService,
-        PassportService.NormalMaxTranceiveLength,
+        PassportService.NormalMaxTransceiveLength,
         PassportService.DefaultMaxBlocksize,
         isSfiEnabled: true,
         shouldCheckMac: true);

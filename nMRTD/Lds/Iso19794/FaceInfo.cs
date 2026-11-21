@@ -94,21 +94,13 @@ public class FaceInfo : AbstractListInfo<FaceImageInfo>, BiometricDataBlock
                 int totalBytesRead = 0;
                 while (totalBytesRead < imageLength)
                 {
-                    /* NOTE: preserved Java quirk -- Java allocates a fresh (hence zero-filled) 2048-byte
-                     * buffer each iteration and does a single, possibly-partial Stream.Read into it, then
-                     * writes the WHOLE 2048-byte buffer (not just the chunkSize bytes actually read) to
-                     * bOut, padding the reconstructed stream with trailing zero bytes beyond each partial
-                     * chunk. This inflates the byte array bOut ends up holding, but is functionally benign
-                     * here: the FaceImageInfo constructed below is told the true imageLength and only ever
-                     * reads that many bytes back out of it. Ported as-is rather than "fixed" to
-                     * Read(buffer, 0, chunkSize). */
                     byte[] buffer = new byte[2048];
                     int chunkSize = inputStream.Read(buffer, 0, buffer.Length);
                     if (chunkSize <= 0)
                     {
                         break;
                     }
-                    bOut.Write(buffer, 0, buffer.Length);
+                    bOut.Write(buffer, 0, chunkSize);
                     totalBytesRead += chunkSize;
                 }
 
@@ -135,7 +127,7 @@ public class FaceInfo : AbstractListInfo<FaceImageInfo>, BiometricDataBlock
                     0,
                     [],
                     0, 0,
-                    imageStream, imageLength, FaceImageInfo.IMAGE_DATA_TYPE_JPEG2000);
+                    imageStream, (int)bOut.Length, FaceImageInfo.IMAGE_DATA_TYPE_JPEG2000);
                 Add(imageInfo);
                 return;
             }

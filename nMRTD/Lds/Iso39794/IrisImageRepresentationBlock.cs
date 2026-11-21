@@ -301,9 +301,11 @@ internal class IrisImageRepresentationBlock : Block, ImageInfo
 
     public CompressionHistoryCode? GetCompressionHistoryCode() => _compressionHistoryCode;
 
-    /// <summary>NOTE: named to match Java's own <c>geImageData</c> (missing the "t" in "get" -- a typo in
-    /// the original JMRTD public API), preserved verbatim here.</summary>
-    public byte[] GeImageData() => _imageData;
+    public byte[] GetImageData() => _imageData;
+
+    /// <summary>Misspelled, use <see cref="GetImageData"/> instead.</summary>
+    [Obsolete("Misspelled, use GetImageData() instead.")]
+    public byte[] GeImageData() => GetImageData();
 
     public IrisImageCaptureDeviceBlock? GetCaptureDeviceBlock() => _captureDeviceBlock;
 
@@ -371,12 +373,6 @@ internal class IrisImageRepresentationBlock : Block, ImageInfo
             && _verticalOrientationCode == otherBlock._verticalOrientationCode;
     }
 
-    /// <summary>NOTE: preserved Java quirk verbatim -- the original ternary here is inverted (Java reads
-    /// <c>imageData != null ? "null" : imageData.length</c>, the opposite of what was clearly intended). This
-    /// means it always prints the literal string <c>"null"</c> when <see cref="_imageData"/> is actually
-    /// present -- which, since this field is mandatory and always assigned by the decode constructor, is
-    /// unconditionally the case here -- rather than the image length. Kept as a faithful (if useless)
-    /// mechanical translation of the bug rather than "fixed".</summary>
     public override string ToString() =>
         "IrisImageRepresentationBlock ["
         + $"eyeLabelCode: {ToStringOrNull(_eyeLabelCode)}"
@@ -386,7 +382,7 @@ internal class IrisImageRepresentationBlock : Block, ImageInfo
         + $", horizontalOrientationCode: {ToStringOrNull(_horizontalOrientationCode)}"
         + $", verticalOrientationCode: {ToStringOrNull(_verticalOrientationCode)}"
         + $", compressionHistoryCode: {ToStringOrNull(_compressionHistoryCode)}"
-        + $", imageData: {"null"}"
+        + $", imageData: {(_imageData == null ? "null" : _imageData.Length.ToString())}"
         + $", range: {(_range != null ? _range.Value.ToString() : ToStringOrNull(_rangingErrorCode))}"
         + $", captureDateTimeBlock: {_captureDateTimeBlock}"
         + $", captureDeviceBlock: {_captureDeviceBlock?.ToString() ?? "null"}"

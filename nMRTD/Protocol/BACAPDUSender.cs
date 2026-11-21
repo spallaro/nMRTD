@@ -92,13 +92,13 @@ public class BACAPDUSender : IApduLevelBacCapable
 
     /// <summary>Sends a <c>GET CHALLENGE</c> command to the passport.</summary>
     /// <returns>a byte array of length 8 containing the challenge</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     public byte[] SendGetChallenge() => SendGetChallenge(null);
 
     /// <summary>Sends a <c>GET CHALLENGE</c> command to the passport.</summary>
     /// <param name="wrapper">secure messaging wrapper</param>
     /// <returns>a byte array of length 8 containing the challenge</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     public byte[] SendGetChallenge(IApduWrapper? wrapper)
     {
         lock (_lock)
@@ -132,7 +132,7 @@ public class BACAPDUSender : IApduLevelBacCapable
     /// a byte array of length 32 containing the response that was sent by the passport, decrypted (using
     /// <paramref name="kEnc"/>) and verified (using <paramref name="kMac"/>)
     /// </returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     public byte[] SendMutualAuth(byte[] rndIfd, byte[] rndIcc, byte[] kIfd, KeyParameter kEnc, KeyParameter kMac)
     {
         lock (_lock)

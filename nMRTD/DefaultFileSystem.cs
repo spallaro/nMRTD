@@ -81,7 +81,7 @@ public class DefaultFileSystem : IFileSystemStructured
         _isSelected = false;
         _isSfiEnabled = isSfiEnabled;
         _fidToSfi = fidToSfi ?? throw new ArgumentNullException(nameof(fidToSfi));
-        _maxReadBinaryLength = PassportService.ExtendedMaxTranceiveLength;
+        _maxReadBinaryLength = PassportService.ExtendedMaxTransceiveLength;
     }
 
     /// <summary>Sets the current wrapper to the given APDU wrapper. Subsequent APDUs will be wrapped before sending to the ICC.</summary>
@@ -373,7 +373,7 @@ public class DefaultFileSystem : IFileSystemStructured
     /// <param name="le">the expected length of the file to read</param>
     /// <param name="isTlvEncodedOffsetNeeded">whether to encode the offset in a TLV object (typically for offset larger than 32767)</param>
     /// <returns>a byte array of length <paramref name="le"/> with (the specified part of) the contents of the currently selected file</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     public byte[] SendReadBinary(int offset, int le, bool isTlvEncodedOffsetNeeded)
     {
         lock (_lock)
@@ -391,7 +391,7 @@ public class DefaultFileSystem : IFileSystemStructured
     /// <param name="le">the expected length of the file to read</param>
     /// <param name="isTlvEncodedOffsetNeeded">whether to encode the offset in a TLV object (typically for offset larger than 32767)</param>
     /// <returns>a byte array of length <paramref name="le"/> with (the specified part of) the contents of the currently selected file</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     public byte[] SendReadBinary(int sfi, int offset, int le, bool isTlvEncodedOffsetNeeded)
     {
         lock (_lock)

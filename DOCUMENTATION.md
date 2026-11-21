@@ -158,29 +158,29 @@ Namespace `nMRTD`, class `PassportService : AbstractMRTDCardService`.
 (0x04). File IDs: `EF_CARD_ACCESS` (0x011C), `EF_CARD_SECURITY` (0x011D), `EF_DG1`…`EF_DG16`
 (0x0101–0x0110), `EF_SOD` (0x011D), `EF_COM` (0x011E), `EF_CVCA` (0x011C). Corresponding
 short file IDs `SFI_CARD_ACCESS`…`SFI_CVCA`. Block sizes: `DefaultMaxBlocksize = 223`,
-`NormalMaxTranceiveLength = 256`, `ExtendedMaxTranceiveLength = 65536`.
+`NormalMaxTransceiveLength = 256`, `ExtendedMaxTransceiveLength = 65536`.
 
 **Constructors:**
 
 ```csharp
 public PassportService(
     CardService service,
-    int maxTranceiveLengthForSecureMessaging,
+    int maxTransceiveLengthForSecureMessaging,
     int maxBlockSize,
     bool isSfiEnabled,
     bool shouldCheckMac);
 
 public PassportService(
     CardService service,
-    int maxTranceiveLengthForPaceProtocol,
-    int maxTranceiveLengthForSecureMessaging,
+    int maxTransceiveLengthForPaceProtocol,
+    int maxTransceiveLengthForSecureMessaging,
     int maxBlockSize,
     bool isSfiEnabled,
     bool shouldCheckMac);
 ```
 
-The first constructor forwards to the second with `maxTranceiveLengthForPaceProtocol =
-NormalMaxTranceiveLength`. The (primary) constructor builds one shared
+The first constructor forwards to the second with `maxTransceiveLengthForPaceProtocol =
+NormalMaxTransceiveLength`. The (primary) constructor builds one shared
 `SecureMessagingAPDUSender` and all protocol senders around it, plus the two
 `DefaultFileSystem` instances described in §1.3.
 
@@ -218,7 +218,7 @@ on success):
   applet has been selected yet, then returns a stream over the requested file.
   `[Obsolete] GetInputStream(short fid)` forwards to this using the service's configured
   `maxBlockSize`.
-- `int GetMaxReadBinaryLength()` / `int GetMaxTranceiveLength()`.
+- `int GetMaxReadBinaryLength()` / `int GetMaxTransceiveLength()`.
 - `SecureMessagingWrapper? GetWrapper()` — the currently active wrapper, if any (with a
   documented Java-parity quirk: it reconciles against the applet file system's own wrapper
   by SSC value, in case the two have drifted).
@@ -273,7 +273,7 @@ Exception
 ```
 
 `CardServiceException` is thrown throughout the transport and file-system layers on
-tranceive failures, missing readers, and unexpected status words. Every current protocol
+transceive failures, missing readers, and unexpected status words. Every current protocol
 implementation (BAC/PACE/EAC/AA) throws `CardServiceProtocolException` — carrying a
 numeric `Step` identifying which stage of the protocol failed — rather than the
 `[Obsolete]` `AccessDeniedException`/`BacDeniedException`/`PaceException`, which are kept
@@ -316,7 +316,7 @@ using nMRTD.SmartCards;
 var cardService = new PcscCardService(readerName: null);   // first reader found
 var passportService = new PassportService(
     cardService,
-    PassportService.NormalMaxTranceiveLength,
+    PassportService.NormalMaxTransceiveLength,
     PassportService.DefaultMaxBlocksize,
     isSfiEnabled: true,
     shouldCheckMac: true);
@@ -393,7 +393,7 @@ exposed through `BacKey.GetKey()`.
 ```csharp
 public class BACProtocol
 {
-    public BACProtocol(IApduLevelBacCapable service, int maxTranceiveLength, bool shouldCheckMac, LogSource? log = null);
+    public BACProtocol(IApduLevelBacCapable service, int maxTransceiveLength, bool shouldCheckMac, LogSource? log = null);
     public BACResult DoBAC(IAccessKeySpec bacKey);
     public BACResult DoBAC(KeyParameter kEnc, KeyParameter kMac);
     public static byte[] ComputeKeySeedForBAC(IBacKeySpec bacKey);
@@ -418,7 +418,7 @@ public class BACProtocol
    `ssc = rndIcc[4..8] ‖ rndIfd[4..8]` as a 64-bit big-endian counter
    (`ComputeSendSequenceCounter`).
 7. Returns a `BACResult` wrapping a fresh `DESedeSecureMessagingWrapper(ksEnc, ksMac,
-   maxTranceiveLength, shouldCheckMac, ssc)`.
+   maxTransceiveLength, shouldCheckMac, ssc)`.
 
 **`BACResult`**: `{ IAccessKeySpec? BacKey, SecureMessagingWrapper Wrapper }`.
 
@@ -478,8 +478,8 @@ public class PaceProtocol
     public PaceProtocol(
         IApduLevelPaceCapable service,
         SecureMessagingWrapper? wrapper,
-        int maxTranceiveLengthForProtocol,
-        int maxTranceiveLengthForSecureMessaging,
+        int maxTransceiveLengthForProtocol,
+        int maxTransceiveLengthForSecureMessaging,
         bool shouldCheckMac,
         LogSource? log = null);
 
@@ -548,7 +548,7 @@ in CAM mode, this step is already folded into PACE step 4 and does not need to b
 ```csharp
 public class EACCAProtocol
 {
-    public EACCAProtocol(IApduLevelEacCACapable service, SecureMessagingWrapper wrapper, int maxTranceiveLength, bool shouldCheckMac, LogSource? log = null);
+    public EACCAProtocol(IApduLevelEacCACapable service, SecureMessagingWrapper wrapper, int maxTransceiveLength, bool shouldCheckMac, LogSource? log = null);
     public EACCAResult DoCA(BigInteger? keyId, string? oid, string? publicKeyOID, AsymmetricKeyParameter piccPublicKey);
 }
 ```

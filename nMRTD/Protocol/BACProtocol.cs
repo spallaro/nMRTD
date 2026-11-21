@@ -32,19 +32,19 @@ public class BACProtocol
     private const string LogCategory = "BAC";
 
     private readonly IApduLevelBacCapable _service;
-    private readonly int _maxTranceiveLength;
+    private readonly int _maxTransceiveLength;
     private readonly bool _shouldCheckMac;
     private readonly LogSource _log;
 
     /// <summary>Constructs a BAC protocol instance.</summary>
     /// <param name="service">the service to send APDUs</param>
-    /// <param name="maxTranceiveLength">the maximal tranceive length (on responses to <c>READ BINARY</c>) to use in the resulting secure messaging channel</param>
+    /// <param name="maxTransceiveLength">the maximal transceive length (on responses to <c>READ BINARY</c>) to use in the resulting secure messaging channel</param>
     /// <param name="shouldCheckMac">whether the resulting secure messaging channel should apply strict MAC checking on response APDUs</param>
     /// <param name="log">the log/trace registry to raise protocol-step and error events on, or <c>null</c> for a private (unobserved) one</param>
-    public BACProtocol(IApduLevelBacCapable service, int maxTranceiveLength, bool shouldCheckMac, LogSource? log = null)
+    public BACProtocol(IApduLevelBacCapable service, int maxTransceiveLength, bool shouldCheckMac, LogSource? log = null)
     {
         _service = service;
-        _maxTranceiveLength = maxTranceiveLength;
+        _maxTransceiveLength = maxTransceiveLength;
         _shouldCheckMac = shouldCheckMac;
         _log = log ?? new LogSource();
     }
@@ -200,7 +200,7 @@ public class BACProtocol
         var ksMac = new KeyParameter(Util.DeriveKey(keySeed, Util.MAC_MODE));
         long ssc = ComputeSendSequenceCounter(rndIcc, rndIfd);
 
-        return new DESedeSecureMessagingWrapper(ksEnc, ksMac, _maxTranceiveLength, _shouldCheckMac, ssc);
+        return new DESedeSecureMessagingWrapper(ksEnc, ksMac, _maxTransceiveLength, _shouldCheckMac, ssc);
     }
 
     /// <summary>

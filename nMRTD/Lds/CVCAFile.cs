@@ -20,7 +20,7 @@ namespace nMRTD.Lds;
 // NOTE: PassportService.EF_CVCA (used below) is a forward reference to nMRTD.PassportService, a large
 // not-yet-ported file outside the scope of this porting task. This mirrors the pattern already
 // established by the committed DefaultFileSystem.cs, which forward-references
-// PassportService.ExtendedMaxTranceiveLength/DefaultMaxBlocksize the same way.
+// PassportService.ExtendedMaxTransceiveLength/DefaultMaxBlocksize the same way.
 
 /// <summary>
 /// Port of <c>org.jmrtd.lds.CVCAFile</c>: file structure for the EF.CVCA file (on EAC protected

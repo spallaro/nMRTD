@@ -59,7 +59,7 @@ using nMRTD.SmartCards;
 var cardService = new PcscCardService();
 var passportService = new PassportService(
     cardService,
-    PassportService.NormalMaxTranceiveLength,
+    PassportService.NormalMaxTransceiveLength,
     PassportService.DefaultMaxBlocksize,
     isSfiEnabled: true,
     shouldCheckMac: true);

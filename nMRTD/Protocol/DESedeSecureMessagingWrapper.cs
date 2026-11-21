@@ -85,7 +85,7 @@ public sealed class DESedeSecureMessagingWrapper : SecureMessagingWrapper
     /// <summary>Constructs a secure messaging wrapper based on the given existing secure messaging wrapper. This is a convenience copy constructor.</summary>
     /// <param name="wrapper">an existing wrapper</param>
     public DESedeSecureMessagingWrapper(DESedeSecureMessagingWrapper wrapper)
-        : this(wrapper.EncryptionKey, wrapper.MacKey, wrapper.MaxTranceiveLength, wrapper.ShouldCheckMac, wrapper.SendSequenceCounter)
+        : this(wrapper.EncryptionKey, wrapper.MacKey, wrapper.MaxTransceiveLength, wrapper.ShouldCheckMac, wrapper.SendSequenceCounter)
     {
     }
 
@@ -95,11 +95,11 @@ public sealed class DESedeSecureMessagingWrapper : SecureMessagingWrapper
     /// </summary>
     /// <param name="ksEnc">the session key for encryption</param>
     /// <param name="ksMac">the session key for macs</param>
-    /// <param name="maxTranceiveLength">the maximum tranceive length, typical values are 256 or 65536</param>
+    /// <param name="maxTransceiveLength">the maximum transceive length, typical values are 256 or 65536</param>
     /// <param name="shouldCheckMac">a boolean indicating whether this wrapper will check the MAC in wrapped response APDUs</param>
     /// <param name="ssc">the initial value of the send sequence counter</param>
-    public DESedeSecureMessagingWrapper(KeyParameter ksEnc, KeyParameter ksMac, int maxTranceiveLength, bool shouldCheckMac, long ssc)
-        : base(ksEnc, ksMac, new BufferedBlockCipher(new CbcBlockCipher(new DesEdeEngine())), new ISO9797Alg3Mac(new DesEngine()), maxTranceiveLength, shouldCheckMac, ssc)
+    public DESedeSecureMessagingWrapper(KeyParameter ksEnc, KeyParameter ksMac, int maxTransceiveLength, bool shouldCheckMac, long ssc)
+        : base(ksEnc, ksMac, new BufferedBlockCipher(new CbcBlockCipher(new DesEdeEngine())), new ISO9797Alg3Mac(new DesEngine()), maxTransceiveLength, shouldCheckMac, ssc)
     {
     }
 
@@ -122,7 +122,7 @@ public sealed class DESedeSecureMessagingWrapper : SecureMessagingWrapper
     }
 
     public override string ToString() =>
-        $"DESedeSecureMessagingWrapper [ssc: {SendSequenceCounter}, kEnc: {EncryptionKey}, kMac: {MacKey}, shouldCheckMAC: {ShouldCheckMac}, maxTranceiveLength: {MaxTranceiveLength}]";
+        $"DESedeSecureMessagingWrapper [ssc: {SendSequenceCounter}, kEnc: {EncryptionKey}, kMac: {MacKey}, shouldCheckMAC: {ShouldCheckMac}, maxTransceiveLength: {MaxTransceiveLength}]";
 
     public override int GetHashCode() => (31 * base.GetHashCode()) + 13;
 

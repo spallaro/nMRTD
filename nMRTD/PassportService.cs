@@ -193,11 +193,19 @@ public class PassportService : AbstractMRTDCardService
     /// <summary>The default maximal blocksize used for unencrypted APDUs.</summary>
     public const int DefaultMaxBlocksize = 223;
 
-    /// <summary>The normal maximal tranceive length of APDUs.</summary>
-    public const int NormalMaxTranceiveLength = 256;
+    /// <summary>The normal maximal transceive length of APDUs.</summary>
+    public const int NormalMaxTransceiveLength = 256;
 
-    /// <summary>The extended maximal tranceive length of APDUs.</summary>
-    public const int ExtendedMaxTranceiveLength = 65536;
+    /// <summary>The extended maximal transceive length of APDUs.</summary>
+    public const int ExtendedMaxTransceiveLength = 65536;
+
+    /// <summary>The normal maximal transceive length of APDUs.</summary>
+    [Obsolete("Misspelled, use NormalMaxTransceiveLength instead.")]
+    public const int NormalMaxTranceiveLength = NormalMaxTransceiveLength;
+
+    /// <summary>The extended maximal transceive length of APDUs.</summary>
+    [Obsolete("Misspelled, use ExtendedMaxTransceiveLength instead.")]
+    public const int ExtendedMaxTranceiveLength = ExtendedMaxTransceiveLength;
 
     /// <summary>The applet we select when we start a session.</summary>
     protected static readonly byte[] AppletAid = [0xA0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01];
@@ -211,9 +219,9 @@ public class PassportService : AbstractMRTDCardService
 
     private SecureMessagingWrapper? _wrapper;
 
-    private readonly int _maxTranceiveLengthForSecureMessaging;
+    private readonly int _maxTransceiveLengthForSecureMessaging;
 
-    private readonly int _maxTranceiveLengthForPaceProtocol;
+    private readonly int _maxTransceiveLengthForPaceProtocol;
 
     private readonly bool _shouldCheckMac;
 
@@ -235,23 +243,23 @@ public class PassportService : AbstractMRTDCardService
 
     /// <summary>Creates a new passport service for accessing the passport.</summary>
     /// <param name="service">another service which will deal with sending the APDUs to the card</param>
-    /// <param name="maxTranceiveLengthForSecureMessaging">maximum length to use in secure messaging APDUs, <c>256</c> or <c>65536</c></param>
+    /// <param name="maxTransceiveLengthForSecureMessaging">maximum length to use in secure messaging APDUs, <c>256</c> or <c>65536</c></param>
     /// <param name="maxBlockSize">maximum buffer size for plain text APDUs</param>
     /// <param name="isSfiEnabled">whether short file identifiers should be used for read binaries when possible</param>
     /// <param name="shouldCheckMac">whether the secure messaging channels, resulting from BAC, PACE, EAC-CA, should check MACs on response APDUs</param>
-    public PassportService(CardService service, int maxTranceiveLengthForSecureMessaging, int maxBlockSize, bool isSfiEnabled, bool shouldCheckMac)
-        : this(service, NormalMaxTranceiveLength, maxTranceiveLengthForSecureMessaging, maxBlockSize, isSfiEnabled, shouldCheckMac)
+    public PassportService(CardService service, int maxTransceiveLengthForSecureMessaging, int maxBlockSize, bool isSfiEnabled, bool shouldCheckMac)
+        : this(service, NormalMaxTransceiveLength, maxTransceiveLengthForSecureMessaging, maxBlockSize, isSfiEnabled, shouldCheckMac)
     {
     }
 
     /// <summary>Creates a new passport service for accessing the passport.</summary>
     /// <param name="service">another service which will deal with sending the APDUs to the card</param>
-    /// <param name="maxTranceiveLengthForPaceProtocol">maximum length to use in PACE protocol steps, <c>256</c> or <c>65536</c></param>
-    /// <param name="maxTranceiveLengthForSecureMessaging">maximum length to use in secure messaging APDUs, <c>256</c> or <c>65536</c></param>
+    /// <param name="maxTransceiveLengthForPaceProtocol">maximum length to use in PACE protocol steps, <c>256</c> or <c>65536</c></param>
+    /// <param name="maxTransceiveLengthForSecureMessaging">maximum length to use in secure messaging APDUs, <c>256</c> or <c>65536</c></param>
     /// <param name="maxBlockSize">maximum buffer size for plain text APDUs</param>
     /// <param name="isSfiEnabled">whether short file identifiers should be used for read binaries when possible</param>
     /// <param name="shouldCheckMac">whether the secure messaging channels, resulting from BAC, PACE, EAC-CA, should check MACs on response APDUs</param>
-    public PassportService(CardService service, int maxTranceiveLengthForPaceProtocol, int maxTranceiveLengthForSecureMessaging, int maxBlockSize, bool isSfiEnabled, bool shouldCheckMac)
+    public PassportService(CardService service, int maxTransceiveLengthForPaceProtocol, int maxTransceiveLengthForSecureMessaging, int maxBlockSize, bool isSfiEnabled, bool shouldCheckMac)
     {
         _service = service;
 
@@ -268,8 +276,8 @@ public class PassportService : AbstractMRTDCardService
         _eacTaSender = new EACTAAPDUSender(_secureMessagingSender);
         _readBinarySender = new ReadBinaryAPDUSender(_secureMessagingSender);
 
-        _maxTranceiveLengthForPaceProtocol = maxTranceiveLengthForPaceProtocol;
-        _maxTranceiveLengthForSecureMessaging = maxTranceiveLengthForSecureMessaging;
+        _maxTransceiveLengthForPaceProtocol = maxTransceiveLengthForPaceProtocol;
+        _maxTransceiveLengthForSecureMessaging = maxTransceiveLengthForSecureMessaging;
         _maxBlockSize = maxBlockSize;
         _shouldCheckMac = shouldCheckMac;
         _isAppletSelected = false;
@@ -326,7 +334,7 @@ public class PassportService : AbstractMRTDCardService
     }
 
     /// <summary>Sends a <c>SELECT MF</c> command to the card.</summary>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     public override void SendSelectMf()
     {
         _readBinarySender.SendSelectMf();
@@ -348,7 +356,7 @@ public class PassportService : AbstractMRTDCardService
                 throw new ArgumentException("Unsupported key type");
             }
 
-            BACResult bacResult = new BACProtocol(_bacSender, _maxTranceiveLengthForSecureMessaging, _shouldCheckMac, _secureMessagingSender.Log).DoBAC(bacKey);
+            BACResult bacResult = new BACProtocol(_bacSender, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, _secureMessagingSender.Log).DoBAC(bacKey);
             _wrapper = bacResult.Wrapper;
             _appletFileSystem.SetWrapper(_wrapper);
             return bacResult;
@@ -360,7 +368,7 @@ public class PassportService : AbstractMRTDCardService
     {
         lock (_lock)
         {
-            BACResult bacResult = new BACProtocol(_bacSender, _maxTranceiveLengthForSecureMessaging, _shouldCheckMac, _secureMessagingSender.Log).DoBAC(kEnc, kMac);
+            BACResult bacResult = new BACProtocol(_bacSender, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, _secureMessagingSender.Log).DoBAC(kEnc, kMac);
             _wrapper = bacResult.Wrapper;
             _appletFileSystem.SetWrapper(_wrapper);
             return bacResult;
@@ -372,7 +380,7 @@ public class PassportService : AbstractMRTDCardService
     {
         lock (_lock)
         {
-            PACEResult paceResult = new PaceProtocol(_paceSender, _wrapper, _maxTranceiveLengthForPaceProtocol, _maxTranceiveLengthForSecureMessaging, _shouldCheckMac, _secureMessagingSender.Log)
+            PACEResult paceResult = new PaceProtocol(_paceSender, _wrapper, _maxTransceiveLengthForPaceProtocol, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, _secureMessagingSender.Log)
                 .DoPace(keySpec, oid, staticParameters, parameterId);
             _wrapper = paceResult.Wrapper;
             _appletFileSystem.SetWrapper(_wrapper);
@@ -385,7 +393,7 @@ public class PassportService : AbstractMRTDCardService
     {
         lock (_lock)
         {
-            EACCAResult caResult = new EACCAProtocol(_eacCaSender, GetWrapper()!, _maxTranceiveLengthForSecureMessaging, _shouldCheckMac, _secureMessagingSender.Log)
+            EACCAResult caResult = new EACCAProtocol(_eacCaSender, GetWrapper()!, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, _secureMessagingSender.Log)
                 .DoCA(keyId, oid, publicKeyOID, publicKey);
             _wrapper = caResult.Wrapper;
             _appletFileSystem.SetWrapper(_wrapper);
@@ -457,9 +465,14 @@ public class PassportService : AbstractMRTDCardService
         }
     }
 
-    /// <summary>Returns the maximum tranceive length of (protected) APDUs.</summary>
-    /// <returns>the maximum APDU tranceive length</returns>
-    public int GetMaxTranceiveLength() => _maxTranceiveLengthForSecureMessaging;
+    /// <summary>Returns the maximum transceive length of (protected) APDUs.</summary>
+    /// <returns>the maximum APDU transceive length</returns>
+    public int GetMaxTransceiveLength() => _maxTransceiveLengthForSecureMessaging;
+
+    /// <summary>Returns the maximum transceive length of (protected) APDUs.</summary>
+    /// <returns>the maximum APDU transceive length</returns>
+    [Obsolete("Misspelled, use GetMaxTransceiveLength() instead.")]
+    public int GetMaxTranceiveLength() => GetMaxTransceiveLength();
 
     /// <summary>Returns the secure messaging wrapper currently in use. Returns <c>null</c> until access control has been performed.</summary>
     /// <returns>the wrapper</returns>
@@ -527,7 +540,7 @@ public class PassportService : AbstractMRTDCardService
     }
 
     /// <inheritdoc />
-    public override int GetMaxReadBinaryLength() => _appletFileSystem?.GetMaxReadBinaryLength() ?? NormalMaxTranceiveLength;
+    public override int GetMaxReadBinaryLength() => _appletFileSystem?.GetMaxReadBinaryLength() ?? NormalMaxTransceiveLength;
 
     /// <inheritdoc />
     public override void AddApduListener(IApduListener listener) => _readBinarySender.AddApduListener(listener);

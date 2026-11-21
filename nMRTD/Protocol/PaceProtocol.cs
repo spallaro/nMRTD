@@ -124,43 +124,43 @@ public class PaceProtocol
 
     private readonly IApduLevelPaceCapable _service;
     private SecureMessagingWrapper? _wrapper;
-    private readonly int _maxTranceiveLengthForProtocol;
-    private readonly int _maxTranceiveLengthForSecureMessaging;
+    private readonly int _maxTransceiveLengthForProtocol;
+    private readonly int _maxTransceiveLengthForSecureMessaging;
     private readonly bool _shouldCheckMac;
     private readonly LogSource _log;
 
     /// <summary>
-    /// Constructs a PACE protocol instance. The max tranceive lengths used during PACE protocol execution
+    /// Constructs a PACE protocol instance. The max transceive lengths used during PACE protocol execution
     /// will be set to 256.
     /// </summary>
     /// <param name="service">the service for sending APDUs</param>
     /// <param name="wrapper">the already established secure messaging channel (or <c>null</c>)</param>
-    /// <param name="maxTranceiveLength">the maximal tranceive length (on responses to <c>READ BINARY</c>)
+    /// <param name="maxTransceiveLength">the maximal transceive length (on responses to <c>READ BINARY</c>)
     /// to use in the resulting secure messaging channel</param>
     /// <param name="shouldCheckMac">whether the resulting secure messaging channel should apply strict MAC
     /// checking on response APDUs</param>
-    [Obsolete("Use the constructor with explicit max tranceive lengths for protocol and secure messaging.")]
-    public PaceProtocol(IApduLevelPaceCapable service, SecureMessagingWrapper? wrapper, int maxTranceiveLength, bool shouldCheckMac)
-        : this(service, wrapper, 256, maxTranceiveLength, shouldCheckMac)
+    [Obsolete("Use the constructor with explicit max transceive lengths for protocol and secure messaging.")]
+    public PaceProtocol(IApduLevelPaceCapable service, SecureMessagingWrapper? wrapper, int maxTransceiveLength, bool shouldCheckMac)
+        : this(service, wrapper, 256, maxTransceiveLength, shouldCheckMac)
     {
     }
 
     /// <summary>Constructs a PACE protocol instance.</summary>
     /// <param name="service">the service for sending APDUs</param>
     /// <param name="wrapper">the already established secure messaging channel (or <c>null</c>)</param>
-    /// <param name="maxTranceiveLengthForProtocol">the maximal tranceive length PACE during protocol
+    /// <param name="maxTransceiveLengthForProtocol">the maximal transceive length PACE during protocol
     /// execution, <c>256</c> or <c>65536</c></param>
-    /// <param name="maxTranceiveLengthForSecureMessaging">the maximal tranceive length (on responses to
+    /// <param name="maxTransceiveLengthForSecureMessaging">the maximal transceive length (on responses to
     /// <c>READ BINARY</c>) to use in the resulting secure messaging channel</param>
     /// <param name="shouldCheckMac">whether the resulting secure messaging channel should apply strict MAC
     /// checking on response APDUs</param>
     /// <param name="log">the log/trace registry to raise protocol-step and error events on, or <c>null</c> for a private (unobserved) one</param>
-    public PaceProtocol(IApduLevelPaceCapable service, SecureMessagingWrapper? wrapper, int maxTranceiveLengthForProtocol, int maxTranceiveLengthForSecureMessaging, bool shouldCheckMac, LogSource? log = null)
+    public PaceProtocol(IApduLevelPaceCapable service, SecureMessagingWrapper? wrapper, int maxTransceiveLengthForProtocol, int maxTransceiveLengthForSecureMessaging, bool shouldCheckMac, LogSource? log = null)
     {
         _service = service;
         _wrapper = wrapper;
-        _maxTranceiveLengthForProtocol = maxTranceiveLengthForProtocol;
-        _maxTranceiveLengthForSecureMessaging = maxTranceiveLengthForSecureMessaging;
+        _maxTransceiveLengthForProtocol = maxTransceiveLengthForProtocol;
+        _maxTransceiveLengthForSecureMessaging = maxTransceiveLengthForSecureMessaging;
         _shouldCheckMac = shouldCheckMac;
         _log = log ?? new LogSource();
     }
@@ -311,11 +311,11 @@ public class PaceProtocol
             long ssc = _wrapper?.SendSequenceCounter ?? 0L;
             if (cipherAlg.StartsWith("DESede", StringComparison.Ordinal))
             {
-                _wrapper = new DESedeSecureMessagingWrapper(encKey, macKey, _maxTranceiveLengthForSecureMessaging, _shouldCheckMac, 0L);
+                _wrapper = new DESedeSecureMessagingWrapper(encKey, macKey, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, 0L);
             }
             else if (cipherAlg.StartsWith("AES", StringComparison.Ordinal))
             {
-                _wrapper = new AESSecureMessagingWrapper(encKey, macKey, _maxTranceiveLengthForSecureMessaging, _shouldCheckMac, ssc);
+                _wrapper = new AESSecureMessagingWrapper(encKey, macKey, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, ssc);
             }
             else
             {
@@ -459,7 +459,7 @@ public class PaceProtocol
             byte[] step2Response = _service.SendGeneralAuthenticate(
                 _wrapper,
                 step2Data,
-                step2Data.Length > 233 ? PassportService.ExtendedMaxTranceiveLength : _maxTranceiveLengthForProtocol,
+                step2Data.Length > 233 ? PassportService.ExtendedMaxTransceiveLength : _maxTransceiveLengthForProtocol,
                 false);
 
             byte[] piccMappingEncodedPublicKey = TlvUtil.UnwrapDO(0x82, step2Response);
@@ -530,7 +530,7 @@ public class PaceProtocol
             _service.SendGeneralAuthenticate(
                 _wrapper,
                 step2Data,
-                step2Data.Length > 233 ? PassportService.ExtendedMaxTranceiveLength : _maxTranceiveLengthForProtocol,
+                step2Data.Length > 233 ? PassportService.ExtendedMaxTransceiveLength : _maxTransceiveLengthForProtocol,
                 false);
 
             if (agreementAlg == "ECDH")
@@ -592,7 +592,7 @@ public class PaceProtocol
             byte[] step3Response = _service.SendGeneralAuthenticate(
                 _wrapper,
                 step3Data,
-                step3Data.Length > 233 ? PassportService.ExtendedMaxTranceiveLength : _maxTranceiveLengthForProtocol,
+                step3Data.Length > 233 ? PassportService.ExtendedMaxTransceiveLength : _maxTransceiveLengthForProtocol,
                 false);
             byte[] piccEncodedPublicKey = TlvUtil.UnwrapDO(0x84, step3Response);
             AsymmetricKeyParameter piccPublicKey = DecodePublicKeyFromSmartCard(piccEncodedPublicKey, ephemeralParams);

@@ -56,7 +56,7 @@ public class AAAPDUSender : IApduLevelAACapable
     /// <param name="signatureLength">the (expected) length of the signature in bits</param>
     /// <param name="rndIfd">the challenge to send</param>
     /// <returns>the response from the passport (status word removed)</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     public byte[] SendInternalAuthenticate(IApduWrapper? wrapper, int signatureLength, byte[] rndIfd)
     {
         lock (_lock)

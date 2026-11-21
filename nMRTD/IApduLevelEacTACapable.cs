@@ -47,7 +47,7 @@ public interface IApduLevelEacTACapable
     /// <summary>Sends a GET CHALLENGE command to the passport.</summary>
     /// <param name="wrapper">secure messaging wrapper</param>
     /// <returns>a byte array of length 8 containing the challenge</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     byte[] SendGetChallenge(IApduWrapper? wrapper);
 
     /// <summary>Sends the EXTERNAL AUTHENTICATE command. This is used in EAC-TA.</summary>

@@ -25,11 +25,11 @@ public interface IApduLevelReadBinaryCapable
     /// <summary>Sends a SELECT APPLET command to the card.</summary>
     /// <param name="wrapper">the secure messaging wrapper to use</param>
     /// <param name="aid">the applet to select</param>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     void SendSelectApplet(IApduWrapper? wrapper, byte[] aid);
 
     /// <summary>Sends a SELECT MF command to the card.</summary>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     void SendSelectMf();
 
     /// <summary>Selects a file by file identifier.</summary>

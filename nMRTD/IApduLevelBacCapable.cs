@@ -27,7 +27,7 @@ public interface IApduLevelBacCapable
 {
     /// <summary>Sends a GET CHALLENGE command to the passport.</summary>
     /// <returns>a byte array of length 8 containing the challenge</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     byte[] SendGetChallenge();
 
     /// <summary>
@@ -44,6 +44,6 @@ public interface IApduLevelBacCapable
     /// a byte array of length 32 containing the response that was sent by the passport, decrypted
     /// (using <paramref name="kEnc"/>) and verified (using <paramref name="kMac"/>)
     /// </returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     byte[] SendMutualAuth(byte[] rndIfd, byte[] rndIcc, byte[] kIfd, KeyParameter kEnc, KeyParameter kMac);
 }

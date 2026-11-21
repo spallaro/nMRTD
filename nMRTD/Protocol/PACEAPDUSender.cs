@@ -48,7 +48,7 @@ public class PACEAPDUSender : IApduLevelPaceCapable
     public LogSource Log => _secureMessagingSender.Log;
 
     /// <summary>Creates an APDU sender to support the PACE protocol.</summary>
-    /// <param name="service">the card service to tranceive APDUs</param>
+    /// <param name="service">the card service to transceive APDUs</param>
     /// <remarks>
     /// Obsolete: use <see cref="PACEAPDUSender(SecureMessagingAPDUSender)"/> instead, sharing a single
     /// <see cref="SecureMessagingAPDUSender"/> between all senders wrapping the same underlying card
@@ -61,7 +61,7 @@ public class PACEAPDUSender : IApduLevelPaceCapable
     }
 
     /// <summary>Creates an APDU sender to support the PACE protocol.</summary>
-    /// <param name="secureMessagingSender">the (shared) secure messaging APDU sender to tranceive APDUs</param>
+    /// <param name="secureMessagingSender">the (shared) secure messaging APDU sender to transceive APDUs</param>
     public PACEAPDUSender(SecureMessagingAPDUSender secureMessagingSender)
     {
         _secureMessagingSender = secureMessagingSender;
@@ -130,7 +130,7 @@ public class PACEAPDUSender : IApduLevelPaceCapable
 
             byte[] data = dataStream.ToArray();
 
-            /* Tranceive APDU. */
+            /* Transceive APDU. */
             var commandApdu = new CommandApdu(Iso7816.ClaIso7816, Iso7816.InsMse, 0xC1, 0xA4, data);
             ResponseApdu responseApdu = _secureMessagingSender.Transmit(wrapper, commandApdu);
 
@@ -154,7 +154,7 @@ public class PACEAPDUSender : IApduLevelPaceCapable
     {
         lock (_lock)
         {
-            /* Tranceive APDU. */
+            /* Transceive APDU. */
             byte[] commandData = TlvUtil.WrapDO(0x7C, data);
             var commandApdu = new CommandApdu(
                 isLast ? Iso7816.ClaIso7816 : Iso7816.ClaCommandChaining,

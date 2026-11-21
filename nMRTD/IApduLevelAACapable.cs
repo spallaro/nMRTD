@@ -29,6 +29,6 @@ public interface IApduLevelAACapable
     /// <param name="signatureLength">the length of the public key in bits</param>
     /// <param name="rndIfd">the challenge to send</param>
     /// <returns>the response from the ICC</returns>
-    /// <exception cref="CardServiceException">on tranceive error</exception>
+    /// <exception cref="CardServiceException">on transceive error</exception>
     byte[] SendInternalAuthenticate(IApduWrapper? wrapper, int signatureLength, byte[] rndIfd);
 }

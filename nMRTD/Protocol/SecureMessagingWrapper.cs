@@ -68,8 +68,12 @@ public abstract class SecureMessagingWrapper : IApduWrapper
     /// <summary>Whether this wrapper will check the MAC in wrapped response APDUs.</summary>
     public bool ShouldCheckMac { get; }
 
-    /// <summary>The maximum tranceive length of wrapped command and response APDUs, typically 256 or 65536.</summary>
-    public int MaxTranceiveLength { get; }
+    /// <summary>The maximum transceive length of wrapped command and response APDUs, typically 256 or 65536.</summary>
+    public int MaxTransceiveLength { get; }
+
+    /// <summary>The maximum transceive length of wrapped command and response APDUs, typically 256 or 65536.</summary>
+    [Obsolete("Misspelled, use MaxTransceiveLength instead.")]
+    public int MaxTranceiveLength => MaxTransceiveLength;
 
     /// <summary>The current value of the send sequence counter.</summary>
     public long SendSequenceCounter => _ssc;
@@ -82,16 +86,16 @@ public abstract class SecureMessagingWrapper : IApduWrapper
     /// <param name="ksMac">the session key for message authenticity</param>
     /// <param name="cipher">a CBC/NoPadding buffered block cipher (uninitialized; <see cref="Wrap"/>/<see cref="Unwrap"/> call <c>Init</c> per operation)</param>
     /// <param name="mac">a MAC primitive (uninitialized; <see cref="Wrap"/>/<see cref="Unwrap"/> call <c>Init</c> per operation)</param>
-    /// <param name="maxTranceiveLength">the maximum tranceive length, typical values are 256 or 65536</param>
+    /// <param name="maxTransceiveLength">the maximum transceive length, typical values are 256 or 65536</param>
     /// <param name="shouldCheckMac">a boolean indicating whether this wrapper will check the MAC in wrapped response APDUs</param>
     /// <param name="ssc">the initial value of the send sequence counter</param>
-    protected SecureMessagingWrapper(KeyParameter ksEnc, KeyParameter ksMac, IBufferedCipher cipher, IMac mac, int maxTranceiveLength, bool shouldCheckMac, long ssc)
+    protected SecureMessagingWrapper(KeyParameter ksEnc, KeyParameter ksMac, IBufferedCipher cipher, IMac mac, int maxTransceiveLength, bool shouldCheckMac, long ssc)
     {
         EncryptionKey = ksEnc ?? throw new ArgumentNullException(nameof(ksEnc));
         MacKey = ksMac ?? throw new ArgumentNullException(nameof(ksMac));
         _cipher = cipher ?? throw new ArgumentNullException(nameof(cipher));
         _mac = mac ?? throw new ArgumentNullException(nameof(mac));
-        MaxTranceiveLength = maxTranceiveLength;
+        MaxTransceiveLength = maxTransceiveLength;
         ShouldCheckMac = shouldCheckMac;
         _ssc = ssc;
     }
@@ -295,7 +299,7 @@ public abstract class SecureMessagingWrapper : IApduWrapper
         }
 
         // Not sure if this case ever occurs, but this is consistent with previous behavior.
-        return new CommandApdu(maskedHeader[0], maskedHeader[1], maskedHeader[2], maskedHeader[3], data2, MaxTranceiveLength);
+        return new CommandApdu(maskedHeader[0], maskedHeader[1], maskedHeader[2], maskedHeader[3], data2, MaxTransceiveLength);
     }
 
     /// <summary>Unwraps a response APDU sent by the ICC. Based on Section E.3 of TR-PKI, especially the examples.</summary>
@@ -485,7 +489,7 @@ public abstract class SecureMessagingWrapper : IApduWrapper
     }
 
     public override string ToString() =>
-        $"SecureMessagingWrapper [ssc: {_ssc}, ksEnc: {EncryptionKey}, ksMac: {MacKey}, maxTranceiveLength: {MaxTranceiveLength}, shouldCheckMAC: {ShouldCheckMac}]";
+        $"SecureMessagingWrapper [ssc: {_ssc}, ksEnc: {EncryptionKey}, ksMac: {MacKey}, maxTransceiveLength: {MaxTransceiveLength}, shouldCheckMAC: {ShouldCheckMac}]";
 
     public override int GetHashCode()
     {
@@ -493,7 +497,7 @@ public abstract class SecureMessagingWrapper : IApduWrapper
         int result = 1;
         result = (prime * result) + KeyHash(EncryptionKey);
         result = (prime * result) + KeyHash(MacKey);
-        result = (prime * result) + MaxTranceiveLength;
+        result = (prime * result) + MaxTransceiveLength;
         result = (prime * result) + (ShouldCheckMac ? 1231 : 1237);
         result = (prime * result) + (int)(_ssc ^ (_ssc >>> 32));
         return result;
@@ -514,7 +518,7 @@ public abstract class SecureMessagingWrapper : IApduWrapper
         var other = (SecureMessagingWrapper)obj;
         return KeyEquals(EncryptionKey, other.EncryptionKey)
             && KeyEquals(MacKey, other.MacKey)
-            && MaxTranceiveLength == other.MaxTranceiveLength
+            && MaxTransceiveLength == other.MaxTransceiveLength
             && ShouldCheckMac == other.ShouldCheckMac
             && _ssc == other._ssc;
     }
