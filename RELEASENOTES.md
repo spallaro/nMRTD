@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.8.0-alpha (2026-11-21)
 
 ### Changed
 
@@ -9,7 +9,7 @@
   `IsAotCompatible` and checked by the AOT and single-file analyzers, with no warnings, and the CLI
   publishes as a Native AOT executable on both. The `net6.0` build is unchanged and still covers
   .NET 6 and 7 apps. .NET 8 is out of support; the target is kept for AOT consumers. The tests run
-  on all three frameworks.
+  on all three frameworks, and the Native AOT CLI (`net8.0`) was checked on an Italian CIE 3.0.
 - **Chip Authentication takes the key ID type used by DG14.** `ChipAuthenticationInfo.GetKeyId()` and
   `ChipAuthenticationPublicKeyInfo.GetKeyId()` return `Org.BouncyCastle.Math.BigInteger`, like
   `PACEInfo.GetParameterId()` and `DoPace`, but `DoEACCA` took a `System.Numerics.BigInteger`, so
