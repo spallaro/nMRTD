@@ -139,7 +139,7 @@ public class AAAPDUSender : IApduLevelAACapable
     /// </summary>
     /// <param name="wrapper">the secure messaging wrapper</param>
     /// <returns>the maximum response data length in bytes</returns>
-    private static int GetMaxShortResponseDataLength(IApduWrapper? wrapper)
+    internal static int GetMaxShortResponseDataLength(IApduWrapper? wrapper)
     {
         if (wrapper is not SecureMessagingWrapper secureMessagingWrapper)
         {
