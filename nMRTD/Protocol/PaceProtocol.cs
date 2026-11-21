@@ -227,7 +227,11 @@ public class PaceProtocol
              * if the domain parameters are ambiguous, i.e. more than one set of domain parameters is
              * available for PACE.
              */
-            byte paceKeyReference = staticPaceKey.KeyReference;
+            /* As in JMRTD: a key without a PACE key reference (e.g. a plain BacKey, which DeriveStaticPaceKey
+             * maps to NoPaceKeyReference) is MRZ-based. */
+            byte paceKeyReference = staticPaceKey.KeyReference == PassportService.NoPaceKeyReference
+                ? PassportService.MrzPaceKeyReference
+                : staticPaceKey.KeyReference;
             byte[]? referencePrivateKeyOrForComputingSessionKey = parameterId == null ? null : Util.I2os(parameterId);
 
             /* Send to the PICC. */
