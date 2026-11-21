@@ -18,7 +18,7 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.ISO39794Util</c>: shared ASN.1 encode/decode helpers for the "choice
 /// with extension-block fallback" pattern and block-list encoding used throughout this package. Java's
-/// version is package-private; ported as <c>internal</c> for the same reason as <see cref="Block"/>.
+/// version is package-private; ported as <c>internal</c>.
 /// </summary>
 internal static class ISO39794Util
 {

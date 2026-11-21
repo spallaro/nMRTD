@@ -24,11 +24,9 @@ namespace nMRTD.Lds.Iso39794;
 /// <c>ScoreOrError.ScoringErrorCode</c>'s doc comment for the fuller rationale and <see cref="FingerImagePositionCodeExtensions.FromCode"/>
 /// for the shared "decode from code" replacement.
 ///
-/// Java's version is a top-level <c>public enum</c>; ported as <c>internal</c> since it is only ever used
-/// as a field type on other <c>internal</c> block types in this port (see <c>VersionBlock</c>'s doc
-/// comment for why those are internal).
+/// Java's version is a top-level <c>public enum</c>, and so is this one.
 /// </summary>
-internal enum FingerImagePositionCode
+public enum FingerImagePositionCode
 {
     UnknownPosition = 0,
     RightThumbFinger = 1,

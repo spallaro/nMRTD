@@ -24,14 +24,11 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.CoordinateCartesian3DUnsignedShortBlock</c>. Java's
 /// <c>Serializable</c> marker is dropped (no reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// Implements <see cref="FaceImageLandmarkCoordinates"/> (a marker interface consumed by
 /// <c>FaceImageLandmarkBlock</c>/<c>FaceImageCoordinateTextureImageBlock</c>), matching Java's
 /// <c>implements FaceImageLandmarkCoordinates</c>.
 /// </summary>
-internal class CoordinateCartesian3DUnsignedShortBlock : Block, FaceImageLandmarkCoordinates
+public class CoordinateCartesian3DUnsignedShortBlock : Block, FaceImageLandmarkCoordinates
 {
     private readonly int _x;
     private readonly int _y;

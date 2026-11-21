@@ -41,15 +41,12 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.FingerImageRepresentationBlock</c>. Java's <c>Serializable</c> marker
 /// is dropped (no reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// A <see langword="public"/> interface (<see cref="ImageInfo"/>, via Java's <c>implements ImageInfo</c>)
 /// may still be implemented by an <see langword="internal"/> class in C#, so that part of the shape carries
 /// over directly; <c>Block</c>'s own <c>GetEncoded()</c> already satisfies <see cref="ImageInfo"/>'s
 /// (Java's <c>LDSElement</c>'s) <c>GetEncoded()</c> requirement.
 /// </summary>
-internal class FingerImageRepresentationBlock : Block, ImageInfo
+public class FingerImageRepresentationBlock : Block, ImageInfo
 {
     /// <summary>
     /// ADAPTATION: Java's version is <c>enum ImpressionCode implements EncodableEnum&lt;ImpressionCode&gt;</c>,

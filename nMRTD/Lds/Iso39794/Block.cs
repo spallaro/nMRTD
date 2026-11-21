@@ -20,16 +20,9 @@ namespace nMRTD.Lds.Iso39794;
 /// type in this package. Java's version is package-private (no <c>public</c> modifier), but every other
 /// class in this package that extends it is itself <c>public</c> -- Java allows a public class to extend a
 /// package-private one. C# has no equivalent: a <c>public</c> type cannot extend an <c>internal</c> base
-/// (CS0060), so this port could not keep <c>Block</c> non-public while giving any subclass real public
-/// visibility. Nearly all subclasses were therefore initially ported as <c>internal</c> (deviating from
-/// Java's own modifiers) to satisfy the compiler while <c>lds/iso39794/</c> was being built out file by
-/// file. Now that <c>nMRTD.Lds.Icao.DG2File</c>/<c>DG3File</c>/<c>DG4File</c> need to expose public
-/// <c>CreateISO39794DGxFile</c> factory methods (matching Java) taking <c>FaceImageDataBlock</c>/
-/// <c>FingerImageDataBlock</c>/<c>IrisImageDataBlock</c> by value, <see cref="Block"/> itself is widened to
-/// <c>public</c> here so those three top-level wrapper classes (and only those three -- see their own doc
-/// comments) can be public too. Every other subclass in this package deliberately stays <c>internal</c>:
-/// they are reachable only via decoding (never part of a public constructor/method signature), so keeping
-/// them internal costs nothing and avoids widening this package's entire type graph.
+/// (CS0060), so <see cref="Block"/> is <c>public</c> here, with its encoding method kept <c>internal</c>.
+/// The block types themselves keep Java's visibility: the types and their accessors are public, while the
+/// decoding constructors and decoders that are package-private in Java are <c>internal</c>.
 ///
 /// Java's <c>Serializable</c> marker is dropped (no reflection-based serialization is needed in this port).
 /// The <c>profile == null</c> guard in Java's <c>getEncoded(ISO39794EncodingProfile)</c> is omitted: unlike

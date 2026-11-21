@@ -24,14 +24,8 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.VersionBlock</c>. Java's <c>Serializable</c> marker is dropped (no
 /// reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is a top-level <c>public class</c>, but <see cref="Block"/> (its base class in
-/// this port) is <c>internal</c> -- C# requires consistent accessibility between a type and its base class,
-/// so this is <c>internal</c> too, matching <see cref="Block"/>'s own doc comment (only
-/// <c>FaceImageDataBlock</c>/<c>FingerImageDataBlock</c>/<c>IrisImageDataBlock</c>/
-/// <see cref="ISO39794EncodingProfile"/> are meant to be visible outside this assembly).
 /// </summary>
-internal class VersionBlock : Block
+public class VersionBlock : Block
 {
     private readonly int _generation;
     private readonly int _year;

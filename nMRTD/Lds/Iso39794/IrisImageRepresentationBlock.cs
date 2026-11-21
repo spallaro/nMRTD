@@ -43,16 +43,11 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.IrisImageRepresentationBlock</c>. Java's <c>Serializable</c> marker is
 /// dropped (no reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// Java's version also <c>implements ImageInfo</c> (<c>org.jmrtd.lds.ImageInfo</c>); this port implements
 /// <see cref="nMRTD.Lds.ImageInfo"/> (<c>nMRTD.Lds.LDSElement.GetEncoded</c> is already satisfied by
-/// <see cref="Block.GetEncoded()"/>) the same way regardless of this class's own reduced (<c>internal</c>)
-/// visibility -- an internal type implementing a public interface is legal C# and does not widen this
-/// type's own accessibility.
+/// <see cref="Block.GetEncoded()"/>), so the image bytes, MIME type and size are available through it.
 /// </summary>
-internal class IrisImageRepresentationBlock : Block, ImageInfo
+public class IrisImageRepresentationBlock : Block, ImageInfo
 {
     /// <summary>
     /// ADAPTATION: Java's version is <c>enum EyeLabelCode implements EncodableEnum&lt;EyeLabelCode&gt;</c>,
@@ -140,8 +135,7 @@ internal class IrisImageRepresentationBlock : Block, ImageInfo
     /// <summary>
     /// Port of <c>org.jmrtd.lds.iso39794.IrisImageRepresentationBlock.RollAngleBlock</c>.
     ///
-    /// ADAPTATION: Java's version is a nested <c>public static class RollAngleBlock extends Block</c>; ported
-    /// as an <c>internal</c> nested class for the same base-class-accessibility reason as the outer type.
+    /// ADAPTATION: Java's version is a nested <c>public static class RollAngleBlock extends Block</c>; ported as a public nested class.
     /// Java's version has no <c>toString()</c> override (it falls back to <c>Object.toString()</c>); this
     /// port likewise leaves <see cref="object.ToString"/> un-overridden here, matching that Java has no
     /// requirement to override it (only <c>GetHashCode</c>/<c>Equals</c> are abstract on <see cref="Block"/>).

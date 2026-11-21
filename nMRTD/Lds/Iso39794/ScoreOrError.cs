@@ -20,11 +20,9 @@ namespace nMRTD.Lds.Iso39794;
 /// indicating that no score could be determined. Java's <c>Serializable</c> marker is dropped (no
 /// reflection-based serialization is needed in this port).
 ///
-/// ADAPTATION: Java's version is also a top-level <c>public final class</c>, but this is <c>internal</c>
-/// since its base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc
-/// comment). <c>final</c> is still ported as <c>sealed</c>.
+/// Java's version is a top-level <c>public final class</c>; <c>final</c> is ported as <c>sealed</c>.
 /// </summary>
-internal sealed class ScoreOrError : Block
+public sealed class ScoreOrError : Block
 {
     /// <summary>
     /// The errors defined by ISO/IEC 39794-1.

@@ -26,16 +26,8 @@ namespace nMRTD.Lds.Iso39794;
 /// Port of <c>org.jmrtd.lds.iso39794.FingerImageDataBlock</c>. Java's <c>Serializable</c> marker is
 /// dropped (no reflection-based serialization is needed in this port).
 ///
-/// ADAPTATION: Java's version is a top-level <c>public class</c>; this port now matches that, since
-/// <c>nMRTD.Lds.Icao.DG3File</c>'s public <c>CreateISO39794DG3File(List&lt;FingerImageDataBlock&gt;, ...)</c>
-/// factory methods need to name this type by value (see <see cref="Block"/>'s doc comment for why this
-/// required widening <c>Block</c> itself too). The "build from parts" constructor below stays
-/// <c>internal</c>, unlike Java's public one: its <c>VersionBlock</c>/<c>List&lt;FingerImageRepresentationBlock&gt;</c>
-/// parameter types remain <c>internal</c> (a public constructor cannot have less-accessible parameter
-/// types -- CS0053), and there is no need for external callers to build one from parts anyway, since the
-/// realistic use case is decoding an existing DG3 and possibly re-encoding it into a new one.
-/// <see cref="GetVersionBlock"/>/<see cref="GetRepresentationBlocks"/> are <c>internal</c> for the same
-/// reason (CS0051 on the return type otherwise).
+/// As in Java, the block tree is public: <see cref="GetRepresentationBlocks"/> gives access to the decoded
+/// representations (image data, MIME type, size and metadata).
 /// </summary>
 public class FingerImageDataBlock : Block, BiometricDataBlock
 {
@@ -45,7 +37,7 @@ public class FingerImageDataBlock : Block, BiometricDataBlock
 
     private readonly List<FingerImageRepresentationBlock> _representationBlocks;
 
-    internal FingerImageDataBlock(VersionBlock versionBlock,
+    public FingerImageDataBlock(VersionBlock versionBlock,
         List<FingerImageRepresentationBlock> representationBlocks,
         StandardBiometricHeader? sbh)
     {
@@ -78,9 +70,9 @@ public class FingerImageDataBlock : Block, BiometricDataBlock
         _representationBlocks = FingerImageRepresentationBlock.DecodeRepresentationBlocks(taggedObjects[1]);
     }
 
-    internal VersionBlock GetVersionBlock() => _versionBlock;
+    public VersionBlock GetVersionBlock() => _versionBlock;
 
-    internal List<FingerImageRepresentationBlock> GetRepresentationBlocks() => _representationBlocks;
+    public List<FingerImageRepresentationBlock> GetRepresentationBlocks() => _representationBlocks;
 
     /// <summary>Returns the standard biometric header of this biometric data block.</summary>
     /// <returns>the standard biometric header</returns>

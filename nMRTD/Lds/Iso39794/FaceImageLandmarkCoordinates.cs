@@ -35,15 +35,14 @@ namespace nMRTD.Lds.Iso39794;
 /// ADAPTATION: Java's version declares <c>hashCode()</c>/<c>equals(Object)</c> purely as documentation
 /// (every Java <c>Object</c> already has them); omitted here since every C# object has the same guarantee.
 /// Java's <c>Serializable</c> super-interface is dropped for the same reason as elsewhere in this port.
-/// Java's version is a top-level <c>public interface</c>; ported as <c>internal</c> since every implementing
-/// type in this port is itself <c>internal</c> (see <c>VersionBlock</c>'s doc comment).
+/// Java's version is a top-level <c>public interface</c>, and so is this one.
 ///
 /// The two static factory methods (<c>decodeLandmarkCoordinates</c>/<c>encodeLandmarkCoordinates</c>) are
 /// ported as C# static interface members with a body (supported since C# 8, fully available on .NET 8),
 /// matching Java's own placement of this dispatch logic directly on the interface rather than as
 /// free-standing helpers in a separate utility class.
 /// </summary>
-internal interface FaceImageLandmarkCoordinates
+public interface FaceImageLandmarkCoordinates
 {
     static FaceImageLandmarkCoordinates? DecodeLandmarkCoordinates(Asn1Encodable asn1Encodable)
     {

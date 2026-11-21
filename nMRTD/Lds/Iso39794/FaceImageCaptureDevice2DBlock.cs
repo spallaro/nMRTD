@@ -24,11 +24,8 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.FaceImageCaptureDevice2DBlock</c>. Java's <c>Serializable</c> marker
 /// is dropped (no reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// </summary>
-internal class FaceImageCaptureDevice2DBlock : Block
+public class FaceImageCaptureDevice2DBlock : Block
 {
     /// <summary>
     /// ADAPTATION: Java's version is <c>enum CaptureDeviceTechnologyId2DCode implements

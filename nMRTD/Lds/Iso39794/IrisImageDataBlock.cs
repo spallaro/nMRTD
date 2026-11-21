@@ -26,14 +26,8 @@ namespace nMRTD.Lds.Iso39794;
 /// Port of <c>org.jmrtd.lds.iso39794.IrisImageDataBlock</c>. Java's <c>Serializable</c> marker is dropped
 /// (no reflection-based serialization is needed in this port).
 ///
-/// ADAPTATION: Java's version is a top-level <c>public class</c>; this port now matches that, since
-/// <c>nMRTD.Lds.Icao.DG4File</c>'s public <c>CreateISO39794DG4File(List&lt;IrisImageDataBlock&gt;, ...)</c>
-/// factory methods need to name this type by value (see <see cref="Block"/>'s doc comment for why this
-/// required widening <c>Block</c> itself too). Unlike <c>FaceImageDataBlock</c>/<c>FingerImageDataBlock</c>,
-/// this class never had a "build from parts" public constructor to reconcile.
-/// <see cref="GetVersionBlock"/>/<see cref="GetRepresentationBlocks"/> are <c>internal</c>, since their
-/// <c>VersionBlock</c>/<c>List&lt;IrisImageRepresentationBlock&gt;</c> return types remain <c>internal</c>
-/// (a public method cannot have a less-accessible return type -- CS0051).
+/// As in Java, the block tree is public: <see cref="GetRepresentationBlocks"/> gives access to the decoded
+/// representations (image data, MIME type, size and metadata).
 /// </summary>
 public class IrisImageDataBlock : Block, BiometricDataBlock
 {
@@ -69,9 +63,9 @@ public class IrisImageDataBlock : Block, BiometricDataBlock
         _representationBlocks = IrisImageRepresentationBlock.DecodeRepresentationBlocks(taggedObjects[1]);
     }
 
-    internal VersionBlock GetVersionBlock() => _versionBlock;
+    public VersionBlock GetVersionBlock() => _versionBlock;
 
-    internal List<IrisImageRepresentationBlock> GetRepresentationBlocks() => _representationBlocks;
+    public List<IrisImageRepresentationBlock> GetRepresentationBlocks() => _representationBlocks;
 
     /// <summary>Returns the standard biometric header of this iris info.</summary>
     /// <returns>the standard biometric header</returns>

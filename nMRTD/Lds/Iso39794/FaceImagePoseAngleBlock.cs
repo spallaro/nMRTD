@@ -27,15 +27,11 @@ namespace nMRTD.Lds.Iso39794;
 /// <c>public static long getSerialversionuid()</c> accessor (a leftover artifact exposing the dropped
 /// <c>serialVersionUID</c> field) is omitted entirely, matching this port's blanket dropping of
 /// <c>Serializable</c>-related surface.
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// </summary>
-internal class FaceImagePoseAngleBlock : Block
+public class FaceImagePoseAngleBlock : Block
 {
     /// <summary>
-    /// ADAPTATION: Java's version is a nested <c>public static class AngleDataBlock extends Block</c>; ported
-    /// as an <c>internal</c> nested class for the same base-class-accessibility reason as the outer type.
+    /// ADAPTATION: Java's version is a nested <c>public static class AngleDataBlock extends Block</c>; ported as a public nested class.
     /// </summary>
     public class AngleDataBlock : Block
     {

@@ -29,15 +29,12 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.FaceImageIdentityMetadataBlock</c>. Java's <c>Serializable</c> marker
 /// is dropped (no reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// It is however required to expose exactly the members referenced by
 /// <see cref="ISO39794EncodingProfileExtensions.Validate"/> (<see cref="GenderCode"/> and
 /// <see cref="GetGenderCode"/>) unchanged, since that method (in the already-committed
 /// <c>ISO39794EncodingProfile.cs</c>) is an established contract this class must satisfy exactly.
 /// </summary>
-internal class FaceImageIdentityMetadataBlock : Block
+public class FaceImageIdentityMetadataBlock : Block
 {
     /// <summary>
     /// ADAPTATION: Java's version is <c>enum GenderCode implements EncodableEnum&lt;GenderCode&gt;</c>, using

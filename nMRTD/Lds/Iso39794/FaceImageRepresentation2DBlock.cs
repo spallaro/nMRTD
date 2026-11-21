@@ -26,13 +26,10 @@ namespace nMRTD.Lds.Iso39794;
 /// Port of <c>org.jmrtd.lds.iso39794.FaceImageRepresentation2DBlock</c>. Java's <c>Serializable</c> marker
 /// is dropped (no reflection-based serialization is needed in this port).
 ///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment). It
-/// is however required to expose exactly <see cref="GetImageInformation2DBlock"/>, referenced by
-/// <see cref="ISO39794EncodingProfileExtensions.Validate"/> in the already-committed
-/// <c>ISO39794EncodingProfile.cs</c> -- an established contract this class must satisfy exactly.
+/// <see cref="GetImageInformation2DBlock"/> is also used by
+/// <see cref="ISO39794EncodingProfileExtensions.Validate"/>.
 /// </summary>
-internal class FaceImageRepresentation2DBlock : Block
+public class FaceImageRepresentation2DBlock : Block
 {
     private readonly byte[] _representationData2DBytes;
     private readonly FaceImageInformation2DBlock _imageInformation2DBlock;

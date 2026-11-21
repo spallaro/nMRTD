@@ -24,16 +24,13 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.FaceImageCoordinateTextureImageBlock</c>. Java's <c>Serializable</c>
 /// marker is dropped (no reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// Java's <c>uInPixel</c>/<c>vInPixel</c> are <c>java.math.BigInteger</c>; kept here as BouncyCastle's own
 /// <c>Org.BouncyCastle.Math.BigInteger</c> (rather than this port's usual <c>System.Numerics.BigInteger</c>
 /// convention for Java <c>BigInteger</c> -- see <c>docs\porting-conventions.md</c>) in order to interoperate
 /// directly with <see cref="ASN1Util.DecodeBigInteger"/>/<see cref="ASN1Util.EncodeBigInteger"/>, which are
 /// themselves already typed against BouncyCastle's <c>BigInteger</c> throughout this package.
 /// </summary>
-internal class FaceImageCoordinateTextureImageBlock : Block, FaceImageLandmarkCoordinates
+public class FaceImageCoordinateTextureImageBlock : Block, FaceImageLandmarkCoordinates
 {
     private readonly BigInteger _uInPixel;
     private readonly BigInteger _vInPixel;

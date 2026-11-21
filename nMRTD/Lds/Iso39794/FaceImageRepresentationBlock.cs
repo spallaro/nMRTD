@@ -48,17 +48,12 @@ namespace nMRTD.Lds.Iso39794;
 /// Port of <c>org.jmrtd.lds.iso39794.FaceImageRepresentationBlock</c>. Java's <c>Serializable</c> marker is
 /// dropped (no reflection-based serialization is needed in this port).
 ///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment). It
-/// is however required to expose exactly <see cref="GetImageRepresentation2DBlock"/>,
-/// <see cref="GetPadDataBlocks"/>, and <see cref="GetIdentityMetadataBlock"/>, referenced by
-/// <see cref="ISO39794EncodingProfileExtensions.Validate"/> in the already-committed
-/// <c>ISO39794EncodingProfile.cs</c> -- an established contract this class must satisfy exactly. Java's
-/// version also <c>implements ImageInfo</c> (<c>org.jmrtd.lds.ImageInfo</c>); this port implements
-/// <see cref="nMRTD.Lds.ImageInfo"/> the same way regardless of this class's own reduced (<c>internal</c>)
-/// visibility, matching <c>IrisImageRepresentationBlock</c>'s own established precedent.
+/// <see cref="GetImageRepresentation2DBlock"/>, <see cref="GetPadDataBlocks"/> and
+/// <see cref="GetIdentityMetadataBlock"/> are also used by
+/// <see cref="ISO39794EncodingProfileExtensions.Validate"/>. As in Java, this class implements
+/// <see cref="nMRTD.Lds.ImageInfo"/>, so the image bytes, MIME type and size are available through it.
 /// </summary>
-internal class FaceImageRepresentationBlock : Block, ImageInfo
+public class FaceImageRepresentationBlock : Block, ImageInfo
 {
     private readonly BigInteger _representationId;
     private readonly FaceImageRepresentation2DBlock? _imageRepresentation2DBlock;

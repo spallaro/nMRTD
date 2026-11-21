@@ -29,11 +29,8 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.RegistryIdBlock</c>. Java's <c>Serializable</c> marker is dropped (no
 /// reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: see <c>VersionBlock</c>'s doc comment -- Java's version is a top-level <c>public class</c>,
-/// but this is <c>internal</c> since its base class <see cref="Block"/> is <c>internal</c> in this port.
 /// </summary>
-internal class RegistryIdBlock : Block
+public class RegistryIdBlock : Block
 {
     private readonly int _organization;
     private readonly int _id;

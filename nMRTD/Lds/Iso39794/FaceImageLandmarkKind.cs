@@ -57,7 +57,7 @@ namespace nMRTD.Lds.Iso39794;
 /// is the one file in this wave where the Java design does not translate mechanically to a like-for-like C#
 /// shape -- see this wave's report for the fuller rationale.
 /// </summary>
-internal sealed class FaceImageLandmarkKind
+public sealed class FaceImageLandmarkKind
 {
     public enum MPEGFeaturePointCode
     {

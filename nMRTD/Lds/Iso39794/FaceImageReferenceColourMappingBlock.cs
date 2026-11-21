@@ -25,11 +25,8 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.FaceImageReferenceColourMappingBlock</c>. Java's <c>Serializable</c>
 /// marker is dropped (no reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// </summary>
-internal class FaceImageReferenceColourMappingBlock : Block
+public class FaceImageReferenceColourMappingBlock : Block
 {
     //  ReferenceColourDefinitionAndValueBlock ::= SEQUENCE {
     //          referenceColourDefinition [0] OCTET STRING OPTIONAL,
@@ -39,8 +36,7 @@ internal class FaceImageReferenceColourMappingBlock : Block
 
     /// <summary>
     /// ADAPTATION: Java's version is a nested <c>public static class ReferenceColourDefinitionAndValueBlock
-    /// extends Block</c>; ported as an <c>internal</c> nested class for the same base-class-accessibility
-    /// reason as the outer type.
+    /// extends Block</c>; ported as a public nested class.
     /// </summary>
     public class ReferenceColourDefinitionAndValueBlock : Block
     {

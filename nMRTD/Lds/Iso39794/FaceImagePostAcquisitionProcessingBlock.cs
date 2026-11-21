@@ -18,15 +18,10 @@ namespace nMRTD.Lds.Iso39794;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.iso39794.FaceImagePostAcquisitionProcessingBlock</c>. Java's <c>Serializable</c>
 /// marker is dropped (no reflection-based serialization is needed in this port).
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
-/// Java's decode constructor is unusually declared <c>public</c> (every sibling block in this package uses a
-/// package-private decode constructor); ported as <c>internal</c> anyway for consistency with every other
-/// decode constructor in this package (the class itself is already <c>internal</c>, so nothing is actually
-/// exposed either way).
+/// Java's decode constructor is unusually declared <c>public</c> (most sibling blocks in this package use a
+/// package-private decode constructor); it is <c>public</c> here too.
 /// </summary>
-internal class FaceImagePostAcquisitionProcessingBlock : Block
+public class FaceImagePostAcquisitionProcessingBlock : Block
 {
     //  PostAcquisitionProcessingBlock ::= SEQUENCE {
     //    rotated [0] BOOLEAN OPTIONAL,
@@ -76,7 +71,7 @@ internal class FaceImagePostAcquisitionProcessingBlock : Block
         _isNormalised = isNormalised;
     }
 
-    internal FaceImagePostAcquisitionProcessingBlock(Asn1Encodable asn1Encodable)
+    public FaceImagePostAcquisitionProcessingBlock(Asn1Encodable asn1Encodable)
     {
         Dictionary<int, Asn1Encodable> taggedObjects = ASN1Util.DecodeTaggedObjects(asn1Encodable);
         if (taggedObjects.TryGetValue(0, out Asn1Encodable? rotatedObject))

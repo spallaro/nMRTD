@@ -35,15 +35,11 @@ namespace nMRTD.Lds.Iso39794;
 /// Port of <c>org.jmrtd.lds.iso39794.FaceImageInformation2DBlock</c>. Java's <c>Serializable</c> marker is
 /// dropped (no reflection-based serialization is needed in this port).
 ///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment). It
-/// is however required to expose exactly the members referenced by
-/// <see cref="ISO39794EncodingProfileExtensions.Validate"/> (<see cref="ImageDataFormatCode"/>,
-/// <see cref="GetImageDataFormatCode"/>, <see cref="FaceImageKind2DCode"/>, <see cref="GetFaceImageKind2DCode"/>)
-/// unchanged, since that method (in the already-committed <c>ISO39794EncodingProfile.cs</c>) is an established
-/// contract this class must satisfy exactly.
+/// <see cref="ImageDataFormatCode"/>, <see cref="GetImageDataFormatCode"/>, <see cref="FaceImageKind2DCode"/>
+/// and <see cref="GetFaceImageKind2DCode"/> are also used by
+/// <see cref="ISO39794EncodingProfileExtensions.Validate"/>.
 /// </summary>
-internal class FaceImageInformation2DBlock : Block
+public class FaceImageInformation2DBlock : Block
 {
     /// <summary>
     /// ADAPTATION: Java's version is <c>enum ImageDataFormatCode implements
@@ -99,8 +95,7 @@ internal class FaceImageInformation2DBlock : Block
     /// <summary>
     /// Port of <c>org.jmrtd.lds.iso39794.FaceImageInformation2DBlock.ImageSizeBlock</c>.
     ///
-    /// ADAPTATION: Java's version is a nested <c>public static class ImageSizeBlock extends Block</c>; ported
-    /// as an <c>internal</c> nested class for the same base-class-accessibility reason as the outer type.
+    /// ADAPTATION: Java's version is a nested <c>public static class ImageSizeBlock extends Block</c>; ported as a public nested class.
     /// </summary>
     public class ImageSizeBlock : Block
     {
@@ -163,8 +158,7 @@ internal class FaceImageInformation2DBlock : Block
     /// Port of <c>org.jmrtd.lds.iso39794.FaceImageInformation2DBlock.ImageFaceMeasurementsBlock</c>.
     ///
     /// ADAPTATION: Java's version is a nested <c>public static class ImageFaceMeasurementsBlock extends
-    /// Block</c>; ported as an <c>internal</c> nested class for the same base-class-accessibility reason as
-    /// the outer type. Java's fields are <c>java.math.BigInteger</c>; ported using this project's established
+    /// Block</c>; ported as a public nested class. Java's fields are <c>java.math.BigInteger</c>; ported using this project's established
     /// <c>Org.BouncyCastle.Math.BigInteger</c> alias (see <c>ASN1Util.cs</c>), matching
     /// <c>ASN1Util.DecodeBigInteger</c>/<c>EncodeBigInteger</c>'s own type.
     /// </summary>

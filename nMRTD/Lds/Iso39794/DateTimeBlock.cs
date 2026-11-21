@@ -47,11 +47,8 @@ namespace nMRTD.Lds.Iso39794;
 /// primitive-<c>int</c>-with-<c>-1</c>-sentinel convention rather than <c>int?</c>, since Java's own
 /// accessors return primitive <c>int</c> (not <c>Integer</c>) here -- kept as-is for a faithful 1:1 port
 /// of this public API surface.
-///
-/// ADAPTATION: Java's version is also a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// </summary>
-internal class DateTimeBlock : Block
+public class DateTimeBlock : Block
 {
     private readonly int _year;
     private readonly int _month;

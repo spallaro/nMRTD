@@ -28,11 +28,8 @@ namespace nMRTD.Lds.Iso39794;
 /// NOTE: preserved Java quirk -- Java's version has no public constructor at all (only the package-private
 /// decode constructor below), so instances can only be produced by decoding ASN.1 data; this port keeps
 /// that same shape rather than adding a public constructor Java does not have.
-///
-/// ADAPTATION: Java's version is a top-level <c>public class</c>, but this is <c>internal</c> since its
-/// base class <see cref="Block"/> is <c>internal</c> in this port (see <c>VersionBlock</c>'s doc comment).
 /// </summary>
-internal class FingerImageSegmentationBlock : Block
+public class FingerImageSegmentationBlock : Block
 {
     private readonly RegistryIdBlock _algorithmIdBlock;
 
