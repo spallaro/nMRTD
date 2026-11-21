@@ -79,7 +79,7 @@ internal class IrisImageRepresentationBlock : Block, ImageInfo
 
     /// <summary>
     /// ADAPTATION: Java's version additionally carries a per-constant <c>mimeType</c> string, exposed via
-    /// <c>getMimeType()</c> -- C# enums cannot carry members, so that mapping is <see cref="GetMimeType"/>
+    /// <c>getMimeType()</c> -- C# enums cannot carry members, so that mapping is <see cref="GetMimeType(ImageDataFormatCode)"/>
     /// below instead (a plain switch expression keyed on the enum value, analogous to how this port's other
     /// coded enums replace Java's reflection-based <c>fromCode</c> with <see cref="FromCode{T}"/>).
     /// </summary>

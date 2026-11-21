@@ -27,7 +27,7 @@ namespace nMRTD.Protocol;
 /// constructed BC primitives, per <c>SecureMessagingWrapper.cs</c>'s constructor redesign. Java's
 /// <c>sscIVCipher</c> field (a JCE <c>Cipher</c> configured as <c>"AES/ECB/NoPadding"</c>,
 /// encrypt-mode, keyed with <c>ksEnc</c>) is ported as a raw <see cref="AesEngine"/>: ECB mode over a
-/// single 16-byte (one AES block) input is exactly one <see cref="IBlockCipher.ProcessBlock"/> call,
+/// single 16-byte (one AES block) input is exactly one <see cref="IBlockCipher.ProcessBlock(byte[], int, byte[], int)"/> call,
 /// so no explicit ECB block-cipher-mode wrapper (BC has none anyway -- ECB is simply the bare engine) is
 /// needed.
 /// </summary>

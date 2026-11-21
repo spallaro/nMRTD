@@ -165,7 +165,7 @@ public class PaceProtocol
         _log = log ?? new LogSource();
     }
 
-    /// <summary>Returns the secure messaging wrapper currently in use (updated as a side effect of <see cref="DoPace"/>).</summary>
+    /// <summary>Returns the secure messaging wrapper currently in use (updated as a side effect of <see cref="DoPace(IAccessKeySpec, string, object, BigInteger?)"/>).</summary>
     public SecureMessagingWrapper? Wrapper => _wrapper;
 
     /// <summary>Performs the PACE 2.0 / SAC protocol.</summary>
