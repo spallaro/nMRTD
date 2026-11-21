@@ -1,6 +1,12 @@
 # Release Notes
 
-## Unreleased
+## 0.7.1-alpha (2026-11-21)
+
+### Fixed
+
+- **Links in the package readme.** The README, which is also the NuGet package readme, linked to the
+  CLI sample, the coverage settings and the license with paths relative to the repository, which do
+  not resolve on nuget.org. They now point to the files on GitHub.
 
 ### Internal
 
