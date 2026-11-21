@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net6.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -20,8 +20,8 @@
   </PropertyGroup>
 
   <!-- Native AOT is only officially supported by the SDK starting with .NET 7/8; net6.0 has no
-       first-class PublishAot/AOT-analyzer support, so these apply to the net8.0 target only. -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+       first-class PublishAot/AOT-analyzer support, so these apply to the net10.0 target only. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <IsAotCompatible>true</IsAotCompatible>
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
@@ -32,7 +32,7 @@
     <PackageId>nMRTD</PackageId>
     <Version>0.5.0-alpha</Version>
     <Title>nMRTD</Title>
-    <Description>.NET 6/8 port of JMRTD: reads ICAO 9303 electronic machine-readable travel documents (ePassports/eID cards) over NFC/PC-SC, with BAC, PACE, EAC, Active/Passive Authentication, and LDS/CBEFF biometric (ISO/IEC 19794 and 39794) support.</Description>
+    <Description>.NET 6/10 port of JMRTD: reads ICAO 9303 electronic machine-readable travel documents (ePassports/eID cards) over NFC/PC-SC, with BAC, PACE, EAC, Active/Passive Authentication, and LDS/CBEFF biometric (ISO/IEC 19794 and 39794) support.</Description>
     <Authors>Sebastiano Pallaro</Authors>
     <Copyright>(C) 2026 Sebastiano Pallaro</Copyright>
     <PackageTags>mrtd emrtd epassport eid</PackageTags>

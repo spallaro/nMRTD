@@ -1,5 +1,16 @@
 # Release Notes
 
+## Unreleased
+
+### Changed
+
+- **Target `net6.0` and `net10.0` (instead of `net6.0` and `net8.0`).** .NET 8 reached end of
+  support on November 10, 2026; .NET 10 is the current LTS release. Apps on .NET 6, 7, 8, and 9
+  keep working: NuGet picks the `net6.0` build for them. Apps on .NET 10 and later get the
+  `net10.0` build, which is the one marked AOT-compatible (`IsAotCompatible`, AOT and single-file
+  analyzers); the CLI is published as a Native AOT executable from `net10.0`. Building nMRTD now
+  requires the .NET 10 SDK (or later).
+
 ## 0.5.0-alpha (2026-11-21)
 
 **JMRTD upstream alignment status:** nMRTD has been reviewed against upstream JMRTD up to commit
