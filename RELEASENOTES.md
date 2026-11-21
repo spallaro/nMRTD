@@ -1,5 +1,15 @@
 # Release Notes
 
+## Unreleased
+
+### Internal
+
+- **More tests** (79 in total): a signed EF.SOD that reads back and whose signature verifies, with a
+  tampered data group hash detected; EF.CardAccess read from a simulated card through
+  `PassportService`; an extended READ BINARY response (DO'53' with a long-form length); errors in
+  `CardFileInputStream`; invalid CV certificate dates; and round trips of `CardSecurityFile`, DG11
+  and `DisplayedImageInfo`.
+
 ## 0.7.0-alpha (2026-11-21)
 
 This release comes from a file-by-file review of nMRTD against JMRTD (at upstream commit
