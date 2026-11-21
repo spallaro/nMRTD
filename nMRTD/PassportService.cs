@@ -35,11 +35,12 @@ namespace nMRTD;
 /// porting passes and use different casing conventions; this file must satisfy both exactly).
 ///
 /// ADAPTATION: Java's <c>synchronized</c> instance methods and <c>synchronized(this)</c>/
-/// <c>synchronized(rootFileSystem)</c>/<c>synchronized(appletFileSystem)</c> blocks become a single private
-/// <see cref="_lock"/> object, matching the lock-object convention already established throughout this
-/// port (e.g. <c>BACAPDUSender.cs</c>) rather than locking on <c>this</c> or on the file system instances
-/// themselves (each <see cref="DefaultFileSystem"/> already does its own internal per-method locking, so
-/// nested locking on those instances would be redundant here too).
+/// <c>synchronized(rootFileSystem)</c>/<c>synchronized(appletFileSystem)</c> blocks become a private
+/// <see cref="_lock"/> object, matching the lock-object convention used throughout this port (e.g.
+/// <c>BACAPDUSender.cs</c>). The one exception is <see cref="GetInputStream(short, int)"/>, which also locks
+/// the file system instance itself: <see cref="CardFileInputStream"/> locks that same instance (as SCUBA's
+/// <c>synchronized(fs)</c> does) while it re-selects its file and reads, so selecting a file and binding a
+/// stream to it cannot interleave with another stream's reads.
 /// </summary>
 public class PassportService : AbstractMRTDCardService
 {
@@ -528,14 +529,15 @@ public class PassportService : AbstractMRTDCardService
         lock (_lock)
         {
             _secureMessagingSender.Log.Info(LogCategory, $"Reading file {fid:X4}.");
-            if (!_isAppletSelected)
-            {
-                _rootFileSystem.SelectFile(fid);
-                return new CardFileInputStream(maxBlockSize, _rootFileSystem);
-            }
+            DefaultFileSystem fileSystem = _isAppletSelected ? _appletFileSystem : _rootFileSystem;
 
-            _appletFileSystem.SelectFile(fid);
-            return new CardFileInputStream(maxBlockSize, _appletFileSystem);
+            // Select and bind the stream atomically with respect to other streams on the same file system,
+            // which take this same lock while they re-select their own file and read (see CardFileInputStream).
+            lock (fileSystem)
+            {
+                fileSystem.SelectFile(fid);
+                return new CardFileInputStream(maxBlockSize, fileSystem);
+            }
         }
     }
 

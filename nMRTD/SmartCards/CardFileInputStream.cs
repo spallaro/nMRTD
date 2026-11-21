@@ -14,23 +14,36 @@
 namespace nMRTD.SmartCards;
 
 /// <summary>
-/// Port of <c>net.sf.scuba.smartcards.CardFileInputStream</c>. A lazily-reading, forward-only stream
-/// that reads the currently-selected file (per <see cref="IFileSystemStructured.GetSelectedPath"/>) in
-/// <c>maxBlockSize</c>-sized chunks via <see cref="IFileSystemStructured.ReadBinary"/>. Consumed only as
-/// a generic <see cref="Stream"/> by LDS file parsers, so only the standard read/position/length surface
-/// is implemented (no scuba-specific extra members) -- matches the Java <c>InputStream</c> contract,
-/// which does not guarantee mark/reset support either.
+/// Port of <c>net.sf.scuba.smartcards.CardFileInputStream</c>. A lazily-reading, forward-only stream over
+/// one file of a <see cref="IFileSystemStructured"/>, read in <c>maxBlockSize</c>-sized chunks via
+/// <see cref="IFileSystemStructured.ReadBinary"/>. Consumed only as a generic <see cref="Stream"/> by LDS
+/// file parsers, so only the standard read/position/length surface is implemented.
+///
+/// As in SCUBA, the stream is bound to the file that is selected when it is created: it captures that
+/// path and length, and re-selects the path before reading if another file has been selected since
+/// (for example by a second stream). Every select-and-read sequence runs under a lock on the file system
+/// instance (Java: <c>synchronized(fs)</c>). When <see cref="IFileSystemStructured.ReadBinary"/> returns no
+/// bytes before the end of the file (<c>DefaultFileSystem</c> does this once, after lowering its READ BINARY
+/// length when the card reports a wrong length), the read is retried, as SCUBA does.
 /// </summary>
 public sealed class CardFileInputStream : Stream
 {
+    /// <summary>
+    /// How many times in a row a read may return no bytes before giving up. SCUBA retries without a limit;
+    /// <c>DefaultFileSystem</c> needs one retry, so a small bound keeps a misbehaving file system from
+    /// looping forever.
+    /// </summary>
+    private const int MaxEmptyReads = 3;
+
     private readonly int _maxBlockSize;
     private readonly IFileSystemStructured _fileSystem;
+    private readonly short[] _path;
+    private readonly int _fileLength;
 
     private int _position;
     private byte[]? _buffer;
     private int _bufferOffset;
     private int _bufferLength;
-    private long? _cachedLength;
 
     public CardFileInputStream(int maxBlockSize, IFileSystemStructured fileSystem)
     {
@@ -40,6 +53,17 @@ public sealed class CardFileInputStream : Stream
         }
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _maxBlockSize = maxBlockSize;
+
+        lock (_fileSystem)
+        {
+            FileInfo[] path = _fileSystem.GetSelectedPath();
+            if (path is null || path.Length == 0)
+            {
+                throw new CardServiceException("No valid file selected.");
+            }
+            _path = Array.ConvertAll(path, fileInfo => fileInfo.Fid);
+            _fileLength = path[^1].FileLength;
+        }
     }
 
     public override bool CanRead => true;
@@ -48,25 +72,8 @@ public sealed class CardFileInputStream : Stream
 
     public override bool CanWrite => false;
 
-    public override long Length
-    {
-        get
-        {
-            // Cached per-instance: the selected path shouldn't change out from under an open stream.
-            if (_cachedLength is { } cached)
-            {
-                return cached;
-            }
-            FileInfo[] path = _fileSystem.GetSelectedPath();
-            if (path is null || path.Length == 0)
-            {
-                throw new IOException("No file selected.");
-            }
-            long length = path[^1].FileLength;
-            _cachedLength = length;
-            return length;
-        }
-    }
+    /// <summary>The length of the file this stream was created for.</summary>
+    public override long Length => _fileLength;
 
     public override long Position
     {
@@ -81,27 +88,17 @@ public sealed class CardFileInputStream : Stream
         {
             throw new ArgumentOutOfRangeException(nameof(count));
         }
-        if (count == 0)
-        {
-            return 0;
-        }
-
-        long length = Length;
-        if (_position >= length)
+        if (count == 0 || _position >= _fileLength)
         {
             return 0;
         }
 
         int totalRead = 0;
-        while (totalRead < count && _position < length)
+        while (totalRead < count && _position < _fileLength)
         {
             if (_buffer is null || _position < _bufferOffset || _position >= _bufferOffset + _bufferLength)
             {
                 FillBuffer();
-                if (_bufferLength <= 0)
-                {
-                    break;
-                }
             }
 
             int bufferPos = _position - _bufferOffset;
@@ -115,29 +112,49 @@ public sealed class CardFileInputStream : Stream
         return totalRead;
     }
 
+    /// <summary>Reads the next block at <see cref="_position"/>. Only called before the end of the file.</summary>
     private void FillBuffer()
     {
-        long length = Length;
-        int blockLength = (int)Math.Min(_maxBlockSize, length - _position);
-        if (blockLength <= 0)
+        int blockLength = Math.Min(_maxBlockSize, _fileLength - _position);
+        lock (_fileSystem)
         {
-            _bufferLength = 0;
+            try
+            {
+                SelectPathIfNeeded();
+                for (int attempt = 0; attempt < MaxEmptyReads; attempt++)
+                {
+                    byte[] data = _fileSystem.ReadBinary(_position, blockLength);
+                    if (data is { Length: > 0 })
+                    {
+                        _buffer = data;
+                        _bufferOffset = _position;
+                        _bufferLength = data.Length;
+                        return;
+                    }
+                }
+            }
+            catch (CardServiceException ex)
+            {
+                throw new IOException("Error reading card file.", ex);
+            }
+        }
+
+        throw new IOException($"Error reading card file: no data returned at offset {_position} of {_fileLength}.");
+    }
+
+    /// <summary>Re-selects this stream's file if the file system has another one selected. Caller holds the lock.</summary>
+    private void SelectPathIfNeeded()
+    {
+        FileInfo[] selected = _fileSystem.GetSelectedPath();
+        if (selected is not null && selected.Length == _path.Length && selected.Select(fileInfo => fileInfo.Fid).SequenceEqual(_path))
+        {
             return;
         }
 
-        byte[] data;
-        try
+        foreach (short fid in _path)
         {
-            data = _fileSystem.ReadBinary(_position, blockLength);
+            _fileSystem.SelectFile(fid);
         }
-        catch (CardServiceException ex)
-        {
-            throw new IOException("Error reading card file.", ex);
-        }
-
-        _buffer = data;
-        _bufferOffset = _position;
-        _bufferLength = data.Length;
     }
 
     public override void Flush()
