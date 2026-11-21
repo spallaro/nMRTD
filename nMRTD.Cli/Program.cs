@@ -955,7 +955,7 @@ static Dictionary<string, string> ParseArgs(string[] args)
 static void PrintUsage()
 {
     Console.WriteLine("""
-        nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive Authentication) via a PC/SC reader.
+        nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive Authentication, Chip Authentication) via a PC/SC reader.
 
         Usage:
           nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--out <dir>]
@@ -984,7 +984,8 @@ static void PrintUsage()
         (fingerprints) and DG4 (iris), which require Extended Access Control and are always
         skipped. A DG the document does not have is reported as "not present"; each DG that is
         read is printed both as a parsed summary (where this port has a parser for it) and as a
-        full raw hex dump.
+        full raw hex dump. If DG14 offers it, Chip Authentication is then performed and checked by
+        reading EF.COM with the new session keys.
         """);
 }
 
