@@ -11,8 +11,6 @@
  * See LICENSE for more information.
  */
 
-using nMRTD.Io;
-
 namespace nMRTD.Lds;
 
 /// <summary>
@@ -24,14 +22,10 @@ public abstract class AbstractImageInfo : ImageInfo
     private string? _mimeType;
     private byte[]? _imageBytes;
 
-    /* NOTE: In JMRTD's own source this "splittable input stream" fast path is entirely commented out
-     * inside readImage(...) (marked "DEBUG: START/END"), so splittableInputStream is always assigned
-     * null and this branch of getImageInputStream() is dead code in practice. Ported byte-for-byte
-     * regardless, matching the AdditionalDetailDataGroup.cs precedent of preserving latent/dead JMRTD
-     * behavior rather than silently pruning it. */
-    private SplittableInputStream? _splittableInputStream;
-    private int _imagePositionInInputStream;
-    private int _imageLength;
+    /* NOTE: JMRTD also keeps a "splittable input stream" fast path (splittableInputStream,
+     * imagePositionInInputStream, imageLength), but its readImage(...) has the code that sets them
+     * commented out, so the image is always read into memory and that path is dead. It is not ported:
+     * its fields were never assigned here either. */
 
     private int _width;
     private int _height;
@@ -93,11 +87,6 @@ public abstract class AbstractImageInfo : ImageInfo
     /// <inheritdoc/>
     public int GetImageLength()
     {
-        if (_splittableInputStream != null)
-        {
-            return _imageLength;
-        }
-
         if (_imageBytes == null)
         {
             throw new InvalidOperationException("Cannot get length of null");
@@ -164,24 +153,17 @@ public abstract class AbstractImageInfo : ImageInfo
     /// <inheritdoc/>
     public Stream GetImageInputStream()
     {
-        if (_splittableInputStream != null)
-        {
-            return _splittableInputStream.GetInputStream(_imagePositionInInputStream);
-        }
-        else if (_imageBytes != null)
+        if (_imageBytes != null)
         {
             return new MemoryStream(_imageBytes, writable: false);
         }
-        else
-        {
-            throw new InvalidOperationException("Both the byte buffer and the stream are null");
-        }
+
+        throw new InvalidOperationException("Both the byte buffer and the stream are null");
     }
 
     /// <summary>Clients should call this method after positioning the input stream to the image bytes.</summary>
     protected void ReadImage(Stream inputStream, long imageLength)
     {
-        _splittableInputStream = null;
         _imageBytes = new byte[(int)imageLength];
         ReadFully(inputStream, _imageBytes);
     }
