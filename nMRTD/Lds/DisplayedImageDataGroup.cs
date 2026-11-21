@@ -106,11 +106,9 @@ public abstract class DisplayedImageDataGroup : DataGroup
         result.Append(GetType().Name);
         result.Append(" [");
         bool isFirst = true;
-        if (_imageInfos == null)
-        {
-            throw new InvalidOperationException("imageInfos cannot be null");
-        }
-        foreach (DisplayedImageInfo info in _imageInfos)
+        // NOTE: Java throws an IllegalStateException here when imageInfos is null; ToString() must not
+        // throw, so a null list (which no constructor leaves behind) is printed as empty instead.
+        foreach (DisplayedImageInfo info in _imageInfos ?? [])
         {
             if (isFirst)
             {

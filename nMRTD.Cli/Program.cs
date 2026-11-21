@@ -22,6 +22,7 @@ using System.Globalization;
 using System.Text;
 
 using nMRTD;
+using nMRTD.Cli;
 using nMRTD.Lds;
 using nMRTD.Lds.Icao;
 using nMRTD.Lds.Iso19794;
@@ -885,16 +886,19 @@ static void PrintUsage()
         """);
 }
 
-/// <summary>Which kind of access key was resolved by <see cref="ResolveAccessCredentials"/>.</summary>
-internal enum AccessKeyMode
+namespace nMRTD.Cli
 {
-    /// <summary>MRZ details (document number, date of birth, date of expiry): usable for PACE, falling back to BAC.</summary>
-    Mrz,
+    /// <summary>Which kind of access key was resolved by <c>ResolveAccessCredentials</c>.</summary>
+    internal enum AccessKeyMode
+    {
+        /// <summary>MRZ details (document number, date of birth, date of expiry): usable for PACE, falling back to BAC.</summary>
+        Mrz,
 
-    /// <summary>Card Access Number: usable for PACE only, no BAC fallback.</summary>
-    Can,
+        /// <summary>Card Access Number: usable for PACE only, no BAC fallback.</summary>
+        Can,
+    }
+
+    /// <summary>The access key resolved from command-line options or interactive prompts, together with which
+    /// kind it is. Exactly one of <see cref="BacKey"/>/<see cref="Can"/> is non-null, matching <see cref="Mode"/>.</summary>
+    internal sealed record AccessCredentials(AccessKeyMode Mode, IBacKeySpec? BacKey, string? Can);
 }
-
-/// <summary>The access key resolved from command-line options or interactive prompts, together with which
-/// kind it is. Exactly one of <see cref="BacKey"/>/<see cref="Can"/> is non-null, matching <see cref="Mode"/>.</summary>
-internal sealed record AccessCredentials(AccessKeyMode Mode, IBacKeySpec? BacKey, string? Can);
