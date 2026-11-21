@@ -21,7 +21,7 @@ namespace nMRTD.Lds.Icao;
 /// Port of <c>org.jmrtd.lds.icao.AdditionalDetailDataGroup</c>: abstract superclass for DG11 and DG12.
 ///
 /// NOTE on a genuine, confirmed-upstream JMRTD bug preserved here for fidelity: the Java
-/// <c>AdditionalDetailDataGroup(int tag)</c> constructor ignores its <paramref name="tag"/> parameter and
+/// <c>AdditionalDetailDataGroup(int tag)</c> constructor ignores its <c>tag</c> parameter and
 /// always passes <c>EF_DG11_TAG</c> to the super constructor (JMRTD source, verbatim: <c>public
 /// AdditionalDetailDataGroup(int tag) { super(EF_DG11_TAG); }</c>). <c>DG12File</c>'s field-based (i.e.
 /// non-stream, "construct from data to write out") constructor calls <c>super(EF_DG12_TAG)</c>, which is a
@@ -33,7 +33,7 @@ namespace nMRTD.Lds.Icao;
 /// -- it reproduces upstream JMRTD's actual behavior for that (admittedly rarely-exercised, write-then-
 /// reparse) code path. The DG12File(Stream) constructor used when *reading* an EF.DG12 file from a card is
 /// unaffected (it calls <see cref="AdditionalDetailDataGroup(int, Stream)"/>, the other constructor, which
-/// forwards <paramref name="tag"/> correctly). Ported byte-for-byte regardless of the bug, since silently
+/// forwards <c>tag</c> correctly). Ported byte-for-byte regardless of the bug, since silently
 /// "fixing" it here would be exactly the kind of subtle deviation from upstream this port must avoid.
 /// </summary>
 public abstract class AdditionalDetailDataGroup : DataGroup

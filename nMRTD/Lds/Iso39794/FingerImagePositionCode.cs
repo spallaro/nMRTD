@@ -21,7 +21,7 @@ namespace nMRTD.Lds.Iso39794;
 /// lookup keyed on each constant's own <c>getCode()</c>. Ported as a plain enum with explicit numeric
 /// values matching each Java constant's <c>getCode()</c> exactly (declaration order and code do NOT
 /// coincide here -- the codes skip several values, e.g. 11/12/39/56-59); see
-/// <c>ScoreOrError.ScoringErrorCode</c>'s doc comment for the fuller rationale and <see cref="FromCode"/>
+/// <c>ScoreOrError.ScoringErrorCode</c>'s doc comment for the fuller rationale and <see cref="FingerImagePositionCodeExtensions.FromCode"/>
 /// for the shared "decode from code" replacement.
 ///
 /// Java's version is a top-level <c>public enum</c>; ported as <c>internal</c> since it is only ever used
