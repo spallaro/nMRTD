@@ -155,12 +155,14 @@ public class ReadBinaryAPDUSender : IApduLevelReadBinaryCapable
             }
 
             ResponseApdu? responseApdu = null;
+            CardServiceException? transmitException = null;
             try
             {
                 responseApdu = _secureMessagingSender.Transmit(wrapper, commandApdu);
             }
             catch (CardServiceException cse)
             {
+                transmitException = cse;
                 if (_secureMessagingSender.IsConnectionLost(cse))
                 {
                     // If fatal, we rethrow the underlying exception. If not, we will probably throw an
@@ -176,7 +178,7 @@ public class ReadBinaryAPDUSender : IApduLevelReadBinaryCapable
             byte[]? responseData = GetResponseData(responseApdu, isTlvEncodedOffsetNeeded);
             // NOTE: Java logs a warning here if responseData is null/empty; omitted per the
             // non-essential-warning-omission precedent used elsewhere in this port.
-            CheckStatusWordAfterFileOperation(commandApdu, responseApdu);
+            CheckStatusWordAfterFileOperation(commandApdu, responseApdu, transmitException);
 
             return responseData!;
         }
@@ -247,11 +249,22 @@ public class ReadBinaryAPDUSender : IApduLevelReadBinaryCapable
     /// <summary>Checks the status word and throws an appropriate <see cref="CardServiceException"/> on error.</summary>
     /// <param name="commandApdu">the command APDU that was sent</param>
     /// <param name="responseApdu">the response APDU that was received</param>
+    /// <param name="transmitException">
+    /// the exception that left <paramref name="responseApdu"/> <c>null</c>, if any; attached as the cause of
+    /// the "No response APDU" exception so that the actual failure (reader error, status word, invalid MAC)
+    /// is not lost. JMRTD drops it. The status word stays unset, as in JMRTD, so that callers such as
+    /// <c>DefaultFileSystem</c> react to the exception exactly as before.
+    /// </param>
     /// <exception cref="CardServiceException">if the response APDU's status word indicates some error</exception>
-    private static void CheckStatusWordAfterFileOperation(CommandApdu commandApdu, ResponseApdu? responseApdu)
+    private static void CheckStatusWordAfterFileOperation(CommandApdu commandApdu, ResponseApdu? responseApdu, CardServiceException? transmitException = null)
     {
         if (responseApdu == null)
         {
+            if (transmitException != null)
+            {
+                throw new CardServiceException($"No response APDU: {transmitException.Message}", transmitException, CardServiceException.SwNotSet);
+            }
+
             throw new CardServiceException("No response APDU");
         }
 

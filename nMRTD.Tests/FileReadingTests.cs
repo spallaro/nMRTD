@@ -54,6 +54,21 @@ public class FileReadingTests
     }
 
     [Fact]
+    public void ReaderFailureIsKeptAsTheCauseOfNoResponseApdu()
+    {
+        var card = new FakeCard(_ => throw new CardServiceException("APDU transmit failed: The card is not responding", new TimeoutException()));
+        var sender = new ReadBinaryAPDUSender(new SecureMessagingAPDUSender(card));
+
+        var e = Assert.Throws<CardServiceException>(() => sender.SendReadBinary(null, 0x01, 0, 8, true, false));
+
+        Assert.StartsWith("No response APDU", e.Message);
+        Assert.Contains("The card is not responding", e.Message);
+        var cause = Assert.IsType<CardServiceException>(e.InnerException);
+        Assert.IsType<TimeoutException>(cause.InnerException);
+        Assert.Equal(CardServiceException.SwNotSet, e.Sw);
+    }
+
+    [Fact]
     public void StreamRequiresASelectedFile()
     {
         Assert.Throws<CardServiceException>(() => new CardFileInputStream(100, new NothingSelectedFs()));

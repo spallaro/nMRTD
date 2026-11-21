@@ -1,5 +1,25 @@
 # Release Notes
 
+## Unreleased
+
+### Fixed
+
+- **"No response APDU" now keeps its cause.** When sending a READ BINARY failed (for example the
+  reader stopped getting answers from the card), `ReadBinaryAPDUSender` discarded the exception, as
+  JMRTD does, and only reported "No response APDU". The original exception is now its inner
+  exception and part of its message. The status word stays unset, so `DefaultFileSystem` reacts to
+  it as before.
+
+### CLI
+
+- **RSASSA-PSS EF.SOD signatures are verified**, using the hash, MGF1 hash and salt length from the
+  signer info (`SODFile.GetDigestEncryptionAlgorithm()` only gives the generic "SSAwithRSA/PSS").
+  Verified on an Italian CIE 3.0 (RSASSA-PSS, SHA-512).
+- **Chip Authentication** runs after Passive Authentication when DG14 offers it, and is checked by
+  reading EF.COM with the new session keys. Verified with DH keys on an Italian CIE 3.0 (2048 bit)
+  and an Italian passport (1024 bit).
+- **`--bac`** skips PACE and uses BAC with the MRZ access key.
+
 ## 0.7.1-alpha (2026-11-21)
 
 ### Fixed
