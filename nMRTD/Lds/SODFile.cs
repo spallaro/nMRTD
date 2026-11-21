@@ -272,7 +272,7 @@ public class SODFile : AbstractTaggedLDSFile
     public X509Name? GetIssuerName()
     {
         IssuerAndSerialNumber? issuerAndSerialNumber = SignedDataUtil.GetIssuerAndSerialNumber(_signedData);
-        return issuerAndSerialNumber?.Name;
+        return issuerAndSerialNumber?.Issuer;
     }
 
     /// <summary>

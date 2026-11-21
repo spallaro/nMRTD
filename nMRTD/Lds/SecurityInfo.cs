@@ -135,10 +135,21 @@ public abstract class SecurityInfo : AbstractLDSInfo
     [Obsolete("This method will be removed from the visible interface (because of dependency on BC API)")]
     public abstract Asn1Object GetDERObject();
 
+    /// <summary>
+    /// Returns a DER object with this SecurityInfo data, for use inside this library. Keeps the internal
+    /// callers off the obsolete public <see cref="GetDERObject"/> (deprecated upstream for the same reason).
+    /// </summary>
+    internal Asn1Object ToDerObject()
+    {
+#pragma warning disable CS0618 // The public method stays obsolete; this is the single internal call site.
+        return GetDERObject();
+#pragma warning restore CS0618
+    }
+
     /// <summary>Writes this SecurityInfo to output stream.</summary>
     public override void WriteObject(Stream outputStream)
     {
-        Asn1Object derEncoded = GetDERObject();
+        Asn1Object derEncoded = ToDerObject();
         byte[] derEncodedBytes = derEncoded.GetEncoded(Asn1Encodable.Der);
         outputStream.Write(derEncodedBytes, 0, derEncodedBytes.Length);
     }

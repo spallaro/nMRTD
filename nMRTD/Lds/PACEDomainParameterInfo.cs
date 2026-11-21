@@ -113,7 +113,7 @@ public class PACEDomainParameterInfo : SecurityInfo
         }
         if (ID_EC_PUBLIC_KEY.Equals(oid))
         {
-            return ToECDomainParameters(domainParameter);
+            return ToECDomainParametersCore(domainParameter);
         }
 
         throw new InvalidOperationException("Unsupported PACEDomainParameterInfo type " + oid);
@@ -223,7 +223,9 @@ public class PACEDomainParameterInfo : SecurityInfo
 
     /// <summary>Returns the EC domain parameters from the BC algorithm identifier object.</summary>
     [Obsolete("Visibility will be restricted")]
-    public static ECDomainParameters ToECDomainParameters(AlgorithmIdentifier domainParameter)
+    public static ECDomainParameters ToECDomainParameters(AlgorithmIdentifier domainParameter) => ToECDomainParametersCore(domainParameter);
+
+    private static ECDomainParameters ToECDomainParametersCore(AlgorithmIdentifier domainParameter)
     {
         Asn1Encodable parameters = domainParameter.Parameters;
 
@@ -283,21 +285,17 @@ public class PACEDomainParameterInfo : SecurityInfo
             BigInteger a = new(1, aObject.GetOctets());
             BigInteger b = new(1, bObject.GetOctets());
 
-            var curve = new FpCurve(p, a, b);
+            var orderObject = (DerInteger)paramSequence[4];
+            BigInteger n = orderObject.PositiveValue;
+
+            /* The cofactor is optional; 1 when absent. */
+            BigInteger coFactor = paramSequence.Count <= 5 ? BigInteger.One : ((DerInteger)paramSequence[5]).Value;
+
+            var curve = new FpCurve(p, a, b, n, coFactor);
 
             var basePointObject = (Asn1OctetString)paramSequence[3];
             ECPoint g = curve.DecodePoint(basePointObject.GetOctets());
 
-            var orderObject = (DerInteger)paramSequence[4];
-            BigInteger n = orderObject.PositiveValue;
-
-            if (paramSequence.Count <= 5)
-            {
-                return new ECDomainParameters(curve, g, n, BigInteger.One);
-            }
-
-            var coFactorObject = (DerInteger)paramSequence[5];
-            BigInteger coFactor = coFactorObject.Value;
             return new ECDomainParameters(curve, g, n, coFactor);
         }
         catch (Exception e)

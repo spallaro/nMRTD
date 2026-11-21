@@ -213,7 +213,7 @@ public static class SignedDataUtil
         try
         {
             SignerInfo signerInfo = GetSignerInfo(signedData);
-            AlgorithmIdentifier digestEncryptionAlgorithm = signerInfo.DigestEncryptionAlgorithm;
+            AlgorithmIdentifier digestEncryptionAlgorithm = signerInfo.SignatureAlgorithm;
             string digestEncryptionAlgorithmOid = digestEncryptionAlgorithm.Algorithm.Id;
             if (digestEncryptionAlgorithmOid != Pkcs1RsaSsaPssOid)
             {
@@ -241,7 +241,7 @@ public static class SignedDataUtil
         try
         {
             SignerInfo signerInfo = GetSignerInfo(signedData);
-            string? digestEncryptionAlgorithmOid = signerInfo.DigestEncryptionAlgorithm.Algorithm.Id;
+            string? digestEncryptionAlgorithmOid = signerInfo.SignatureAlgorithm.Algorithm.Id;
             if (digestEncryptionAlgorithmOid == null)
             {
                 return null;
@@ -261,7 +261,7 @@ public static class SignedDataUtil
     public static byte[] GetEContent(SignedData signedData)
     {
         SignerInfo signerInfo = GetSignerInfo(signedData);
-        Asn1Set signedAttributesSet = signerInfo.AuthenticatedAttributes;
+        Asn1Set signedAttributesSet = signerInfo.SignedAttrs;
 
         ContentInfo contentInfo = signedData.EncapContentInfo;
         byte[] contentBytes = ((Asn1OctetString)contentInfo.Content).GetOctets();
@@ -292,7 +292,7 @@ public static class SignedDataUtil
     public static byte[] GetEncryptedDigest(SignedData signedData)
     {
         SignerInfo signerInfo = GetSignerInfo(signedData);
-        return signerInfo.EncryptedDigest.GetOctets();
+        return signerInfo.Signature.GetOctets();
     }
 
     /// <summary>Returns the issuer and serial number stored in the given signed data structure.</summary>

@@ -71,7 +71,7 @@ public class CardAccessFile
         var vector = new Asn1EncodableVector();
         foreach (SecurityInfo securityInfo in _securityInfos)
         {
-            vector.Add(securityInfo.GetDERObject());
+            vector.Add(securityInfo.ToDerObject());
         }
         Asn1Set derSet = new DLSet(vector);
         byte[] encoded = derSet.GetDerEncoded();

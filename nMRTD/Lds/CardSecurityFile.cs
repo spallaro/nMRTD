@@ -180,7 +180,7 @@ public class CardSecurityFile
         var vector = new Asn1EncodableVector();
         foreach (SecurityInfo securityInfo in securityInfos)
         {
-            vector.Add(securityInfo.GetDERObject());
+            vector.Add(securityInfo.ToDerObject());
         }
         Asn1Set derSet = new DLSet(vector);
 
