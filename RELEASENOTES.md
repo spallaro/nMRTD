@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.6.0-alpha (2026-11-21)
 
 ### Changed
 
