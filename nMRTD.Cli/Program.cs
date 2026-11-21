@@ -127,6 +127,8 @@ static async Task<int> RunAsync(string[] args)
         var sodFile = new SODFile(new MemoryStream(sodBytes));
         VerifyPassiveAuthentication(sodFile, dataGroupBytes);
 
+        PerformChipAuthentication(passportService, dataGroupBytes.GetValueOrDefault(14));
+
         return 0;
     }
     catch (CardServiceException e)
@@ -726,6 +728,73 @@ static (ISigner Verifier, string Description) CreateSodSignatureVerifier(SODFile
     int saltLength = pssParameters.SaltLength.IntValueExact;
     var verifier = new PssSigner(new RsaBlindedEngine(), contentDigest, mgfDigest, saltLength, PssSigner.TrailerImplicit);
     return (verifier, $"RSASSA-PSS, {contentDigest.AlgorithmName}, MGF1 {mgfDigest.AlgorithmName}, salt {saltLength} bytes");
+}
+
+/// <summary>
+/// Performs EAC Chip Authentication (BSI TR-03110 / ICAO Doc 9303-11, 6.2) with the chip's key from DG14,
+/// then reads EF.COM, which has not been read before, over the restarted secure messaging channel: the
+/// read only succeeds if the chip holds the private key matching the DG14 public key. DG14's own
+/// integrity is covered by Passive Authentication, which runs first.
+/// </summary>
+static void PerformChipAuthentication(PassportService passportService, byte[]? dg14Bytes)
+{
+    Console.WriteLine();
+    Console.WriteLine("=== Chip Authentication ===");
+
+    if (dg14Bytes == null)
+    {
+        Console.WriteLine("DG14 not present; Chip Authentication is not available on this document.");
+        return;
+    }
+
+    IReadOnlyCollection<SecurityInfo> securityInfos = new DG14File(new MemoryStream(dg14Bytes)).GetSecurityInfos();
+    List<ChipAuthenticationPublicKeyInfo> publicKeyInfos = securityInfos.OfType<ChipAuthenticationPublicKeyInfo>().ToList();
+    List<ChipAuthenticationInfo> chipAuthenticationInfos = securityInfos.OfType<ChipAuthenticationInfo>().ToList();
+    if (publicKeyInfos.Count == 0)
+    {
+        Console.WriteLine("DG14 has no ChipAuthenticationPublicKeyInfo; Chip Authentication is not available on this document.");
+        return;
+    }
+
+    // Use the first public key, with the ChipAuthenticationInfo of the same key ID. With a single
+    // ChipAuthenticationInfo and no key IDs, that one applies; without any, the protocol is inferred from
+    // the public key's OID (as JMRTD does).
+    ChipAuthenticationPublicKeyInfo publicKeyInfo = publicKeyInfos[0];
+    ChipAuthenticationInfo? chipAuthenticationInfo =
+        chipAuthenticationInfos.FirstOrDefault(info => Equals(info.GetKeyId(), publicKeyInfo.GetKeyId()))
+        ?? (chipAuthenticationInfos.Count == 1 ? chipAuthenticationInfos[0] : null);
+
+    string protocol = chipAuthenticationInfo?.GetProtocolOIDString() ?? "inferred from the public key";
+    Console.WriteLine(
+        $"Performing Chip Authentication (protocol {protocol}, chip key {Util.GetDetailedPublicKeyAlgorithm(publicKeyInfo.GetSubjectPublicKey())}"
+        + $"{(publicKeyInfo.GetKeyId() is { } keyId ? $", key ID {keyId}" : "")})...");
+
+    try
+    {
+        // DG14 key IDs are BouncyCastle integers; PassportService takes System.Numerics ones.
+        System.Numerics.BigInteger? keyIdForCa = publicKeyInfo.GetKeyId() is { } dg14KeyId
+            ? new System.Numerics.BigInteger(dg14KeyId.ToByteArrayUnsigned(), isUnsigned: true, isBigEndian: true)
+            : null;
+        passportService.DoEACCA(
+            keyIdForCa,
+            chipAuthenticationInfo?.GetObjectIdentifier(),
+            publicKeyInfo.GetObjectIdentifier(),
+            publicKeyInfo.GetSubjectPublicKey());
+
+        byte[] comBytes = ReadFileBytes(passportService, PassportService.EF_COM);
+        var com = new nMRTD.Lds.Icao.COMFile(new MemoryStream(comBytes));
+        Console.WriteLine(
+            $"Chip Authentication succeeded: EF.COM ({comBytes.Length} bytes, LDS {com.GetLDSVersion()}) was read with the new "
+            + "session keys, so the chip holds the private key for the DG14 public key.");
+    }
+    catch (Exception e)
+    {
+        Console.WriteLine($"Chip Authentication FAILED: {e.GetType().Name}: {e.Message}");
+        for (Exception? inner = e.InnerException; inner != null; inner = inner.InnerException)
+        {
+            Console.WriteLine($"  caused by {inner.GetType().Name}: {inner.Message}");
+        }
+    }
 }
 
 static byte[] ComputeDigest(string digestAlgorithm, byte[] data)
