@@ -11,6 +11,8 @@
  * See LICENSE for more information.
  */
 
+using System.Security.Cryptography;
+
 using nMRTD.Cbeff;
 using nMRTD.SmartCards;
 
@@ -35,14 +37,6 @@ namespace nMRTD.Lds;
 /// </remarks>
 public abstract class CBEFFDataGroup : DataGroup
 {
-    /* NOTE: JMRTD uses a cryptographically strong SecureRandom in the "build from data" constructor but
-     * a plain (non-cryptographic) Random in the "parse from stream" constructor -- an asymmetry that
-     * doesn't actually matter here since this Random is only ever used to fill 8 bytes of non-secret
-     * padding (see WriteOptionalRandomData), never security-sensitive material. A single Random suffices
-     * for both constructors in the C# port. */
-    /// <summary>For writing the optional random data block.</summary>
-    private readonly Random _random = new();
-
     /// <summary>Records in the BIT group. Each record represents a single BIT.</summary>
     /// <remarks>
     /// Deliberately left without an inline initializer: for the "parse from stream" constructor, the
@@ -233,7 +227,7 @@ public abstract class CBEFFDataGroup : DataGroup
         using var tlvOut = new TlvOutputStream(outputStream, leaveOpen: true);
         tlvOut.WriteTag(ISO781611.DISCRETIONARY_DATA_FOR_PAYLOAD_TAG);
         byte[] value = new byte[8];
-        _random.NextBytes(value);
+        RandomNumberGenerator.Fill(value);
         tlvOut.WriteValue(value);
     }
 

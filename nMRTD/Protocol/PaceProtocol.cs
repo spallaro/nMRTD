@@ -803,12 +803,13 @@ public class PaceProtocol
     /// <param name="sharedSecretPointH">the shared secret</param>
     /// <param name="staticParameters">the static parameters</param>
     /// <returns>the new parameters</returns>
+    /// <exception cref="ArgumentException">if the mapped generator is the point at infinity or not a valid point</exception>
     public static ECDomainParameters MapNonceGMWithECDH(byte[] nonceS, ECPoint sharedSecretPointH, ECDomainParameters staticParameters)
     {
         /* D~ = (p, a, b, G~, n, h) where G~ = [s]G + H */
         ECPoint generator = staticParameters.G;
         ECPoint ephemeralGenerator = generator.Multiply(Util.Os2i(nonceS)).Add(sharedSecretPointH).Normalize();
-        if (!ephemeralGenerator.IsValid())
+        if (ephemeralGenerator.IsInfinity || !ephemeralGenerator.IsValid())
         {
             throw new ArgumentException("Mapped generator is not a valid point");
         }

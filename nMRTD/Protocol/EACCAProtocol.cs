@@ -285,7 +285,7 @@ public class EACCAProtocol
     {
         if (agreementAlg == "DH" || pcdPublicKey is DHPublicKeyParameters)
         {
-            /* TODO: this is probably wrong, what should be hashed? (carried over from Java source comment) */
+            /* Comp(PK) for DH: SHA-1 of the public value (Doc 9303 - Part 11, 7.1.4.1.3), an unsigned integer (9.4.1). */
             IDigest md = DigestUtilities.GetDigest("SHA-1");
             byte[] data = GetKeyData(agreementAlg, pcdPublicKey);
             md.BlockUpdate(data, 0, data.Length);
@@ -296,6 +296,7 @@ public class EACCAProtocol
 
         if (agreementAlg == "ECDH" || pcdPublicKey is ECPublicKeyParameters)
         {
+            /* Comp(PK) for ECDH: the x-coordinate, fixed length (Doc 9303 - Part 11, 7.1.4.2.3). */
             var pcdECPublicKey = (ECPublicKeyParameters)pcdPublicKey;
             byte[] t = Util.I2os(pcdECPublicKey.Q.AffineXCoord.ToBigInteger());
             int keySize = (int)Math.Ceiling(pcdECPublicKey.Parameters.Curve.FieldSize / 8.0);

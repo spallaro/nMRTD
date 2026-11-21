@@ -413,7 +413,7 @@ public class EACTAProtocol
 
         if (publicKey is DHPublicKeyParameters dhPublicKey)
         {
-            /* TODO: this is probably wrong, what should be hashed? (carried over from Java source comment) */
+            /* Comp(PK) for DH: SHA-1 of the public value (Doc 9303 - Part 11, 7.1.4.1.3), an unsigned integer (9.4.1). */
             IDigest md = DigestUtilities.GetDigest("SHA-1");
             byte[] data = Util.I2os(dhPublicKey.Y);
             md.BlockUpdate(data, 0, data.Length);
@@ -424,6 +424,7 @@ public class EACTAProtocol
 
         if (publicKey is ECPublicKeyParameters piccECPublicKey)
         {
+            /* Comp(PK) for ECDH: the x-coordinate, fixed length (Doc 9303 - Part 11, 7.1.4.2.3). */
             byte[] t = Util.I2os(piccECPublicKey.Q.AffineXCoord.ToBigInteger());
             return Util.AlignKeyDataToSize(t, (int)Math.Ceiling(piccECPublicKey.Parameters.Curve.FieldSize / 8.0));
         }

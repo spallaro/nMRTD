@@ -331,6 +331,11 @@ public static class Util
             i--;
         }
 
+        if (i < 0)
+        {
+            throw new CryptographicException("Expected constant 0x80, found only 0x00 bytes");
+        }
+
         if ((bytes[i] & 0xFF) != 0x80)
         {
             throw new CryptographicException($"Expected constant 0x80, found 0x{bytes[i] & 0x000000FF:x}");
@@ -840,7 +845,12 @@ public static class Util
     /// <returns>the affine X and Y coordinates of the EC point</returns>
     public static (BigInteger X, BigInteger Y) Os2ECPoint(byte[] encodedECPoint)
     {
-        if (encodedECPoint.Length < 1 || encodedECPoint[0] != 0x04)
+        if (encodedECPoint == null || encodedECPoint.Length < 3 || encodedECPoint.Length % 2 != 1)
+        {
+            throw new ArgumentException("Expected an encoded ECPoint of odd length (0x04, x, y)");
+        }
+
+        if (encodedECPoint[0] != 0x04)
         {
             throw new ArgumentException("Expected encoded ECPoint to start with 0x04");
         }
