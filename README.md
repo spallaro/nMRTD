@@ -117,7 +117,7 @@ passportService.SendSelectApplet(true);
 // From here on, read DG1/DG2/... exactly as in the BAC example above.
 ```
 
-For a complete, runnable example covering reader selection, PACE-with-BAC-fallback, DG1/DG2 parsing, and full Passive Authentication (EF.SOD hash and signature verification), see [`nMRTD.Cli/Program.cs`](nMRTD.Cli/Program.cs) in this repository.
+For a complete, runnable example covering reader selection, PACE-with-BAC-fallback, DG1/DG2 parsing, and full Passive Authentication (EF.SOD hash and signature verification), see [`nMRTD.Cli/Program.cs`](https://github.com/spallaro/nMRTD/blob/main/nMRTD.Cli/Program.cs) in this repository.
 
 ## Tests
 
@@ -128,10 +128,10 @@ dotnet test nMRTD.sln --collect:"XPlat Code Coverage"
 
 The tests run on both target frameworks. With `--collect`, coverlet writes a
 `coverage.opencover.xml` for each framework under `nMRTD.Tests/TestResults/` (the format is set in
-[`nMRTD.Tests/coverage.runsettings`](nMRTD.Tests/coverage.runsettings)).
+[`nMRTD.Tests/coverage.runsettings`](https://github.com/spallaro/nMRTD/blob/main/nMRTD.Tests/coverage.runsettings)).
 
 ## License
 
 nMRTD is a derivative work: a from-scratch C# port of [**JMRTD**](https://jmrtd.org/), originally written in Java by [**the JMRTD team**](https://jmrtd.org/about.shtml). All credit for the original design, protocol implementation, and years of ICAO 9303 domain expertise belongs to them; this project would not exist without their work. nMRTD is not affiliated with or endorsed by the JMRTD project.
 
-Like its upstream, nMRTD is distributed under the terms of the **GNU Lesser General Public License v3 (LGPL-3.0)**. See the [`LICENSE`](LICENSE) file for the full license text.
+Like its upstream, nMRTD is distributed under the terms of the **GNU Lesser General Public License v3 (LGPL-3.0)**. See the [`LICENSE`](https://github.com/spallaro/nMRTD/blob/main/LICENSE) file for the full license text.
