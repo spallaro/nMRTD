@@ -11,7 +11,7 @@
  * See LICENSE for more information.
  */
 
-using System.Numerics;
+using BigInteger = Org.BouncyCastle.Math.BigInteger;
 
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -74,7 +74,7 @@ public abstract class AbstractMRTDCardService : FileSystemCardService
     /// <param name="parameterId">parameter identifier or <c>null</c></param>
     /// <returns>the result</returns>
     /// <exception cref="CardServiceException">if authentication failed or on error</exception>
-    public abstract PACEResult DoPace(IAccessKeySpec keySpec, string oid, object staticParameters, Org.BouncyCastle.Math.BigInteger? parameterId);
+    public abstract PACEResult DoPace(IAccessKeySpec keySpec, string oid, object staticParameters, BigInteger? parameterId);
 
     /// <summary>
     /// Selects the card side applet. If PACE has been executed successfully previously, then the card has
@@ -111,6 +111,21 @@ public abstract class AbstractMRTDCardService : FileSystemCardService
     /// <returns>the Chip Authentication result</returns>
     /// <exception cref="CardServiceException">if CA failed or some error occurred</exception>
     public abstract EACCAResult DoEACCA(BigInteger? keyId, string? oid, string? publicKeyOID, AsymmetricKeyParameter publicKey);
+
+    /// <summary>
+    /// Performs CA with a <see cref="System.Numerics.BigInteger"/> key ID, the type this method used to take.
+    /// Pass the key ID from <c>ChipAuthenticationPublicKeyInfo.GetKeyId()</c> to the other overload instead.
+    /// </summary>
+    /// <param name="keyId">the chip's public key id (stored in DG14)</param>
+    /// <param name="oid">the object identifier indicating the Chip Authentication protocol</param>
+    /// <param name="publicKeyOID">the object identifier indicating the public key algorithm used</param>
+    /// <param name="publicKey">passport's public key (stored in DG14)</param>
+    /// <returns>the Chip Authentication result</returns>
+    [Obsolete("Use DoEACCA(Org.BouncyCastle.Math.BigInteger?, ...), the type of the key IDs in DG14.")]
+    public EACCAResult DoEACCA(System.Numerics.BigInteger keyId, string? oid, string? publicKeyOID, AsymmetricKeyParameter publicKey) =>
+        DoEACCA(
+            keyId.Sign < 0 ? null : new BigInteger(1, keyId.ToByteArray(isUnsigned: true, isBigEndian: true)),
+            oid, publicKeyOID, publicKey);
 
     /// <summary>
     /// Performs <i>Terminal Authentication</i> (TA) part of EAC (version 1). For details see TR-03110 ver.

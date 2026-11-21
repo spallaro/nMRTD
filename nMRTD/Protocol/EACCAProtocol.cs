@@ -11,7 +11,6 @@
  * See LICENSE for more information.
  */
 
-using System.Numerics;
 
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Agreement;
@@ -23,7 +22,7 @@ using nMRTD.Lds;
 using nMRTD.Logging;
 using nMRTD.SmartCards;
 
-using BcBigInteger = Org.BouncyCastle.Math.BigInteger;
+using BigInteger = Org.BouncyCastle.Math.BigInteger;
 
 namespace nMRTD.Protocol;
 
@@ -168,7 +167,7 @@ public class EACCAProtocol
             byte[]? idData = null;
             if (keyId != null)
             {
-                byte[] keyIdBytes = keyId.Value.ToByteArray(isUnsigned: true, isBigEndian: true); // See EACCAAPDUSender.cs's NOTE on this same conversion.
+                byte[] keyIdBytes = Util.I2os(keyId);
                 idData = TlvUtil.WrapDO(0x84, keyIdBytes); /* FIXME: Constant for 0x84 (carried over from Java). */
             }
 
@@ -224,7 +223,7 @@ public class EACCAProtocol
 
             var agreement = new ECDHBasicAgreement();
             agreement.Init(pcdPrivateKey);
-            BcBigInteger z = agreement.CalculateAgreement(piccPublicKey);
+            BigInteger z = agreement.CalculateAgreement(piccPublicKey);
             int fieldSize = (int)Math.Ceiling(ecPrivateKey.Parameters.Curve.FieldSize / 8.0);
             return Util.I2os(z, fieldSize);
         }
@@ -238,7 +237,7 @@ public class EACCAProtocol
 
             var agreement = new DHBasicAgreement();
             agreement.Init(pcdPrivateKey);
-            BcBigInteger z = agreement.CalculateAgreement(piccPublicKey);
+            BigInteger z = agreement.CalculateAgreement(piccPublicKey);
             int modSize = (int)Math.Ceiling(dhPrivateKey.Parameters.P.BitLength / 8.0);
             return Util.I2os(z, modSize);
         }

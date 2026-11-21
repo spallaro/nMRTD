@@ -792,12 +792,8 @@ static void PerformChipAuthentication(PassportService passportService, byte[]? d
 
     try
     {
-        // DG14 key IDs are BouncyCastle integers; PassportService takes System.Numerics ones.
-        System.Numerics.BigInteger? keyIdForCa = publicKeyInfo.GetKeyId() is { } dg14KeyId
-            ? new System.Numerics.BigInteger(dg14KeyId.ToByteArrayUnsigned(), isUnsigned: true, isBigEndian: true)
-            : null;
         passportService.DoEACCA(
-            keyIdForCa,
+            publicKeyInfo.GetKeyId(),
             chipAuthenticationInfo?.GetObjectIdentifier(),
             publicKeyInfo.GetObjectIdentifier(),
             publicKeyInfo.GetSubjectPublicKey());

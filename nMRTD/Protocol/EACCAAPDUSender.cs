@@ -11,7 +11,7 @@
  * See LICENSE for more information.
  */
 
-using System.Numerics;
+using BigInteger = Org.BouncyCastle.Math.BigInteger;
 
 using nMRTD.Logging;
 using nMRTD.SmartCards;
@@ -99,7 +99,7 @@ public class EACCAAPDUSender : IApduLevelEacCACapable
             const int p1 = 0x41;
             const int p2 = 0xA4;
             ResponseApdu? rapdu;
-            if (keyId == null || keyId.Value.Sign < 0)
+            if (keyId == null || keyId.SignValue < 0)
             {
                 var commandApdu = new CommandApdu(Iso7816.ClaIso7816, Iso7816.InsMse, p1, p2, Util.ToOIDBytes(oid));
                 rapdu = _secureMessagingSender.Transmit(wrapper, commandApdu);
@@ -108,12 +108,7 @@ public class EACCAAPDUSender : IApduLevelEacCACapable
             {
                 byte[] oidBytes = Util.ToOIDBytes(oid);
 
-                // NOTE: matches Java's Util.i2os(keyId) semantics (minimal-length, non-negative,
-                // big-endian encoding) directly via System.Numerics.BigInteger's own unsigned/big-endian
-                // overload, rather than routing through nMRTD.Util.I2os (which operates on BC's
-                // Org.BouncyCastle.Math.BigInteger, not the System.Numerics.BigInteger this class's
-                // interface contract, IApduLevelEacCACapable, already commits to for keyId).
-                byte[] keyIdBytes = TlvUtil.WrapDO(0x84, keyId.Value.ToByteArray(isUnsigned: true, isBigEndian: true));
+                byte[] keyIdBytes = TlvUtil.WrapDO(0x84, Util.I2os(keyId));
 
                 using var stream = new MemoryStream();
                 stream.Write(oidBytes, 0, oidBytes.Length);

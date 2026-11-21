@@ -11,7 +11,7 @@
  * See LICENSE for more information.
  */
 
-using System.Numerics;
+using BigInteger = Org.BouncyCastle.Math.BigInteger;
 
 using Org.BouncyCastle.Crypto;
 
@@ -24,11 +24,9 @@ namespace nMRTD.Protocol;
 /// <c>Serializable</c> marker is dropped per porting-conventions.md (no reflection-based serialization is
 /// needed in this port). Java's <c>java.security.PublicKey</c>/<c>PrivateKey</c> become BC's
 /// <see cref="AsymmetricKeyParameter"/>, per the convention already established throughout this port (see
-/// <c>AAResult.cs</c>). <c>keyId</c> uses <see cref="System.Numerics.BigInteger"/> (rather than BC's
-/// <c>Org.BouncyCastle.Math.BigInteger</c>, the exception this port otherwise carves out for classes with
-/// heavy BC ASN.1 interop, e.g. <c>Util.cs</c>/<c>SecurityInfo.cs</c>) because this value flows directly
-/// through <see cref="IApduLevelEacCACapable"/>, whose already-committed contract fixes it as
-/// <see cref="System.Numerics.BigInteger"/>.
+/// <c>AAResult.cs</c>). <c>keyId</c> uses <see cref="Org.BouncyCastle.Math.BigInteger"/>, the type of the
+/// key IDs in <c>ChipAuthenticationInfo</c>/<c>ChipAuthenticationPublicKeyInfo</c> (DG14), so that they can be
+/// passed through unchanged.
 /// </summary>
 public sealed class EACCAResult
 {

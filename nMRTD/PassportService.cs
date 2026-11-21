@@ -11,7 +11,7 @@
  * See LICENSE for more information.
  */
 
-using System.Numerics;
+using BigInteger = Org.BouncyCastle.Math.BigInteger;
 
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -377,7 +377,7 @@ public class PassportService : AbstractMRTDCardService
     }
 
     /// <inheritdoc />
-    public override PACEResult DoPace(IAccessKeySpec keySpec, string oid, object staticParameters, Org.BouncyCastle.Math.BigInteger? parameterId)
+    public override PACEResult DoPace(IAccessKeySpec keySpec, string oid, object staticParameters, BigInteger? parameterId)
     {
         lock (_lock)
         {

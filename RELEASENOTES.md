@@ -10,6 +10,14 @@
   publishes as a Native AOT executable on both. The `net6.0` build is unchanged and still covers
   .NET 6 and 7 apps. .NET 8 is out of support; the target is kept for AOT consumers. The tests run
   on all three frameworks.
+- **Chip Authentication takes the key ID type used by DG14.** `ChipAuthenticationInfo.GetKeyId()` and
+  `ChipAuthenticationPublicKeyInfo.GetKeyId()` return `Org.BouncyCastle.Math.BigInteger`, like
+  `PACEInfo.GetParameterId()` and `DoPace`, but `DoEACCA` took a `System.Numerics.BigInteger`, so
+  callers had to convert. `AbstractMRTDCardService`/`PassportService.DoEACCA`, `EACCAProtocol.DoCA`
+  and `SendPublicKey`, `IApduLevelEacCACapable.SendMseSetAtIntAuth` and `EACCAResult.KeyId` now use
+  `Org.BouncyCastle.Math.BigInteger`, and the key ID is encoded with `Util.I2os`, as in JMRTD. An
+  `[Obsolete]` `DoEACCA` overload still accepts a (non-nullable) `System.Numerics.BigInteger`; code that
+  passes a nullable `System.Numerics.BigInteger?` or implements `IApduLevelEacCACapable` needs updating.
 
 ### Fixed
 

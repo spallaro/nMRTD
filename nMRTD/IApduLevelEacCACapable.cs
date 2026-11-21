@@ -11,7 +11,7 @@
  * See LICENSE for more information.
  */
 
-using System.Numerics;
+using BigInteger = Org.BouncyCastle.Math.BigInteger;
 
 using nMRTD.SmartCards;
 
