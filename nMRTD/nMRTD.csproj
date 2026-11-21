@@ -49,7 +49,9 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- Lets the test project reach internal members. Only for unsigned builds: a strong-named assembly
+       would need the test assembly's public key here, and the signed release build does not need it. -->
+  <ItemGroup Condition="'$(SignAssembly)' != 'true'">
     <InternalsVisibleTo Include="nMRTD.Tests" />
   </ItemGroup>
 
