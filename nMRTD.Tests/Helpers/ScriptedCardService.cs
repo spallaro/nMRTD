@@ -6,7 +6,7 @@ namespace nMRTD.Tests.Helpers;
 /// Port of JMRTD's test helper <c>org.jmrtd.ScriptedCardService</c>: a card service that answers each
 /// command with the next scripted response and records the commands it was sent.
 /// </summary>
-internal sealed class ScriptedCardService(params ResponseApdu[] responses) : CardService
+internal class ScriptedCardService(params ResponseApdu[] responses) : CardService
 {
     private readonly List<ResponseApdu> _responses = [.. responses];
     private readonly List<CommandApdu> _commands = [];
