@@ -186,7 +186,7 @@ cyberJack RFID basis reader), as a JIT build and as a Native AOT executable.
 | Document | BAC | PACE | Passive Authentication | Chip Authentication | LDS |
 |---|---|---|---|---|---|
 | Italian identity card (CIE 3.0) | ✅ MRZ | ✅ CAN; DH, Generic Mapping, 3DES (`id-PACE-DH-GM-3DES-CBC-CBC`) | ✅ SHA-512 hashes; RSASSA-PSS SHA-512 signature | ✅ DH 2048-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | 1.8 |
-| Italian passport | ✅ MRZ | Not tested | ✅ SHA-1 hashes; SHA1withRSA signature | ✅ DH 1024-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | 1.7 |
+| Italian passport | ✅ MRZ | n.a. | ✅ SHA-1 hashes; SHA1withRSA signature | ✅ DH 1024-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | 1.7 |
 
 These two documents do not cover:
 
