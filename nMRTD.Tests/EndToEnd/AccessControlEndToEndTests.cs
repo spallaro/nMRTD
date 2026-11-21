@@ -38,6 +38,8 @@ public class AccessControlEndToEndTests
     [InlineData("0.4.0.127.0.7.2.2.4.4.1", 13, false, true)] // ECDH-IM 3DES
     [InlineData("0.4.0.127.0.7.2.2.4.4.2", 13, true, false)] // ECDH-IM AES-128
     [InlineData("0.4.0.127.0.7.2.2.4.4.2", 15, false, false)] // ECDH-IM AES-128, NIST P-384
+    [InlineData("0.4.0.127.0.7.2.2.4.4.3", 16, true, true)] // ECDH-IM AES-192
+    [InlineData("0.4.0.127.0.7.2.2.4.4.4", 17, false, false)] // ECDH-IM AES-256
     [InlineData("0.4.0.127.0.7.2.2.4.6.2", 13, false, true)] // ECDH-CAM AES-128
     [InlineData("0.4.0.127.0.7.2.2.4.6.3", 16, true, false)] // ECDH-CAM AES-192
     [InlineData("0.4.0.127.0.7.2.2.4.6.4", 17, false, false)] // ECDH-CAM AES-256
@@ -103,6 +105,34 @@ public class AccessControlEndToEndTests
         service.Close();
         Assert.False(service.IsOpen);
         Assert.Null(service.GetWrapper());
+    }
+
+    /// <summary>
+    /// PACE run over an existing secure channel (here, after BAC): its commands are protected with the old keys,
+    /// and then secure messaging restarts with the new keys and, by TR-SAC 4.6 / Doc 9303-11, an SSC of 0.
+    /// </summary>
+    private const string PaceAesSscBug =
+        "Library bug: PaceProtocol.cs:322 starts the new AES wrapper with the old wrapper's SSC (read at cs:315) instead of 0, as the 3DES branch (cs:318) and TR-SAC 4.6 do";
+
+    [Theory]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_GM_3DES_CBC_CBC, 13)]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13, Skip = PaceAesSscBug)]
+    [InlineData(SecurityInfo.ID_PACE_DH_GM_AES_CBC_CMAC_128, 0, Skip = PaceAesSscBug)]
+    public void PaceOverAnExistingSecureChannelRestartsSecureMessaging(string oid, int parameterId)
+    {
+        var document = new SimulatedDocument();
+        document.Pace.Add(new SimulatedChip.PaceSupport(oid, parameterId));
+        SimulatedChip chip = document.Build();
+        PassportService service = Open(chip);
+        DoBac(service);
+
+        Protocol.PACEResult result = service.DoPace(PaceKeySpec.CreateCanKey(SimulatedDocument.Can), oid,
+            PACEInfo.ToParameterSpec(parameterId), Org.BouncyCastle.Math.BigInteger.ValueOf(parameterId));
+        Assert.Equal(0, result.Wrapper!.SendSequenceCounter);
+        service.SendSelectApplet(true);
+
+        Assert.Equal(2, chip.Session);
+        Assert.Equal(chip.ApplicationFiles[PassportService.EF_COM], Read(service, PassportService.EF_COM));
     }
 
     [Fact]

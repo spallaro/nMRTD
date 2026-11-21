@@ -55,6 +55,35 @@ public class NegativeEndToEndTests
         Assert.Equal(0, chip.Session);
     }
 
+    [Theory]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13)]
+    [InlineData(SecurityInfo.ID_PACE_DH_GM_3DES_CBC_CBC, 0)]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_IM_AES_CBC_CMAC_256, 17)]
+    public void PaceRejectsAChipWithAWrongAuthenticationToken(string oid, int parameterId)
+    {
+        SimulatedChip chip = PaceChip(oid, parameterId);
+        chip.Fault = SimulatedChip.ChipFault.PaceToken;
+        PassportService service = Open(chip);
+
+        Assert.ThrowsAny<CardServiceException>(() => DoPace(service, PaceKeySpec.CreateCanKey(SimulatedDocument.Can)));
+
+        Assert.Null(service.GetWrapper());
+    }
+
+    [Theory]
+    [InlineData(nameof(SimulatedChip.ChipFault.BacChecksum))]
+    [InlineData(nameof(SimulatedChip.ChipFault.BacRandom))]
+    public void BacRejectsAChipWithAWrongCryptogram(string fault)
+    {
+        SimulatedChip chip = new SimulatedDocument().Build();
+        chip.Fault = Enum.Parse<SimulatedChip.ChipFault>(fault);
+        PassportService service = Open(chip);
+
+        Assert.ThrowsAny<CardServiceException>(() => DoBac(service));
+
+        Assert.Null(service.GetWrapper());
+    }
+
     [Fact]
     public void PaceWithTheWrongMrzFails()
     {

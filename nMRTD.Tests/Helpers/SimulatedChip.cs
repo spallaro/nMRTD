@@ -64,6 +64,23 @@ internal sealed class SimulatedChip : CardService
     /// <summary>Flips a bit in the MAC of the next protected command, as a man in the middle would.</summary>
     public bool CorruptNextCommandMac { get; set; }
 
+    /// <summary>Makes the chip answer an authentication protocol wrongly, as an impostor chip would.</summary>
+    public ChipFault Fault { get; set; }
+
+    public enum ChipFault
+    {
+        None,
+
+        /// <summary>The PACE authentication token T_PICC is wrong.</summary>
+        PaceToken,
+
+        /// <summary>The checksum M_IC of the BAC cryptogram is wrong.</summary>
+        BacChecksum,
+
+        /// <summary>The BAC cryptogram does not return RND.IFD.</summary>
+        BacRandom,
+    }
+
     // ---- Observations ----
 
     /// <summary>Incremented each time a secure messaging session starts (BAC, PACE, CA).</summary>
@@ -342,8 +359,13 @@ internal sealed class SimulatedChip : CardService
         byte[] rndIfd = s[..8];
         byte[] kIfd = s[16..32];
         byte[] kIc = RandomBytes(16);
-        byte[] eIc = Cbc(true, false, kEnc, new byte[8], [.. rndIc, .. rndIfd, .. kIc]);
+        byte[] returnedRndIfd = Fault == ChipFault.BacRandom ? rndIfd.Select(b => (byte)~b).ToArray() : rndIfd;
+        byte[] eIc = Cbc(true, false, kEnc, new byte[8], [.. rndIc, .. returnedRndIfd, .. kIc]);
         byte[] mIc = Mac(false, kMac, Pad(eIc, 8));
+        if (Fault == ChipFault.BacChecksum)
+        {
+            mIc[0] ^= 0x01;
+        }
 
         byte[] sessionSeed = kIfd.Zip(kIc, (a, b) => (byte)(a ^ b)).ToArray();
         long ssc = 0;
@@ -597,7 +619,12 @@ internal sealed class SimulatedChip : CardService
         {
             return Status(0x6300);
         }
-        byte[] response = Tlv.Encode(0x86, Token(pace.Aes, pace.MacKey, pace.Oid, pace.PcdPublic!));
+        byte[] piccToken = Token(pace.Aes, pace.MacKey, pace.Oid, pace.PcdPublic!);
+        if (Fault == ChipFault.PaceToken)
+        {
+            piccToken[0] ^= 0x01;
+        }
+        byte[] response = Tlv.Encode(0x86, piccToken);
         if (pace.Mapping == 6)
         {
             var ec = (ECDomainParameters)pace.StaticParameters;
