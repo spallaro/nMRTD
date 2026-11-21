@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+
+- **Target `net6.0`, `net8.0` and `net10.0`.** `net8.0` is back (it was dropped in 0.6.0-alpha) so that
+  .NET 8 and 9 apps get an AOT-compatible build: the `net8.0` and `net10.0` builds are marked
+  `IsAotCompatible` and checked by the AOT and single-file analyzers, with no warnings, and the CLI
+  publishes as a Native AOT executable on both. The `net6.0` build is unchanged and still covers
+  .NET 6 and 7 apps. .NET 8 is out of support; the target is kept for AOT consumers. The tests run
+  on all three frameworks.
+
 ### Fixed
 
 - **"No response APDU" now keeps its cause.** When sending a READ BINARY failed (for example the

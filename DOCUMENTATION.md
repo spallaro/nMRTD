@@ -1,6 +1,6 @@
 # nMRTD — Technical Documentation
 
-nMRTD is a .NET 6/10 library for reading ICAO Doc 9303 electronic Machine Readable Travel
+nMRTD is a .NET 6/8/10 library for reading ICAO Doc 9303 electronic Machine Readable Travel
 Documents (ePassports, eID cards) over PC/SC-connected contactless readers. It is a
 from-scratch C# port of [JMRTD](https://jmrtd.org/). This document is a deep technical
 reference for consumers of the library (and for contributors extending it). It assumes
@@ -1190,48 +1190,50 @@ store.
 
 ### 5.1 Current project configuration
 
-Both projects multi-target `net6.0;net10.0`. Native AOT tooling is only first-class in the
-SDK from .NET 7/8 onward, so AOT- and trim-analyzer properties are split accordingly:
+Both projects multi-target `net6.0;net8.0;net10.0`. Native AOT tooling is only first-class in
+the SDK from .NET 7/8 onward, so AOT- and trim-analyzer properties are split accordingly.
+`net8.0` is out of support but kept on purpose: it gives .NET 8 and 9 apps an AOT-compatible
+build (without it they would get the `net6.0` one, which is not AOT-annotated or analyzed).
 
 `nMRTD/nMRTD.csproj` (the library):
 
 ```xml
 <PropertyGroup>
-  <TargetFrameworks>net6.0;net10.0</TargetFrameworks>
+  <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
   <IsTrimmable>true</IsTrimmable>
   <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   <InvariantGlobalization>true</InvariantGlobalization>
 </PropertyGroup>
 
-<!-- IsAotCompatible / EnableAotAnalyzer / EnableSingleFileAnalyzer require net7+ SDK support. -->
-<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+<!-- IsAotCompatible / EnableAotAnalyzer / EnableSingleFileAnalyzer: net8.0 and later. -->
+<PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
   <IsAotCompatible>true</IsAotCompatible>
   <EnableAotAnalyzer>true</EnableAotAnalyzer>
   <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
 </PropertyGroup>
 ```
 
-`IsTrimmable`/`EnableTrimAnalyzer`/`InvariantGlobalization` apply to **both** target
+`IsTrimmable`/`EnableTrimAnalyzer`/`InvariantGlobalization` apply to **all** target
 frameworks — the ILLink trim analyzer itself works from `net6.0` onward, even though full
 Native AOT publishing does not. `IsAotCompatible`/`EnableAotAnalyzer`/
-`EnableSingleFileAnalyzer` are conditioned on `net10.0` only.
+`EnableSingleFileAnalyzer` apply to `net8.0` and `net10.0`.
 
 `nMRTD.Cli/nMRTD.Cli.csproj` (the console consumer, which actually publishes as a native
 executable):
 
 ```xml
 <PropertyGroup>
-  <TargetFrameworks>net6.0;net10.0</TargetFrameworks>
+  <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
   <InvariantGlobalization>true</InvariantGlobalization>
 </PropertyGroup>
 
-<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+<PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
   <PublishAot>true</PublishAot>
 </PropertyGroup>
 ```
 
-`net6.0` publishes as a normal (optionally trimmed, self-contained) build; `net10.0`
-publishes as a true Native AOT executable. Neither project pins a `RuntimeIdentifier` or
+`net6.0` publishes as a normal (optionally trimmed, self-contained) build; `net8.0` and
+`net10.0` publish as true Native AOT executables. Neither project pins a `RuntimeIdentifier` or
 `TrimMode` — RID selection is deferred to publish time (`dotnet publish -r <rid> -f
 net10.0`), and `TrimMode` stays at the SDK default (`link`: full member-level trimming, the
 strictest and most failure-revealing mode) rather than being loosened to `partial` or
@@ -1244,7 +1246,13 @@ native binary:
 dotnet publish nMRTD.Cli -c Release -f net10.0 -r win-x64
 dotnet publish nMRTD.Cli -c Release -f net10.0 -r linux-x64
 dotnet publish nMRTD.Cli -c Release -f net10.0 -r osx-arm64
+dotnet publish nMRTD.Cli -c Release -f net8.0 -r win-x64
 ```
+
+The only trim warning when publishing is `IL2104` for the third-party `PCSC` assembly; nMRTD
+itself produces no AOT or trim warnings on either target. On Windows the native link step needs
+`vswhere.exe` on the `PATH` (it is in `C:\Program Files (x86)\Microsoft Visual Studio\Installer`);
+a Visual Studio Developer PowerShell has it.
 
 ### 5.2 No reflection, no dynamic dispatch — by design
 
@@ -1348,7 +1356,7 @@ publish output — keep the culture-aware layer at the edge, above the protocol 
 1. Target `net8.0` (or later) — `net6.0` cannot be AOT-published even though it builds and
    runs fine as a regular/trimmed app.
 2. Set `<PublishAot>true</PublishAot>` in your own executable project, following the same
-   `net10.0`-only conditioning pattern shown in §5.1 if you also multi-target `net6.0`.
+   `net8.0`-and-later conditioning pattern shown in §5.1 if you also multi-target `net6.0`.
 3. Keep `EnableAotAnalyzer`/`EnableTrimAnalyzer` turned on during development so any
    incompatibility — in your own code, not just nMRTD's — surfaces as a build warning
    rather than a runtime failure after publishing.

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net6.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -17,9 +17,9 @@
   </PropertyGroup>
 
   <!-- Native AOT publish is only officially supported by the SDK starting with .NET 7/8, so it's
-       enabled for the net10.0 target only; net6.0 publishes as a regular (optionally trimmed,
+       enabled for the net8.0 and net10.0 targets; net6.0 publishes as a regular (optionally trimmed,
        self-contained) build. -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
     <PublishAot>true</PublishAot>
   </PropertyGroup>
 
