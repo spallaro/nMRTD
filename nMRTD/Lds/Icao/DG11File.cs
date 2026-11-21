@@ -132,7 +132,8 @@ public class DG11File : AdditionalDetailDataGroup
 
     /* Accessors below. */
 
-    public new int GetTag() => LDSFile.EF_DG11_TAG;
+    /// <summary>Returns the DG11 tag. Overrides the base, as in JMRTD.</summary>
+    public override int GetTag() => LDSFile.EF_DG11_TAG;
 
     /// <summary>Returns the list of tags of fields actually present.</summary>
     public override List<int> GetTagPresenceList()

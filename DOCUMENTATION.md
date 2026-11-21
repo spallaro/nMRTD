@@ -963,11 +963,10 @@ Both derive from `AdditionalDetailDataGroup`, which implements a shared "tag lis
 fields in that order" TLV encoding.
 
 > **Preserved upstream quirk:** `AdditionalDetailDataGroup`'s protected constructor ignores
-> its `tag` parameter and always builds with the DG11 tag internally; `DG12File`'s
-> data-based constructor is therefore only correctly tagged once round-tripped through the
-> stream constructor. This is inherited byte-for-byte from JMRTD and intentionally not
-> "fixed" in the port, since correctness only matters for the on-the-wire encoding (which
-> the stream constructor path produces correctly), not for freshly-built in-memory objects.
+> its `tag` parameter and always builds with the DG11 tag internally, as in JMRTD. It does not
+> affect the encoding: `DG11File` and `DG12File` override `GetTag()`, which is what
+> `WriteObject` writes, so a `DG12File` built from data is encoded with tag `0x6C` and reads
+> back through the stream constructor.
 
 ```csharp
 // DG11 (tag 0x6B):

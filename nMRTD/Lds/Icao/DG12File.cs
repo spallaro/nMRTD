@@ -202,7 +202,8 @@ public class DG12File : AdditionalDetailDataGroup
     /// <summary>Returns the personalization system serial number.</summary>
     public string? GetPersonalizationSystemSerialNumber() => personalizationSystemSerialNumber;
 
-    public new int GetTag() => LDSFile.EF_DG12_TAG;
+    /// <summary>Returns the DG12 tag. Overrides the base, as in JMRTD, so that encoding writes 0x6C.</summary>
+    public override int GetTag() => LDSFile.EF_DG12_TAG;
 
     /// <summary>Returns a textual representation of this file.</summary>
     public override string ToString() =>

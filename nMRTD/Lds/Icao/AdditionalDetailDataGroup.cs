@@ -20,21 +20,14 @@ namespace nMRTD.Lds.Icao;
 /// <summary>
 /// Port of <c>org.jmrtd.lds.icao.AdditionalDetailDataGroup</c>: abstract superclass for DG11 and DG12.
 ///
-/// NOTE on a genuine, confirmed-upstream JMRTD bug preserved here for fidelity: the Java
-/// <c>AdditionalDetailDataGroup(int tag)</c> constructor ignores its <c>tag</c> parameter and
-/// always passes <c>EF_DG11_TAG</c> to the super constructor (JMRTD source, verbatim: <c>public
-/// AdditionalDetailDataGroup(int tag) { super(EF_DG11_TAG); }</c>). <c>DG12File</c>'s field-based (i.e.
-/// non-stream, "construct from data to write out") constructor calls <c>super(EF_DG12_TAG)</c>, which is a
-/// call to exactly this one-int-parameter constructor -- there is no other constructor with that shape to
-/// resolve to -- so that call really does hit the bug and really does produce a <c>DG12File</c> instance
-/// internally tagged as DG11 (confirmed empirically: <c>GetEncoded()</c> on such an instance emits tag
-/// <c>0x6B</c> (EF_DG11_TAG) instead of <c>0x6C</c> (EF_DG12_TAG), which then fails to round-trip through
-/// <c>DG12File</c>'s own stream constructor with an "expecting tag 6c, found 6b" error). This is NOT latent
-/// -- it reproduces upstream JMRTD's actual behavior for that (admittedly rarely-exercised, write-then-
-/// reparse) code path. The DG12File(Stream) constructor used when *reading* an EF.DG12 file from a card is
-/// unaffected (it calls <see cref="AdditionalDetailDataGroup(int, Stream)"/>, the other constructor, which
-/// forwards <c>tag</c> correctly). Ported byte-for-byte regardless of the bug, since silently
-/// "fixing" it here would be exactly the kind of subtle deviation from upstream this port must avoid.
+/// NOTE on an upstream JMRTD quirk preserved here: the Java <c>AdditionalDetailDataGroup(int tag)</c>
+/// constructor ignores its <c>tag</c> parameter and always passes <c>EF_DG11_TAG</c> to the super
+/// constructor (<c>public AdditionalDetailDataGroup(int tag) { super(EF_DG11_TAG); }</c>), so a
+/// <c>DG12File</c> built from data starts out with the DG11 tag in its <c>tag</c> field. This has no
+/// effect on the encoding: <c>DG11File</c> and <c>DG12File</c> override <c>GetTag()</c>, and
+/// <c>AbstractTaggedLDSFile.WriteObject</c> writes (and stores) <c>GetTag()</c>, so a DG12 is always
+/// written with tag <c>0x6C</c>, as in JMRTD. The stream constructor
+/// (<see cref="AdditionalDetailDataGroup(int, Stream)"/>) forwards <c>tag</c> correctly.
 /// </summary>
 public abstract class AdditionalDetailDataGroup : DataGroup
 {
