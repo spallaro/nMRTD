@@ -11,6 +11,8 @@
  * See LICENSE for more information.
  */
 
+using System.Security.Cryptography;
+
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
 
@@ -159,7 +161,8 @@ public abstract class SecureMessagingWrapper : IApduWrapper
     /// <returns>whether the computed MAC is identical</returns>
     protected bool CheckMac(byte[] rapdu, byte[] cc)
     {
-        byte[] paddedData = Util.Pad(rapdu, 0, rapdu.Length - 2 - 8 - 2, GetPadLength());
+        // The MAC covers the data objects before DO'8E, which is the last data object (before the status word).
+        byte[] paddedData = Util.Pad(rapdu, 0, rapdu.Length - 2 - cc.Length - 2, GetPadLength());
 
         _mac.Init(MacKey);
         byte[] ssc = GetEncodedSendSequenceCounter();
@@ -175,41 +178,11 @@ public abstract class SecureMessagingWrapper : IApduWrapper
             cc2 = newCC2;
         }
 
-        return cc.AsSpan().SequenceEqual(cc2);
+        return CryptographicOperations.FixedTimeEquals(cc, cc2);
     }
 
     /// <summary>Returns the length (in bytes) to use for padding.</summary>
     protected abstract int GetPadLength();
-
-    /// <summary>
-    /// The length (in bytes) to use for padding. Exposes <see cref="GetPadLength"/> to the rest of this
-    /// assembly, matching the package-level access Java's <c>protected</c> gives <c>AAAPDUSender</c>.
-    /// </summary>
-    internal int PadLength => GetPadLength();
-
-    /// <summary>
-    /// The length (in bytes) to use for padding. Exposes <see cref="GetPadLength"/> to the rest of this
-    /// assembly, matching the package-level access Java's <c>protected</c> gives <c>AAAPDUSender</c>.
-    /// </summary>
-    internal int PadLength => GetPadLength();
-
-    /// <summary>
-    /// The length (in bytes) to use for padding. Exposes <see cref="GetPadLength"/> to the rest of this
-    /// assembly, matching the package-level access Java's <c>protected</c> gives <c>AAAPDUSender</c>.
-    /// </summary>
-    internal int PadLength => GetPadLength();
-
-    /// <summary>
-    /// The length (in bytes) to use for padding. Exposes <see cref="GetPadLength"/> to the rest of this
-    /// assembly, matching the package-level access Java's <c>protected</c> gives <c>AAAPDUSender</c>.
-    /// </summary>
-    internal int PadLength => GetPadLength();
-
-    /// <summary>
-    /// The length (in bytes) to use for padding. Exposes <see cref="GetPadLength"/> to the rest of this
-    /// assembly, matching the package-level access Java's <c>protected</c> gives <c>AAAPDUSender</c>.
-    /// </summary>
-    internal int PadLength => GetPadLength();
 
     /// <summary>
     /// The length (in bytes) to use for padding. Exposes <see cref="GetPadLength"/> to the rest of this
@@ -334,42 +307,55 @@ public abstract class SecureMessagingWrapper : IApduWrapper
             throw new ArgumentException("Invalid response APDU");
         }
 
-        _cipher.Init(forEncryption: false, new ParametersWithIV(EncryptionKey, GetIV()));
-
-        byte[] data = [];
+        // Parse the data objects (not the status word), without decrypting anything yet.
+        byte[]? ciphertext = null;
         byte[]? cc = null;
         short sw = 0;
 
         int pos = 0;
-        bool isFinished = false;
-        while (!isFinished)
+        int end = rapdu.Length - 2;
+        while (cc == null && pos < end)
         {
-            int tag = ReadByteChecked(rapdu, ref pos);
-            switch ((byte)tag)
+            int tag = ReadByteChecked(rapdu, ref pos, end);
+            switch (tag)
             {
                 case 0x87:
-                    data = ReadDO87(rapdu, ref pos, do85: false);
+                    ciphertext = ReadDO87(rapdu, ref pos, end, do85: false);
                     break;
                 case 0x85:
-                    data = ReadDO87(rapdu, ref pos, do85: true);
+                    ciphertext = ReadDO87(rapdu, ref pos, end, do85: true);
                     break;
                 case 0x99:
-                    sw = ReadDO99(rapdu, ref pos);
+                    sw = ReadDO99(rapdu, ref pos, end);
                     break;
                 case 0x8E:
-                    cc = ReadDO8E(rapdu, ref pos);
-                    isFinished = true;
+                    cc = ReadDO8E(rapdu, ref pos, end);
+                    if (pos < end)
+                    {
+                        throw new InvalidOperationException("Unexpected data after DO'8E");
+                    }
                     break;
                 default:
+                    // Skip the value, so that the next data object is read correctly.
                     // NOTE: Java logs a warning here; omitted per the non-essential-warning-omission
                     // precedent used elsewhere in this port.
+                    int skipLength = ReadLength(rapdu, ref pos, end);
+                    pos += skipLength;
                     break;
             }
         }
 
+        // Check the MAC before decrypting.
         if (ShouldCheckMac && (cc == null || !CheckMac(rapdu, cc)))
         {
             throw new InvalidOperationException("Invalid MAC");
+        }
+
+        byte[] data = [];
+        if (ciphertext != null)
+        {
+            _cipher.Init(forEncryption: false, new ParametersWithIV(EncryptionKey, GetIV()));
+            data = Util.Unpad(_cipher.DoFinal(ciphertext));
         }
 
         using var resultStream = new MemoryStream();
@@ -391,91 +377,104 @@ public abstract class SecureMessagingWrapper : IApduWrapper
         return [(byte)((le & 0xFF00) >> 8), (byte)(le & 0xFF)];
     }
 
-    /// <summary>Reads a data object. The <c>0x87</c>/<c>0x85</c> tag has already been read.</summary>
-    private byte[] ReadDO87(byte[] rapdu, ref int pos, bool do85)
+    /// <summary>
+    /// Reads the encrypted data of a <c>0x87</c> or <c>0x85</c> data object. The tag has already been
+    /// read. The data is not decrypted here, so that the MAC can be checked first.
+    /// </summary>
+    /// <param name="rapdu">the response APDU bytes</param>
+    /// <param name="pos">the current read position, advanced past the data object</param>
+    /// <param name="end">the end of the data objects (the start of the status word)</param>
+    /// <param name="do85">whether to expect a <c>0x85</c> (without the extra <c>0x01</c> padding indicator) data object</param>
+    /// <returns>the ciphertext</returns>
+    private static byte[] ReadDO87(byte[] rapdu, ref int pos, int end, bool do85)
     {
-        // Read length...
+        int length = ReadLength(rapdu, ref pos, end);
+        if (!do85)
+        {
+            if (length < 1)
+            {
+                throw new InvalidOperationException("DO'87 too short for the 0x01 marker");
+            }
+            int marker = ReadByteChecked(rapdu, ref pos, end);
+            if (marker != 0x01)
+            {
+                throw new InvalidOperationException($"DO'87 expected 0x01 marker, found {marker:x}");
+            }
+            length--; // Takes care of the extra 0x01 marker...
+        }
+        return ReadFully(rapdu, ref pos, end, length);
+    }
+
+    /// <summary>
+    /// Reads a BER length (short form, or long form with 1 to 3 length bytes), and checks that the
+    /// value fits in the remaining data.
+    /// </summary>
+    private static int ReadLength(byte[] rapdu, ref int pos, int end)
+    {
         int length;
-        int buf = ReadByteChecked(rapdu, ref pos);
-        if ((buf & 0x00000080) != 0x00000080)
+        int buf = ReadByteChecked(rapdu, ref pos, end);
+        if ((buf & 0x80) != 0x80)
         {
             // Short form.
             length = buf;
-            if (!do85)
-            {
-                buf = ReadByteChecked(rapdu, ref pos); // Should be 0x01...
-                if (buf != 0x01)
-                {
-                    throw new InvalidOperationException($"DO'87 expected 0x01 marker, found {buf & 0xFF:x}");
-                }
-            }
         }
         else
         {
             // Long form.
-            int lengthBytesCount = buf & 0x0000007F;
+            int lengthBytesCount = buf & 0x7F;
+            if (lengthBytesCount < 1 || lengthBytesCount > 3)
+            {
+                throw new InvalidOperationException($"Unsupported length encoding, {lengthBytesCount} length bytes");
+            }
             length = 0;
             for (int i = 0; i < lengthBytesCount; i++)
             {
-                length = (length << 8) | ReadByteChecked(rapdu, ref pos);
-            }
-            if (!do85)
-            {
-                buf = ReadByteChecked(rapdu, ref pos); // Should be 0x01...
-                if (buf != 0x01)
-                {
-                    throw new InvalidOperationException("DO'87 expected 0x01 marker");
-                }
+                length = (length << 8) | ReadByteChecked(rapdu, ref pos, end);
             }
         }
-
-        if (!do85)
+        if (length > end - pos)
         {
-            length--; // Takes care of the extra 0x01 marker...
+            throw new InvalidOperationException($"Length {length} out of bounds");
         }
-
-        // Read, decrypt, unpad the data...
-        byte[] ciphertext = ReadFully(rapdu, ref pos, length);
-        byte[] paddedData = _cipher.DoFinal(ciphertext);
-        return Util.Unpad(paddedData);
+        return length;
     }
 
     /// <summary>Reads a data object. The <c>0x99</c> tag has already been read.</summary>
-    private static short ReadDO99(byte[] rapdu, ref int pos)
+    private static short ReadDO99(byte[] rapdu, ref int pos, int end)
     {
-        int length = ReadByteChecked(rapdu, ref pos);
+        int length = ReadByteChecked(rapdu, ref pos, end);
         if (length != 2)
         {
             throw new InvalidOperationException("DO'99 wrong length");
         }
-        byte sw1 = (byte)ReadByteChecked(rapdu, ref pos);
-        byte sw2 = (byte)ReadByteChecked(rapdu, ref pos);
+        byte sw1 = (byte)ReadByteChecked(rapdu, ref pos, end);
+        byte sw2 = (byte)ReadByteChecked(rapdu, ref pos, end);
         return (short)(((sw1 & 0x000000FF) << 8) | (sw2 & 0x000000FF));
     }
 
     /// <summary>Reads a data object. This assumes that the <c>0x8E</c> tag has already been read.</summary>
-    private static byte[] ReadDO8E(byte[] rapdu, ref int pos)
+    private static byte[] ReadDO8E(byte[] rapdu, ref int pos, int end)
     {
-        int length = ReadByteChecked(rapdu, ref pos);
+        int length = ReadByteChecked(rapdu, ref pos, end);
         if (length != 8 && length != 16)
         {
             throw new InvalidOperationException($"DO'8E wrong length for MAC: {length}");
         }
-        return ReadFully(rapdu, ref pos, length);
+        return ReadFully(rapdu, ref pos, end, length);
     }
 
-    private static int ReadByteChecked(byte[] data, ref int pos)
+    private static int ReadByteChecked(byte[] data, ref int pos, int end)
     {
-        if (pos >= data.Length)
+        if (pos >= end)
         {
             throw new EndOfStreamException("Unexpected end of response APDU while unwrapping.");
         }
         return data[pos++] & 0xFF;
     }
 
-    private static byte[] ReadFully(byte[] data, ref int pos, int count)
+    private static byte[] ReadFully(byte[] data, ref int pos, int end, int count)
     {
-        if (count < 0 || pos + count > data.Length)
+        if (count < 0 || count > end - pos)
         {
             throw new EndOfStreamException("Unexpected end of response APDU while unwrapping.");
         }
