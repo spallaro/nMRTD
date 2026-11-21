@@ -67,6 +67,13 @@ static async Task<int> RunAsync(string[] args)
     string? readerName = options.GetValueOrDefault("reader");
     string? outDir = options.GetValueOrDefault("out", Directory.GetCurrentDirectory());
 
+    if (options.ContainsKey("bac") && options.ContainsKey("can"))
+    {
+        await Console.Error.WriteLineAsync("Argument error: --bac needs the MRZ access key (--doc/--dob/--doe); a CAN cannot be used for BAC.");
+        PrintUsage();
+        return 1;
+    }
+
     AccessCredentials credentials;
     try
     {
@@ -102,8 +109,22 @@ static async Task<int> RunAsync(string[] args)
             ? PaceKeySpec.CreateCanKey(credentials.Can!)
             : PaceKeySpec.CreateMrzKey(credentials.BacKey!);
 
-        bool usedPace = await TryPerformPaceAsync(passportService, paceKey);
-        if (!usedPace)
+        bool forceBac = options.ContainsKey("bac");
+        if (forceBac && credentials.Mode == AccessKeyMode.Can)
+        {
+            await Console.Error.WriteLineAsync("--bac needs the MRZ access key; a CAN cannot be used for BAC.");
+            return 1;
+        }
+
+        bool usedPace = !forceBac && await TryPerformPaceAsync(passportService, paceKey);
+        if (forceBac)
+        {
+            Console.WriteLine("Skipping PACE (--bac): performing BAC.");
+            passportService.SendSelectApplet(false);
+            passportService.DoBAC(credentials.BacKey!);
+            Console.WriteLine("BAC completed.");
+        }
+        else if (!usedPace)
         {
             if (credentials.Mode == AccessKeyMode.Can)
             {
@@ -933,6 +954,9 @@ static Dictionary<string, string> ParseArgs(string[] args)
             case "--verbose":
                 options["verbose"] = "true";
                 break;
+            case "--bac":
+                options["bac"] = "true";
+                break;
             case "--reader":
             case "--doc":
             case "--dob":
@@ -958,7 +982,7 @@ static void PrintUsage()
         nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive Authentication, Chip Authentication) via a PC/SC reader.
 
         Usage:
-          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--out <dir>]
+          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>]
           nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>]
           nMRTD.Cli --list-readers
 
@@ -969,6 +993,7 @@ static void PrintUsage()
           --doe <yyMMdd>    Date of expiry (MRZ access key)
           --can <value>     Card Access Number (CAN access key; PACE only, see note below)
           --out <dir>       Directory to save extracted images (DG2/DG5/DG6/DG7) to (default: current directory)
+          --bac             Skip PACE and use BAC (needs --doc/--dob/--doe), even if the document supports PACE
           --verbose         Print APDU exchanges and protocol steps (BAC/PACE/...) to stderr as they happen
           --list-readers    List available PC/SC readers and exit
           -h, --help        Show this help
