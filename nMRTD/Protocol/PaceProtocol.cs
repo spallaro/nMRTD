@@ -464,6 +464,10 @@ public class PaceProtocol
 
             byte[] piccMappingEncodedPublicKey = TlvUtil.UnwrapDO(0x82, step2Response);
             AsymmetricKeyParameter piccMappingPublicKey = DecodePublicKeyFromSmartCard(piccMappingEncodedPublicKey, staticParameters);
+            if (piccMappingPublicKey is DHPublicKeyParameters piccMappingDHPublicKey)
+            {
+                CheckDHPublicValue(piccMappingDHPublicKey.Y, (DHParameters)staticParameters);
+            }
 
             if (agreementAlg == "ECDH")
             {
@@ -592,6 +596,10 @@ public class PaceProtocol
                 false);
             byte[] piccEncodedPublicKey = TlvUtil.UnwrapDO(0x84, step3Response);
             AsymmetricKeyParameter piccPublicKey = DecodePublicKeyFromSmartCard(piccEncodedPublicKey, ephemeralParams);
+            if (piccPublicKey is DHPublicKeyParameters piccDHPublicKey)
+            {
+                CheckDHPublicValue(piccDHPublicKey.Y, (DHParameters)ephemeralParams);
+            }
 
             if (KeysAreEqual(pcdPublicKey, piccPublicKey))
             {
@@ -813,14 +821,45 @@ public class PaceProtocol
     /// <param name="nonceS">the nonce received from the PICC</param>
     /// <param name="sharedSecretH">the shared secret point</param>
     /// <param name="staticParameters">the static parameters</param>
-    /// <returns>the new parameters</returns>
+    /// <returns>the new parameters, keeping q if the static parameters have it</returns>
+    /// <exception cref="ArgumentException">if the mapped generator is 0 or 1</exception>
     public static DHParameters MapNonceGMWithDH(byte[] nonceS, BigInteger sharedSecretH, DHParameters staticParameters)
     {
         // g~ = g^s * h
         BigInteger p = staticParameters.P;
         BigInteger generator = staticParameters.G;
         BigInteger mappedGenerator = generator.ModPow(Util.Os2i(nonceS), p).Multiply(sharedSecretH).Mod(p);
-        return new DHParameters(p, mappedGenerator, null, staticParameters.L);
+        if (mappedGenerator.CompareTo(BigInteger.One) <= 0)
+        {
+            throw new ArgumentException($"Invalid mapped generator: {mappedGenerator}");
+        }
+
+        // Keep q (null if the static parameters do not have it), needed for public key validation in the
+        // key agreement step.
+        return new DHParameters(p, mappedGenerator, staticParameters.Q, staticParameters.L);
+    }
+
+    /// <summary>
+    /// Validates a DH public value received from the PICC, as in RFC 2631, Section 2.1.5 (required by
+    /// Doc 9303 - Part 11, 4.4.3.3 and 9.6). The value must be in <c>[2, p - 1]</c>, and (if q is known)
+    /// in the subgroup of order q.
+    /// </summary>
+    /// <param name="y">the public value</param>
+    /// <param name="parameters">the domain parameters</param>
+    /// <exception cref="Org.BouncyCastle.Security.InvalidKeyException">if the public value is not valid</exception>
+    internal static void CheckDHPublicValue(BigInteger y, DHParameters parameters)
+    {
+        BigInteger p = parameters.P;
+        if (y.CompareTo(BigInteger.Two) < 0 || y.CompareTo(p.Subtract(BigInteger.One)) > 0)
+        {
+            throw new Org.BouncyCastle.Security.InvalidKeyException("DH public value not in [2, p - 1]");
+        }
+
+        BigInteger? q = parameters.Q;
+        if (q != null && !y.ModPow(q, p).Equals(BigInteger.One))
+        {
+            throw new Org.BouncyCastle.Security.InvalidKeyException("DH public value not in the subgroup of order q");
+        }
     }
 
     /* Integrated Mapping. */
