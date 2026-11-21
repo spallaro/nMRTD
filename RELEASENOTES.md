@@ -60,6 +60,11 @@ them date back to the initial port.
   (its setup code is commented out).
 - Smaller cleanups: unambiguous and resolvable `cref`s, an explicit unsigned byte in the READ BINARY
   length parser, `new` on `DG11File.TAG_LIST_TAG`, and awaited error output in the CLI.
+- **New `nMRTD.Tests` project** (xUnit, `net6.0` and `net10.0`): 65 tests for secure messaging, BAC,
+  AA, PACE, MRZ, utilities, LDS round trips, CV certificates (including the EJBCA chains from the
+  JMRTD repository), `CardFileInputStream` and ISO/IEC 39794, with a regression test for each fix
+  above. Code coverage is collected with coverlet in OpenCover format. The library grants the test
+  assembly access to its internals (`InternalsVisibleTo`).
 
 ## 0.6.1-alpha (2026-11-21)
 

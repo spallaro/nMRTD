@@ -4,7 +4,7 @@
 ![Target Framework](https://img.shields.io/badge/.NET-6%20|%2010-white)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-white.svg)](https://opensource.org/license/lgpl-3-0)
 
-> **Status:** THIS IS AN EARLY-STAGE PORT: the core protocol stack (BAC, PACE, EAC, Active/Passive Authentication) and the LDS/biometric data model are implemented and build cleanly, but the library has not yet been exercised against a broad range of real-world documents or covered by an automated test suite. Treat it as a foundation to build on and validate for your own use case, not as a production-hardened SDK yet.
+> **Status:** THIS IS AN EARLY-STAGE PORT: the core protocol stack (BAC, PACE, EAC, Active/Passive Authentication) and the LDS/biometric data model are implemented and build cleanly, but the library has not yet been exercised against a broad range of real-world documents and its automated test suite is still small. Treat it as a foundation to build on and validate for your own use case, not as a production-hardened SDK yet.
 
 > **Please note:** this project is AI-assisted.
 
@@ -118,6 +118,17 @@ passportService.SendSelectApplet(true);
 ```
 
 For a complete, runnable example covering reader selection, PACE-with-BAC-fallback, DG1/DG2 parsing, and full Passive Authentication (EF.SOD hash and signature verification), see [`nMRTD.Cli/Program.cs`](nMRTD.Cli/Program.cs) in this repository.
+
+## Tests
+
+```
+dotnet test nMRTD.sln
+dotnet test nMRTD.sln --collect:"XPlat Code Coverage"
+```
+
+The tests run on both target frameworks. With `--collect`, coverlet writes a
+`coverage.opencover.xml` for each framework under `nMRTD.Tests/TestResults/` (the format is set in
+[`nMRTD.Tests/coverage.runsettings`](nMRTD.Tests/coverage.runsettings)).
 
 ## License
 
