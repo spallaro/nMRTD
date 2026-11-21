@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.6.1-alpha (2026-11-21)
+
+### Fixed
+
+- **Document all parameters of the `SODFile` constructors.** Four constructors documented only some
+  of their parameters (compiler warning CS1573); the descriptions follow the upstream JMRTD javadoc.
+
 ## 0.6.0-alpha (2026-11-21)
 
 ### Changed
