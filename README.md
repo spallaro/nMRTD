@@ -188,22 +188,22 @@ cyberJack RFID basis reader), as a JIT build and as a Native AOT executable.
 | Italian identity card (CIE 3.0) | ✅ MRZ | ✅ CAN; DH, Generic Mapping, 3DES (`id-PACE-DH-GM-3DES-CBC-CBC`) | ✅ SHA-512 hashes; RSASSA-PSS SHA-512 signature | ✅ DH 2048-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | 1.8 |
 | Italian passport | ✅ MRZ | Not tested | ✅ SHA-1 hashes; SHA1withRSA signature | ✅ DH 1024-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | 1.7 |
 
-> **Note:** these two documents do not cover:
->
-> - PACE and Chip Authentication with elliptic curves or AES;
-> - Active Authentication (neither document has DG15);
-> - Terminal Authentication, which needs terminal certificates issued by a national document
->   verifier to read the fingerprints (DG3).
->
-> Passive Authentication here checks the document signature with the signer certificate stored in
-> EF.SOD; it does not validate that certificate against the issuing country's CSCA.
->
-> **Please help extend this table.** If you read another document with `nMRTD.Cli` (another country,
-> another document type, or the same document with a different access method), please
-> [open an issue](https://github.com/spallaro/nMRTD/issues) with the document type and issuing
-> country, the reader and operating system, and the BAC, PACE, Passive Authentication and Chip
-> Authentication lines of the output, including any error. Leave out names, document numbers, dates,
-> photos and hex dumps: the protocol and algorithm lines are all that is needed.
+These two documents do not cover:
+
+- PACE and Chip Authentication with elliptic curves or AES;
+- Active Authentication (neither document has DG15);
+- Terminal Authentication, which needs terminal certificates issued by a national document
+  verifier to read the fingerprints (DG3).
+
+Passive Authentication here checks the document signature with the signer certificate stored in
+EF.SOD; it does not validate that certificate against the issuing country's CSCA.
+
+*Please help extend this table. If you read another document with `nMRTD.Cli` (another country,
+another document type, or the same document with a different access method), please
+[open an issue](https://github.com/spallaro/nMRTD/issues) with the document type and issuing
+country, the reader and operating system, and the BAC, PACE, Passive Authentication and Chip
+Authentication lines of the output, including any error. Leave out names, document numbers, dates,
+photos and hex dumps: the protocol and algorithm lines are all that is needed.*
 
 ## Tests
 
