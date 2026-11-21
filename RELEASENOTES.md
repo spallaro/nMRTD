@@ -1,5 +1,113 @@
 # Release Notes
 
+## 0.5.0-alpha (2026-11-21)
+
+**JMRTD upstream alignment status:** nMRTD has been reviewed against upstream JMRTD up to commit
+`2c08440a` ("Fixed trivial bugs and spelling errors", 2026-10-22 17:16), the latest commit on the
+upstream `jmrtd-jmrtd` repository as of this review. All 15 commits after `277cd364` have been
+evaluated for applicability to nMRTD. The applicable changes were verified with a throwaway
+harness that ports the tests upstream added in these commits (secure messaging unwrap hardening
+for 3DES and AES, BAC, PACE DH/ECDH mapping and public key validation, the PACE public key data
+object, AA, TD2 MRZ, `Util`), plus the ICAO Doc 9303 Part 11 Appendix D BAC vectors.
+
+### Security
+
+- **Secure messaging: check the MAC before decrypting the response** *(ported from JMRTD)*.
+  `SecureMessagingWrapper.Unwrap` used to decrypt DO'87/DO'85 while parsing, and only then check
+  the MAC. It now parses all data objects first, checks the MAC (also failing when DO'8E is
+  missing), and decrypts last. Unknown data objects are now skipped by their length (their value
+  used to be parsed as further data objects), DO'8E must be the last data object, the MAC input is
+  computed from the actual MAC length (8 or 16 bytes) instead of a hard-coded 8, and the MAC is
+  compared in constant time (`CryptographicOperations.FixedTimeEquals`). Lengths are bounds-checked
+  and long-form lengths are limited to 1 to 3 length bytes. Ported from upstream JMRTD commits
+  `5329b2506a4c36f85a2acf0c7b26666622727486`, "Secure messaging: check the MAC before decrypting
+  the response, ...", and (the length checks) `73c7c92f5b1ff4130d40dd433ffcce2f564ef2c7`; the tests
+  of `3f79496b78be8b10baa574fbd51da9e105685e5a` (AES unwrap hardening) were used for verification.
+
+- **BAC: verify the PICC's `EXTERNAL AUTHENTICATE` response** *(ported from JMRTD)*.
+  `BACAPDUSender.SendMutualAuth` now checks the checksum M_IC on the PICC's cryptogram before
+  decrypting it, and checks that the PICC returned RND.IFD (Doc 9303 Part 11, 4.3.1, step 4), both
+  in constant time. The retry with Le = 0 now also null-checks its response. Ported from upstream
+  JMRTD commit `f2eaee4541a67894fec824c1fcd50fc1c2091ac0`.
+
+- **PACE with DH: validate the PICC's public values and the mapped generator** *(ported from
+  JMRTD)*. The PICC's DH public values (mapping and ephemeral) are now validated as in RFC 2631,
+  2.1.5 (in `[2, p - 1]` and, when q is known, in the subgroup of order q). PACE-GM
+  (`MapNonceGMWithDH`) now rejects a mapped generator of 0 or 1 and keeps q in the mapped
+  parameters (needed for that validation in the key agreement step). PACE-IM (`MapNonceImWithDH`)
+  now requires q (with the previous fallback q = 1 the mapped generator was always 1), rejects a
+  mapped generator of 1, and keeps q. PACE-GM with ECDH (`MapNonceGMWithECDH`) now throws when the
+  mapped generator is the point at infinity or not a valid point (it used to be silently
+  accepted). Ported from upstream JMRTD commits `242e89c4e5be8ae32c90c4a15ed0aff008655b7a`,
+  `a199a6fcf967e1662084106ed4480b8a9b3a5b12`, and `73c7c92f5b1ff4130d40dd433ffcce2f564ef2c7`. The
+  other half of `a199a6fc` (the PACE-IM ECDH cofactor multiplication, whose result upstream
+  discarded) did not apply: nMRTD's `IcartPointEncode` already used the multiplied point.
+
+### Fixed
+
+- **PACE public key data object with domain parameters** *(ported from JMRTD)*.
+  `PaceProtocol.EncodePublicKeyDataObject(..., isContextKnown: false)` now writes q (not the
+  private value length l) in DH tag 82, and the EC base point in tag 84 as an uncompressed point
+  (Doc 9303 Part 11, 9.4.1) instead of the bare concatenation of its coordinates. Unsupported keys
+  and DH keys without q are rejected before anything is written. Ported from upstream JMRTD commit
+  `7f476b2172c254152fe9be3dead4bc311e811062`.
+
+- **TD2 composite check digit** *(ported from JMRTD)*. It is now computed over the fields as
+  printed: a document number shorter than 9 characters is padded with fillers, and a document
+  number longer than 9 characters continues in the optional data field (as TD1 already did).
+  Ported from upstream JMRTD commit `bd0633f55c73bfd0fa29d5d0535399318f3ceaf6`.
+
+- **Active Authentication: choose short or extended Le from the secure messaging pad length**
+  *(ported from JMRTD)*. The largest signature that still fits a short response APDU is now 223
+  bytes with AES secure messaging (231 with 3DES, as before). Ported from upstream JMRTD commit
+  `bd0633f55c73bfd0fa29d5d0535399318f3ceaf6`.
+
+- **`SELECT MF` without file identifier** *(ported from JMRTD)*. `SendSelectMf` now sends
+  `00 A4 00 0C` without the `3F00` data field. Ported from upstream JMRTD commit
+  `4b9bb6309f11e9d22aabf70f8f2afccd4c04e718`.
+
+- **Biometric data fixes** *(ported from JMRTD)*. `FaceInfo` now copies only the bytes actually
+  read when reconstructing a bare JPEG 2000 face image (it used to copy the whole 2048-byte buffer,
+  padding the image with zeros), `FingerImageRepresentationBlock.GetMimeType()` now returns the
+  MIME type of the image data format (it always returned `null`), and
+  `IrisImageRepresentationBlock.ToString()` now prints the image data length (its null check was
+  inverted). Ported from upstream JMRTD commit `2c08440a1df68b4b8f8d957165e580937f44e74f`.
+
+- **Robustness** *(ported from JMRTD)*. `Util.Unpad` now throws a `CryptographicException` for
+  input that is all zero bytes (it used to throw `IndexOutOfRangeException`), `Util.Os2ECPoint`
+  rejects input that is not of odd length, and the random filler in an empty CBEFF data group now
+  comes from `RandomNumberGenerator`. Ported from upstream JMRTD commit
+  `73c7c92f5b1ff4130d40dd433ffcce2f564ef2c7`.
+
+### Changed
+
+- **"Tranceive" is now spelled "transceive"** *(ported from JMRTD)*. The old public names are kept
+  as `[Obsolete]` aliases, as upstream did with `@Deprecated`:
+  `PassportService.NormalMaxTranceiveLength`, `PassportService.ExtendedMaxTranceiveLength`,
+  `PassportService.GetMaxTranceiveLength()`, and `SecureMessagingWrapper.MaxTranceiveLength`. The
+  misspelled `GeImageData()` of `FingerImageRepresentationBlock` and
+  `IrisImageRepresentationBlock` is now `GetImageData()`, also with an `[Obsolete]` alias.
+  Constructor and method parameter names were renamed too, which only affects callers using named
+  arguments. Ported from upstream JMRTD commit `2c08440a1df68b4b8f8d957165e580937f44e74f`.
+
+### Not applicable
+
+- `3b64745a4f834a19d79e6ec3cc21d642fa7cca76`, "Bump BC to 1.86": a Maven dependency of the Java
+  BouncyCastle provider; nMRTD uses BouncyCastle.Cryptography for .NET, versioned independently.
+- `20841a132e5c4d4c3abaeb30d0ab373e94ff8f2c`, "Version 0.8.9": a Maven version bump.
+- `ef635cfd147458ef3552fe9e05bc012733b4c11c`, "Use spdx.org compliant license identifier": a
+  `pom.xml` change; nMRTD's source files already carry `SPDX-License-Identifier: LGPL-3.0-or-later`.
+- `4da6e5945da0a99aa4564d1c5b535c68159447e9`, "DG12: date and time of personalization in 24 hour
+  format": `DG12File` already used `yyyyMMddHHmmss`; the `BACKey` `synchronized` removal has no
+  counterpart.
+- `ab97c153510a82405a26ffa5479e3e0499e31ebc`, "Try-with-resources instead of closing in finally.
+  StandardCharsets instead of charset names.": Java resource handling and named charsets only;
+  nMRTD already uses `using` and explicit `Encoding` instances.
+- From `73c7c92f`, the locale and charset changes did not apply: nMRTD already uses
+  `ToUpperInvariant()` and explicit encodings, and builds with `InvariantGlobalization`. From
+  `2c08440a`, the `FaceImageCaptureDeviceSpectral2DBlock.equals` fix (boxed `Boolean` compared by
+  reference) did not apply: C# compares `bool?` by value.
+
 ## 0.4.1-alpha (2026-09-01)
 
 ### Added
