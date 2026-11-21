@@ -29,10 +29,15 @@ public class CardServiceException : Exception
         Sw = SwNotSet;
     }
 
+    /// <summary>
+    /// Creates an exception with a cause. As in SCUBA, the status word is taken from the cause when the cause
+    /// is itself a <see cref="CardServiceException"/>, so wrapping (e.g. in a
+    /// <c>CardServiceProtocolException</c>) keeps the card's status word.
+    /// </summary>
     public CardServiceException(string message, Exception cause)
         : base(message, cause)
     {
-        Sw = SwNotSet;
+        Sw = cause is CardServiceException cardServiceException ? cardServiceException.Sw : SwNotSet;
     }
 
     public CardServiceException(string message, int sw)
