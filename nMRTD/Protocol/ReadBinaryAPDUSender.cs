@@ -92,7 +92,7 @@ public class ReadBinaryAPDUSender : IApduLevelReadBinaryCapable
     {
         lock (_lock)
         {
-            var commandApdu = new CommandApdu(Iso7816.ClaIso7816, Iso7816.InsSelectFile, 0x00, 0x0C, new byte[] { 0x3F, 0x00 });
+            var commandApdu = new CommandApdu(Iso7816.ClaIso7816, Iso7816.InsSelectFile, 0x00, 0x0C);
             ResponseApdu responseApdu = _secureMessagingSender.Transmit(null, commandApdu);
             CheckStatusWordAfterFileOperation(commandApdu, responseApdu);
         }
