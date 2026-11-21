@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.7.0-alpha (2026-11-21)
 
 This release comes from a file-by-file review of nMRTD against JMRTD (at upstream commit
 `2c08440a`) and SCUBA. The core protocols (secure messaging, BAC, PACE, EAC, AA) were confirmed
@@ -64,7 +64,8 @@ them date back to the initial port.
   AA, PACE, MRZ, utilities, LDS round trips, CV certificates (including the EJBCA chains from the
   JMRTD repository), `CardFileInputStream` and ISO/IEC 39794, with a regression test for each fix
   above. Code coverage is collected with coverlet in OpenCover format. The library grants the test
-  assembly access to its internals (`InternalsVisibleTo`).
+  assembly access to its internals (`InternalsVisibleTo`) in unsigned builds only; the signed
+  release build does not.
 
 ## 0.6.1-alpha (2026-11-21)
 
