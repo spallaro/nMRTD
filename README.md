@@ -198,12 +198,12 @@ These two documents do not cover:
 Passive Authentication here checks the document signature with the signer certificate stored in
 EF.SOD; it does not validate that certificate against the issuing country's CSCA.
 
-*Please help extend this table. If you read another document with `nMRTD.Cli` (another country,
-another document type, or the same document with a different access method), please
-[open an issue](https://github.com/spallaro/nMRTD/issues) with the document type and issuing
-country, the reader and operating system, and the BAC, PACE, Passive Authentication and Chip
-Authentication lines of the output, including any error. Leave out names, document numbers, dates,
-photos and hex dumps: the protocol and algorithm lines are all that is needed.*
+> *Please help extend this table. If you read another document with `nMRTD.Cli` (another country,
+> another document type, or the same document with a different access method), please
+> [open an issue](https://github.com/spallaro/nMRTD/issues) with the document type and issuing
+> country, the reader and operating system, and the BAC, PACE, Passive Authentication and Chip
+> Authentication lines of the output, including any error. Leave out names, document numbers, dates,
+> photos and hex dumps: the protocol and algorithm lines are all that is needed.*
 
 ## Tests
 
