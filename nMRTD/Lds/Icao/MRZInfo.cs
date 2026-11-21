@@ -1039,14 +1039,34 @@ public class MRZInfo : AbstractLDSInfo
                 composite.Append(MrzFormat(optionalData2, 11));
                 return composite.ToString();
             case DocumentType.Td2:
-                /* Composite check digit lower line: 1-10, 14-20, 22-35. */
-                composite.Append(documentNumber);
-                composite.Append(documentNumberCheckDigit);
+                /*
+                 * Composite check digit lower line: 1-10, 14-20, 22-35,
+                 * i.e., computed over the characters as printed (including fillers).
+                 */
+                if (documentNumberLength <= 9)
+                {
+                    composite.Append(MrzFormat(documentNumber, 9));
+                    composite.Append(documentNumberCheckDigit);
+                }
+                else
+                {
+                    /* Document number, first 9 characters. */
+                    composite.Append(documentNumber.Substring(0, 9));
+                    composite.Append('<'); /* Filler instead of check digit. */
+                }
                 composite.Append(dateOfBirth);
                 composite.Append(dateOfBirthCheckDigit);
                 composite.Append(dateOfExpiry);
                 composite.Append(dateOfExpiryCheckDigit);
-                composite.Append(MrzFormat(optionalData1, 7));
+                if (documentNumberLength <= 9)
+                {
+                    composite.Append(MrzFormat(optionalData1, 7));
+                }
+                else
+                {
+                    /* Remainder of document number, its check digit, and a filler (in the optional data field). */
+                    composite.Append(MrzFormat(documentNumber.Substring(9) + documentNumberCheckDigit + "<", 7));
+                }
                 return composite.ToString();
             case DocumentType.Mrvb:
                 /* No composite checkdigit for MRV-B. */

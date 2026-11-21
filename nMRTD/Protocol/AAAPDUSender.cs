@@ -66,7 +66,7 @@ public class AAAPDUSender : IApduLevelAACapable
                 throw new ArgumentException("rndIFD wrong length");
             }
 
-            int le = signatureLength <= 231 * 8 ? 256 : 65536;
+            int le = signatureLength <= GetMaxShortResponseDataLength(wrapper) * 8 ? 256 : 65536;
             var commandApdu = new CommandApdu(Iso7816.ClaIso7816, Iso7816.InsInternalAuthenticate, 0x00, 0x00, rndIfd, le);
 
             ResponseApdu? responseApdu = null;
@@ -128,5 +128,26 @@ public class AAAPDUSender : IApduLevelAACapable
 
             throw new CardServiceException("Internal Authenticate failed", sw);
         }
+    }
+
+    /// <summary>
+    /// Returns the maximum length of the (unprotected) response data for which the protected response
+    /// still fits in a short response APDU (256 bytes). The protected response consists of DO'87
+    /// (4 bytes header, padded data), DO'99 (4 bytes), and DO'8E (10 bytes), so the padded data is at
+    /// most 238 bytes. Padding always adds at least one byte. This gives 231 bytes for 3DES and 223
+    /// bytes for AES secure messaging.
+    /// </summary>
+    /// <param name="wrapper">the secure messaging wrapper</param>
+    /// <returns>the maximum response data length in bytes</returns>
+    private static int GetMaxShortResponseDataLength(IApduWrapper? wrapper)
+    {
+        if (wrapper is not SecureMessagingWrapper secureMessagingWrapper)
+        {
+            // Consistent with previous behavior.
+            return 231;
+        }
+
+        int padLength = secureMessagingWrapper.PadLength;
+        return (238 / padLength) * padLength - 1;
     }
 }
