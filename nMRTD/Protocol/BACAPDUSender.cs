@@ -11,6 +11,8 @@
  * See LICENSE for more information.
  */
 
+using System.Security.Cryptography;
+
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Macs;
@@ -202,6 +204,10 @@ public class BACAPDUSender : IApduLevelBacCapable
                     le = 0; /* 0 means ne is max 256 (0xFF). */
                     commandApdu = new CommandApdu(Iso7816.ClaIso7816, Iso7816.InsExternalAuthenticate, p1, p2, data, le);
                     responseApdu = _secureMessagingSender.Transmit(null, commandApdu);
+                    if (responseApdu == null)
+                    {
+                        throw new CardServiceException("Mutual authentication failed, received null response APDU");
+                    }
                     responseApduBytes = responseApdu.GetBytes();
                     sw = responseApdu.Sw;
                 }
@@ -211,6 +217,21 @@ public class BACAPDUSender : IApduLevelBacCapable
                     throw new CardServiceProtocolException($"Mutual authentication failed: expected length: 40 + 2, actual length: {responseApduBytes.Length}", 0, sw);
                 }
 
+                /*
+                 * The response is E_IC || M_IC, with E_IC = E(K_Enc, RND.IC || RND.IFD || K.IC).
+                 * Check the checksum M_IC of E_IC, decrypt E_IC, and check that RND.IFD was returned
+                 * (Doc 9303 - Part 11, 4.3.1, step 4).
+                 */
+                _mac.Init(kMac);
+                byte[] paddedCryptogram = Util.Pad(responseApduBytes, 0, 32, 8);
+                _mac.BlockUpdate(paddedCryptogram, 0, paddedCryptogram.Length);
+                byte[] expectedChecksum = new byte[_mac.GetMacSize()];
+                _mac.DoFinal(expectedChecksum, 0);
+                if (!CryptographicOperations.FixedTimeEquals(expectedChecksum, responseApduBytes.AsSpan(32, 8)))
+                {
+                    throw new CardServiceException("Mutual authentication failed: wrong checksum on the PICC's cryptogram", sw);
+                }
+
                 /* Decrypt the response. */
                 _cipher.Init(forEncryption: false, new ParametersWithIV(kEnc, ZeroIv));
                 byte[] result = _cipher.DoFinal(responseApduBytes, 0, responseApduBytes.Length - 8 - 2);
@@ -218,6 +239,11 @@ public class BACAPDUSender : IApduLevelBacCapable
                 {
                     /* The PICC allowed access, but probably the resulting secure channel will be wrong. */
                     throw new CardServiceException($"Cryptogram wrong length, was expecting 32, found {result.Length}", sw);
+                }
+
+                if (!CryptographicOperations.FixedTimeEquals(rndIfd, result.AsSpan(8, 8)))
+                {
+                    throw new CardServiceException("Mutual authentication failed: the PICC did not return RND.IFD", sw);
                 }
 
                 return result;

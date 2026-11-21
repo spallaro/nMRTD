@@ -211,6 +211,12 @@ public abstract class SecureMessagingWrapper : IApduWrapper
     /// </summary>
     internal int PadLength => GetPadLength();
 
+    /// <summary>
+    /// The length (in bytes) to use for padding. Exposes <see cref="GetPadLength"/> to the rest of this
+    /// assembly, matching the package-level access Java's <c>protected</c> gives <c>AAAPDUSender</c>.
+    /// </summary>
+    internal int PadLength => GetPadLength();
+
     /// <summary>Returns the raw initialization vector bytes to be used by the encryption cipher.</summary>
     protected abstract byte[] GetIV();
 
