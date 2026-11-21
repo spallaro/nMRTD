@@ -43,7 +43,7 @@ static async Task<int> RunAsync(string[] args)
     }
     catch (ArgumentException e)
     {
-        Console.Error.WriteLine($"Argument error: {e.Message}");
+        await Console.Error.WriteLineAsync($"Argument error: {e.Message}");
         PrintUsage();
         return 1;
     }
@@ -70,7 +70,7 @@ static async Task<int> RunAsync(string[] args)
     }
     catch (ArgumentException e)
     {
-        Console.Error.WriteLine($"Cannot build access key: {e.Message}");
+        await Console.Error.WriteLineAsync($"Cannot build access key: {e.Message}");
         PrintUsage();
         return 1;
     }
@@ -105,7 +105,7 @@ static async Task<int> RunAsync(string[] args)
             {
                 // A CAN can only be used to perform PACE (BSI TR-03110): it is not valid BAC key material
                 // (BAC is derived from the MRZ), so there is no fallback to offer here.
-                Console.Error.WriteLine(
+                await Console.Error.WriteLineAsync(
                     "PACE is not available on this document (no EF.CardAccess, or no PACEInfo in it), and "
                     + "a Card Access Number can only be used to perform PACE -- cannot fall back to BAC.");
                 return 1;
@@ -127,7 +127,7 @@ static async Task<int> RunAsync(string[] args)
     }
     catch (CardServiceException e)
     {
-        Console.Error.WriteLine($"Card communication error: {e.Message}");
+        await Console.Error.WriteLineAsync($"Card communication error: {e.Message}");
         return 2;
     }
     finally
