@@ -810,8 +810,7 @@ public class PaceProtocol
         ECPoint ephemeralGenerator = generator.Multiply(Util.Os2i(nonceS)).Add(sharedSecretPointH).Normalize();
         if (!ephemeralGenerator.IsValid())
         {
-            // NOTE: Java logs an info message ("ephemeralGenerator is not a valid point") here; omitted
-            // per precedent.
+            throw new ArgumentException("Mapped generator is not a valid point");
         }
 
         return new ECDomainParameters(staticParameters.Curve, ephemeralGenerator, staticParameters.N, staticParameters.H);
@@ -1081,8 +1080,20 @@ public class PaceProtocol
     /// <param name="isContextKnown">whether context of public key is known to receiver (domain parameters
     /// are then not included); assumed known when omitted</param>
     /// <returns>encoded public key data object for signing as authentication token</returns>
+    /// <exception cref="ArgumentException">when public key is not DH or EC, or when DH domain parameters
+    /// are to be included and the order of the subgroup q is not known</exception>
     public static byte[] EncodePublicKeyDataObject(string oid, AsymmetricKeyParameter publicKey, bool isContextKnown = true)
     {
+        /* Checked before writing, as closing the stream with an unfinished 0x7F49 throws (and would hide the actual error). */
+        if (publicKey is not DHPublicKeyParameters && publicKey is not ECPublicKeyParameters)
+        {
+            throw new ArgumentException($"Unsupported public key: {publicKey?.GetType()}");
+        }
+        if (!isContextKnown && publicKey is DHPublicKeyParameters { Parameters.Q: null })
+        {
+            throw new ArgumentException("Cannot encode DH domain parameters without the order of the subgroup q");
+        }
+
         var byteArrayOutputStream = new MemoryStream();
         using (var tlvOutputStream = new TlvOutputStream(byteArrayOutputStream, leaveOpen: true))
         {
@@ -1092,7 +1103,6 @@ public class PaceProtocol
             {
                 DHParameters dhParameters = dhPublicKey.Parameters;
                 BigInteger p = dhParameters.P;
-                int l = dhParameters.L;
                 BigInteger generator = dhParameters.G;
                 BigInteger y = dhPublicKey.Y;
 
@@ -1105,7 +1115,7 @@ public class PaceProtocol
 
                     /* q: Order of the subgroup */
                     tlvOutputStream.WriteTag(0x82);
-                    tlvOutputStream.WriteValue(Util.I2os(BigInteger.ValueOf(l)));
+                    tlvOutputStream.WriteValue(Util.I2os(dhParameters.Q!));
 
                     /* Generator */
                     tlvOutputStream.WriteTag(0x83);
@@ -1144,15 +1154,9 @@ public class PaceProtocol
                     tlvOutputStream.WriteTag(0x83);
                     tlvOutputStream.WriteValue(Util.I2os(b));
 
-                    ECPoint normalizedGenerator = generator.Normalize();
-                    BigInteger affineX = normalizedGenerator.AffineXCoord.ToBigInteger();
-                    BigInteger affineY = normalizedGenerator.AffineYCoord.ToBigInteger();
-
-                    /* Base point, FIXME: correct encoding? (carried over from Java) */
+                    /* Base point, an elliptic curve point, uncompressed encoding (Doc 9303 - Part 11, 9.4.1). */
                     tlvOutputStream.WriteTag(0x84);
-                    tlvOutputStream.Write(Util.I2os(affineX));
-                    tlvOutputStream.Write(Util.I2os(affineY));
-                    tlvOutputStream.WriteValueEnd();
+                    tlvOutputStream.WriteValue(Util.EcPoint2OS(generator, ecParameters.Curve.FieldSize));
 
                     /* Order of the base point */
                     tlvOutputStream.WriteTag(0x85);
