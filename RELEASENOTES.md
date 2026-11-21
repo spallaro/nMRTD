@@ -1,5 +1,14 @@
 # Release Notes
 
+## Unreleased
+
+### Documentation
+
+- **README:** a section on the command-line tool (what it does, options, examples, personal data
+  warning, Native AOT publishing) and a table of the documents tested so far (Italian CIE 3.0 and
+  Italian passport) with the BAC, PACE, Passive Authentication and Chip Authentication results. The
+  target framework badge now shows .NET 6 | 8 | 10.
+
 ## 0.8.0-alpha (2026-11-21)
 
 ### Changed
