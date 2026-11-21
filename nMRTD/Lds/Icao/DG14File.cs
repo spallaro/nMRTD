@@ -28,8 +28,11 @@ namespace nMRTD.Lds.Icao;
 /// </summary>
 public class DG14File : DataGroup
 {
-    /// <summary>The security infos that make up this file.</summary>
-    private HashSet<SecurityInfo> securityInfos;
+    /// <summary>
+    /// The security infos that make up this file. Initialized here, not in the stream constructor's body:
+    /// field initializers run before the base constructor, which calls <see cref="ReadContent"/> to fill it.
+    /// </summary>
+    private HashSet<SecurityInfo> securityInfos = [];
 
     /// <summary>Constructs a new DG14 file from the provided data.</summary>
     /// <param name="securityInfos">a list of security infos</param>
@@ -45,7 +48,6 @@ public class DG14File : DataGroup
     public DG14File(Stream inputStream)
         : base(LDSFile.EF_DG14_TAG, inputStream)
     {
-        securityInfos = [];
     }
 
     protected override void ReadContent(Stream inputStream)
