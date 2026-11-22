@@ -31,7 +31,7 @@
   <!-- NuGet package metadata -->
   <PropertyGroup>
     <PackageId>nMRTD</PackageId>
-    <Version>0.8.1-alpha</Version>
+    <Version>0.8.2-alpha</Version>
     <Title>nMRTD</Title>
     <Description>.NET 6/8/10 port of JMRTD: reads ICAO 9303 electronic machine-readable travel documents (ePassports/eID cards) over NFC/PC-SC, with BAC, PACE, EAC, Active/Passive Authentication, and LDS/CBEFF biometric (ISO/IEC 19794 and 39794) support.</Description>
     <Authors>Sebastiano Pallaro</Authors>
