@@ -125,7 +125,7 @@ public class ISO781611Decoder<B> where B : BiometricDataBlock
     /// <param name="inputStream">the input stream to read from</param>
     /// <param name="index">index of this BIT within the BIT group</param>
     /// <returns>a CBEFF info representing the BIT</returns>
-    private CBEFFInfo<B>? ReadBit(Stream inputStream, int index)
+    private SimpleCBEFFInfo<B>? ReadBit(Stream inputStream, int index)
     {
         using var tlvIn = new TlvInputStream(inputStream, leaveOpen: true);
         int tag = tlvIn.ReadTag();

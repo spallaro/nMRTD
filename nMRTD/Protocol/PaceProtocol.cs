@@ -407,7 +407,7 @@ public class PaceProtocol
             byte[] step1Response = _service.SendGeneralAuthenticate(_wrapper, step1Data, 256, false);
             byte[] step1EncryptedNonce = TlvUtil.UnwrapDO(0x80, step1Response);
 
-            IBufferedCipher staticPaceCipher = CreateCbcCipher(cipherAlg);
+            var staticPaceCipher = CreateCbcCipher(cipherAlg);
             staticPaceCipher.Init(forEncryption: false, new ParametersWithIV(new KeyParameter(staticPaceKey.GetKey()), new byte[GetBlockSize(cipherAlg)]));
 
             return staticPaceCipher.DoFinal(step1EncryptedNonce);
@@ -971,7 +971,7 @@ public class PaceProtocol
                 throw new ArgumentException($"Unknown length {l}, was expecting 128, 192, or 256");
         }
 
-        IBufferedCipher cipher = CreateCbcCipher(cipherAlg);
+        var cipher = CreateCbcCipher(cipherAlg);
         int blockSize = GetBlockSize(cipherAlg);
         byte[] zeroIv = new byte[blockSize];
 
