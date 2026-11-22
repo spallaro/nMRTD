@@ -63,10 +63,10 @@ public class BACAPDUSender : IApduLevelBacCapable
     public LogSource Log => _secureMessagingSender.Log;
 
     /// <summary>DESede encryption/decryption cipher.</summary>
-    private readonly IBufferedCipher _cipher;
+    private readonly BufferedBlockCipher _cipher;
 
     /// <summary>ISO9797Alg3Mac.</summary>
-    private readonly IMac _mac;
+    private readonly ISO9797Alg3Mac _mac;
 
     /// <summary>Creates an APDU sender for tranceiving BAC protocol APDUs.</summary>
     /// <param name="service">the card service for tranceiving APDUs</param>

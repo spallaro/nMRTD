@@ -330,7 +330,7 @@ public class PADDataBlock : Block
         return padChallenges;
     }
 
-    private static Asn1Encodable EncodePADChallenges(List<byte[]> padChallenges)
+    private static DerSequence EncodePADChallenges(List<byte[]> padChallenges)
     {
         var asn1Encodables = new List<Asn1Encodable>(padChallenges.Count);
         foreach (byte[] padChallenge in padChallenges)

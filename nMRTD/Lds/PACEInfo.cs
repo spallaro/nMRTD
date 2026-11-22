@@ -591,7 +591,7 @@ public class PACEInfo : SecurityInfo
     }
 
     /// <summary>Returns an ASN1 name for the given object identifier.</summary>
-    private string ToProtocolOIDString(string oid)
+    private static string ToProtocolOIDString(string oid)
     {
         if (ID_PACE_DH_GM_3DES_CBC_CBC.Equals(oid))
         {

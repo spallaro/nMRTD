@@ -33,7 +33,7 @@ namespace nMRTD.Protocol;
 /// </summary>
 public sealed class AESSecureMessagingWrapper : SecureMessagingWrapper
 {
-    private readonly IBlockCipher _sscIvCipher;
+    private readonly AesEngine _sscIvCipher;
 
     /// <summary>
     /// Constructs a secure messaging wrapper based on the secure messaging session keys and the initial

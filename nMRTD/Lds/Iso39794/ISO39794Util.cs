@@ -46,7 +46,7 @@ internal static class ISO39794Util
     public static Asn1Encodable EncodeCodeAsChoiceExtensionBlockFallback(int code, ISO39794EncodingProfile profile, ChoiceType choiceType) =>
         EncodeCodeAsChoiceExtensionBlockFallback(code, profile.UsesExtensionBlockFallback(choiceType));
 
-    private static Asn1Encodable EncodeCodeAsChoiceExtensionBlockFallback(int code, bool useExtensionBlock)
+    private static DerSequence EncodeCodeAsChoiceExtensionBlockFallback(int code, bool useExtensionBlock)
     {
         if (!useExtensionBlock)
         {

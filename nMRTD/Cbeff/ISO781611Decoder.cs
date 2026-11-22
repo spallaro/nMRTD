@@ -139,7 +139,7 @@ public class ISO781611Decoder<B> where B : BiometricDataBlock
     /// <param name="inputStream">the stream to read the BIT value from</param>
     /// <param name="index">the index of the BIT within the BIT group</param>
     /// <returns>a CBEFF info representing the BIT, or <c>null</c> for a statically-protected BIT (see remarks on <see cref="ReadBitGroup(int, int, Stream)"/>)</returns>
-    private CBEFFInfo<B>? ReadBit(int tag, int length, Stream inputStream, int index)
+    private SimpleCBEFFInfo<B>? ReadBit(int tag, int length, Stream inputStream, int index)
     {
         if (tag != ISO781611.BIOMETRIC_INFORMATION_TEMPLATE_TAG /* 7F60 */)
         {
@@ -178,7 +178,7 @@ public class ISO781611Decoder<B> where B : BiometricDataBlock
     /// <param name="bhtLength">the length of the header</param>
     /// <param name="index">the index</param>
     /// <returns>the standard biometric header</returns>
-    private StandardBiometricHeader ReadBht(Stream inputStream, int bhtTag, int bhtLength, int index)
+    private static StandardBiometricHeader ReadBht(Stream inputStream, int bhtTag, int bhtLength, int index)
     {
         using var tlvIn = new TlvInputStream(inputStream, leaveOpen: true);
         int expectedBhtTag = ISO781611.BIOMETRIC_HEADER_TEMPLATE_BASE_TAG /* + index */ & 0xFF;
@@ -231,7 +231,7 @@ public class ISO781611Decoder<B> where B : BiometricDataBlock
     /// <summary>Decodes a (protected) data object. Encrypted payloads are not currently supported.</summary>
     /// <param name="inputStream">the stream to read from</param>
     /// <returns>the decoded value</returns>
-    private byte[]? DecodeSMTValue(Stream inputStream)
+    private static byte[]? DecodeSMTValue(Stream inputStream)
     {
         using var tlvIn = new TlvInputStream(inputStream, leaveOpen: true);
         int doTag = tlvIn.ReadTag();

@@ -437,8 +437,8 @@ public class MRZInfo : AbstractLDSInfo
         return str.Length switch
         {
             90 => str.Substring(0, 30) + "\n" + str.Substring(30, 30) + "\n" + str.Substring(60, 30) + "\n",
-            72 => str.Substring(0, 36) + "\n" + str.Substring(36, 36) + "\n",
-            88 => str.Substring(0, 44) + "\n" + str.Substring(44, 44) + "\n",
+            72 => string.Concat(str.AsSpan(0, 36), "\n", str.AsSpan(36, 36), "\n"),
+            88 => string.Concat(str.AsSpan(0, 44), "\n", str.AsSpan(44, 44), "\n"),
             _ => str,
         };
     }
@@ -1019,7 +1019,7 @@ public class MRZInfo : AbstractLDSInfo
                 else
                 {
                     /* Document number, first 9 characters. */
-                    composite.Append(documentNumber.Substring(0, 9));
+                    composite.Append(documentNumber.AsSpan(0, 9));
                     composite.Append('<'); /* Filler instead of check digit. */
 
                     /* Remainder of document number. */
@@ -1051,7 +1051,7 @@ public class MRZInfo : AbstractLDSInfo
                 else
                 {
                     /* Document number, first 9 characters. */
-                    composite.Append(documentNumber.Substring(0, 9));
+                    composite.Append(documentNumber.AsSpan(0, 9));
                     composite.Append('<'); /* Filler instead of check digit. */
                 }
                 composite.Append(dateOfBirth);
@@ -1128,7 +1128,7 @@ public class MRZInfo : AbstractLDSInfo
         var result = new StringBuilder();
         foreach (char c in str)
         {
-            result.Append(MRZ_CHARS.IndexOf(c) == -1 ? '<' : c);
+            result.Append(MRZ_CHARS.Contains(c) ? c : '<');
         }
         while (result.Length < width)
         {

@@ -175,9 +175,9 @@ public class SecureMessagingAPDUSender
             // plainTextResponseApdu is null here if wrapper.Unwrap(...) was never reached (SW_WRONG_LENGTH,
             // short response, or an exception), so listeners can tell "not unwrapped" apart from an actual
             // plaintext response.
-            object wrapperTypeTag = GetWrapperTypeTag(wrapper);
+            string wrapperTypeTag = GetWrapperTypeTag(wrapper);
             NotifyExchangedApdu(new WrappedApduEvent(this, wrapperTypeTag, seq, plainCapdu, plainTextResponseApdu, commandApdu, rawRapdu));
-            LogApduExchange(wrapperTypeTag.ToString() ?? "SM", plainCapdu, rawRapdu);
+            LogApduExchange(wrapperTypeTag, plainCapdu, rawRapdu);
         }
     }
 
@@ -246,7 +246,7 @@ public class SecureMessagingAPDUSender
     }
 
     /// <summary>See this class's doc comment: resolves the type tag Java obtained via <c>wrapper.getType()</c>.</summary>
-    private static object GetWrapperTypeTag(IApduWrapper wrapper) => wrapper switch
+    private static string GetWrapperTypeTag(IApduWrapper wrapper) => wrapper switch
     {
         DESedeSecureMessagingWrapper desEdeWrapper => desEdeWrapper.Type,
         AESSecureMessagingWrapper aesWrapper => aesWrapper.Type,

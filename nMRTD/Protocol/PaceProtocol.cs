@@ -738,7 +738,7 @@ public class PaceProtocol
         byte[] iv = new byte[ivEngine.GetBlockSize()];
         ivEngine.ProcessBlock(MinusOneBlockForPaceCamIv, 0, iv, 0);
 
-        IBufferedCipher decryptCipher = new BufferedBlockCipher(new CbcBlockCipher(new AesEngine()));
+        var decryptCipher = new BufferedBlockCipher(new CbcBlockCipher(new AesEngine()));
         decryptCipher.Init(forEncryption: false, new ParametersWithIV(encKey, iv));
         byte[] paddedChipAuthenticationData = decryptCipher.DoFinal(encryptedChipAuthenticationData);
         return Util.Unpad(paddedChipAuthenticationData);
@@ -1400,7 +1400,7 @@ public class PaceProtocol
     /// <summary>Constructs a CBC/NoPadding buffered cipher for the given cipher algorithm name.</summary>
     /// <param name="cipherAlg">either <c>"AES"</c> or <c>"DESede"</c></param>
     /// <returns>a fresh, uninitialized buffered cipher</returns>
-    private static IBufferedCipher CreateCbcCipher(string cipherAlg) => new BufferedBlockCipher(new CbcBlockCipher(CreateBlockCipherEngine(cipherAlg)));
+    private static BufferedBlockCipher CreateCbcCipher(string cipherAlg) => new BufferedBlockCipher(new CbcBlockCipher(CreateBlockCipherEngine(cipherAlg)));
 
     /// <summary>Returns the block size (in bytes) for the given cipher algorithm name.</summary>
     /// <param name="cipherAlg">either <c>"AES"</c> or <c>"DESede"</c></param>

@@ -138,7 +138,7 @@ public class ISO781611Encoder<B> where B : BiometricDataBlock
     /// <param name="tlvOutputStream">the stream to write to</param>
     /// <param name="index">the index of the BIT within the BIT group</param>
     /// <param name="cbeffInfo">the BIT to write</param>
-    private void WriteBht(TlvOutputStream tlvOutputStream, int index, SimpleCBEFFInfo<B> cbeffInfo)
+    private static void WriteBht(TlvOutputStream tlvOutputStream, int index, SimpleCBEFFInfo<B> cbeffInfo)
     {
         /* NOTE: preserved Java quirk -- the Java source has "+ index" commented out here; the BHT tag is
          * always the plain base tag (0xA1), never BASE_TAG + index as ISO 7816-11's "A1, A2, ..." template

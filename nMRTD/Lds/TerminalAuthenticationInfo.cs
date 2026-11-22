@@ -179,7 +179,7 @@ public class TerminalAuthenticationInfo : SecurityInfo
     }
 
     /// <summary>Encodes the BC object representing a reference to a CVCA file.</summary>
-    private static Asn1Sequence ConstructEFCVCA(short fid, sbyte sfi)
+    private static DLSequence ConstructEFCVCA(short fid, sbyte sfi)
     {
         if (sfi != -1)
         {
@@ -213,7 +213,7 @@ public class TerminalAuthenticationInfo : SecurityInfo
         return (sbyte)((Asn1OctetString)efCVCA[1]).GetOctets()[0];
     }
 
-    private string ToProtocolOIDString(string oid)
+    private static string ToProtocolOIDString(string oid)
     {
         if (ID_TA.Equals(oid))
         {

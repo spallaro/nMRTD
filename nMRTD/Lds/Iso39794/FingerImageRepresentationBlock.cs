@@ -484,7 +484,7 @@ public class FingerImageRepresentationBlock : Block, ImageInfo
         return null;
     }
 
-    private static Asn1Encodable EncodeCommentBlocks(List<string> comments)
+    private static DerSequence EncodeCommentBlocks(List<string> comments)
     {
         var asn1Objects = new List<Asn1Encodable>(comments.Count);
         foreach (string comment in comments)

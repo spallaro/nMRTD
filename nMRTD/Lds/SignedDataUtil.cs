@@ -827,5 +827,5 @@ public static class SignedDataUtil
     }
 
     /// <summary>Creates a singleton ASN1 set containing the given BC ASN1 object.</summary>
-    private static Asn1Set CreateSingletonSet(Asn1Encodable e) => new DLSet(e);
+    private static DLSet CreateSingletonSet(Asn1Encodable e) => new DLSet(e);
 }

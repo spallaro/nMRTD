@@ -156,7 +156,7 @@ public class BACProtocol
     /// <param name="kMac">the static 3DES key required for BAC</param>
     /// <returns>the new secure messaging wrapper</returns>
     /// <exception cref="CardServiceException">if authentication failed</exception>
-    private SecureMessagingWrapper DoBACStep(KeyParameter kEnc, KeyParameter kMac)
+    private DESedeSecureMessagingWrapper DoBACStep(KeyParameter kEnc, KeyParameter kMac)
     {
         byte[] rndIcc;
         try
