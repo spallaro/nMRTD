@@ -1,5 +1,14 @@
 # Release Notes
 
+## Unreleased
+
+### Packaging
+
+- **Debugging support in the NuGet package.** The DLLs now embed their PDB (symbols and compiler
+  flags) and Source Link information pointing at the exact GitHub commit, so a debugger can step into
+  nMRTD's sources. Release builds are deterministic CI builds (normalized source paths). This clears
+  the "Source Link", "Deterministic" and "Compiler Flags" warnings of NuGet Package Explorer.
+
 ## 0.8.3-alpha (2026-11-22)
 
 ### Fixed

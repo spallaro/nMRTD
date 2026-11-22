@@ -45,9 +45,22 @@
     <PackageProjectUrl>https://github.com/spallaro/nMRTD</PackageProjectUrl>
   </PropertyGroup>
 
+  <!-- Debugging support for package consumers (NuGet Package Explorer health checks). Source Link
+       (built into the .NET 8+ SDK) records the GitHub commit and URLs of the sources; the PDB is
+       embedded in the DLL, so symbols and compiler flags ship with the package itself, with no
+       separate .snupkg to upload. -->
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
   <!-- Build the .nupkg automatically, but only for Release builds. -->
+  <!-- Release builds are deterministic CI builds: local paths are normalized (/_/), so the same commit
+       always produces the same DLL. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <!-- Lets the test project reach internal members. Only for unsigned builds: a strong-named assembly
