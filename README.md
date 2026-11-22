@@ -13,6 +13,18 @@
 
 It is a from-scratch **C# port of [JMRTD](https://jmrtd.org/)**, the reference Java implementation of the MRTD standards, targeting **.NET 6/8/10**, **Native AOT** (.NET 8 and 10), and cross-platform smart card access (Windows, Linux, macOS) via PC/SC.
 
+## Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+  - [Reading a document with BAC](#reading-a-document-with-bac)
+  - [Authenticating with PACE, via MRZ or CAN](#authenticating-with-pace-via-mrz-or-can)
+- [Command-line tool (nMRTD.Cli)](#command-line-tool-nmrtdcli)
+- [Tested documents](#tested-documents)
+- [Tests](#tests)
+- [License](#license)
+
 ## Features
 
 - **Smart card access layer** — a `CardService` abstraction (command/response APDUs, file system, TLV utilities) with a cross-platform PC/SC implementation (`PCSC` / `PCSC.Iso7816`) working over WinSCard on Windows and PC/SC-lite on Linux/macOS.
