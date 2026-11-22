@@ -7,8 +7,8 @@
 - **DH Chip Authentication keys in DG14 kept their subgroup order q only until re-encoded.** A DH
   public key whose domain parameters include q is now written as an X9.42 `dhpublicnumber` key (RFC
   3279: p, g, q and the optional j and validation parameters), the form TR-03110 and ICAO Doc 9303-11
-  refer to. Before, `ChipAuthenticationPublicKeyInfo` always wrote PKCS #3 parameters (p, g, l), as
-  JMRTD does: q was dropped, so the decoded key no longer equalled the original, and a DG14 read from
+  refer to. Before, `ChipAuthenticationPublicKeyInfo` always wrote PKCS #3 parameters (p, g, l):
+  q was dropped, so the decoded key no longer equalled the original, and a DG14 read from
   an X9.42 encoding was written back with the `dhpublicnumber` identifier but PKCS #3 parameters, which
   did not decode to the same key. DH keys without q are still written as PKCS #3 `dhKeyAgreement`.
 

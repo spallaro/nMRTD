@@ -103,10 +103,11 @@ public class ChipAuthenticationPublicKeyInfo : SecurityInfo
     /// Castle as before (a DH key without q as PKCS #3 <c>dhKeyAgreement</c>).
     /// </summary>
     /// <remarks>
-    /// Divergence from JMRTD: <c>Util.toSubjectPublicKeyInfo</c> always writes PKCS #3 parameters (p, g, l)
-    /// under the key's algorithm identifier, as does Bouncy Castle's <c>SubjectPublicKeyInfoFactory</c>.
-    /// So q was lost, and a key read from an X9.42 encoding was written back with the
-    /// <c>dhpublicnumber</c> identifier but PKCS #3 parameters, which no longer decodes to the same key.
+    /// Divergence from JMRTD's code: <c>Util.toSubjectPublicKeyInfo</c> writes PKCS #3 parameters (p, g, l)
+    /// for every DH key. Ported through Bouncy Castle's <c>SubjectPublicKeyInfoFactory</c>, which does the
+    /// same under the key's own algorithm identifier, q was lost, and a key read from an X9.42 encoding
+    /// was written back with the <c>dhpublicnumber</c> identifier but PKCS #3 parameters, which no longer
+    /// decodes to the same key.
     /// </remarks>
     private static SubjectPublicKeyInfo ToSubjectPublicKeyInfo(AsymmetricKeyParameter publicKey)
     {
