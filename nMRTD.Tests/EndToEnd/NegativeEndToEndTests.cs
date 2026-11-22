@@ -71,6 +71,42 @@ public class NegativeEndToEndTests
     }
 
     [Theory]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceInvalidMappingKey), SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13, 2)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceInvalidMappingKey), SecurityInfo.ID_PACE_DH_GM_3DES_CBC_CBC, 0, 2)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceInvalidEphemeralKey), SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13, 3)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceInvalidEphemeralKey), SecurityInfo.ID_PACE_ECDH_IM_AES_CBC_CMAC_128, 13, 3)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceInvalidEphemeralKey), SecurityInfo.ID_PACE_DH_GM_3DES_CBC_CBC, 0, 3)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceEchoedEphemeralKey), SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13, 3)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceEchoedEphemeralKey), SecurityInfo.ID_PACE_DH_GM_3DES_CBC_CBC, 0, 3)]
+    public void PaceRejectsAChipWithAnInvalidPublicKey(string fault, string oid, int parameterId, int step)
+    {
+        SimulatedChip chip = PaceChip(oid, parameterId);
+        chip.Fault = Enum.Parse<SimulatedChip.ChipFault>(fault);
+        PassportService service = Open(chip);
+
+        var e = Assert.IsType<CardServiceProtocolException>(Assert.ThrowsAny<CardServiceException>(() => DoPace(service, PaceKeySpec.CreateCanKey(SimulatedDocument.Can))));
+
+        Assert.Equal(step, e.Step);
+        Assert.Equal(0, chip.Session);
+        Assert.Null(service.GetWrapper());
+    }
+
+    [Fact]
+    public void PaceWithParametersTheChipDoesNotSupportKeepsTheStatusWord()
+    {
+        SimulatedChip chip = PaceChip(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13);
+        PassportService service = Open(chip);
+        Org.BouncyCastle.Math.BigInteger otherParameterId = Org.BouncyCastle.Math.BigInteger.ValueOf(12);
+
+        CardServiceException e = Assert.ThrowsAny<CardServiceException>(() => service.DoPace(
+            PaceKeySpec.CreateCanKey(SimulatedDocument.Can), SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128,
+            PACEInfo.ToParameterSpec(otherParameterId), otherParameterId));
+
+        Assert.Contains(0x6A80, StatusWords(e));
+        Assert.Null(service.GetWrapper());
+    }
+
+    [Theory]
     [InlineData(nameof(SimulatedChip.ChipFault.BacChecksum))]
     [InlineData(nameof(SimulatedChip.ChipFault.BacRandom))]
     public void BacRejectsAChipWithAWrongCryptogram(string fault)

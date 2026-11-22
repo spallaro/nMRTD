@@ -79,6 +79,16 @@ internal sealed class SimulatedChip : CardService
 
         /// <summary>The BAC cryptogram does not return RND.IFD.</summary>
         BacRandom,
+
+        /// <summary>PACE generic mapping: the chip's mapping public key is not a valid key (an EC point
+        /// off the curve, or the DH value 1).</summary>
+        PaceInvalidMappingKey,
+
+        /// <summary>PACE key agreement: the chip's ephemeral public key is not a valid key.</summary>
+        PaceInvalidEphemeralKey,
+
+        /// <summary>PACE key agreement: the chip returns the terminal's own ephemeral public key.</summary>
+        PaceEchoedEphemeralKey,
     }
 
     // ---- Observations ----
@@ -519,13 +529,39 @@ internal sealed class SimulatedChip : CardService
                 pace.Nonce = RandomBytes(16);
                 return Ok(Tlv.Encode(0x7C, Tlv.Encode(0x80, Cbc(true, pace.Aes, pace.PasswordKey, new byte[BlockSize(pace.Aes)], pace.Nonce))));
             case 2:
-                return Ok(Tlv.Encode(0x7C, PaceMap(pace, Tlv.Find(data, 0x81)!)));
+                byte[] mapping = PaceMap(pace, Tlv.Find(data, 0x81)!);
+                if (Fault == ChipFault.PaceInvalidMappingKey && pace.Mapping != 4)
+                {
+                    mapping = Tlv.Encode(0x82, InvalidPublicKey(pace.StaticParameters));
+                }
+                return Ok(Tlv.Encode(0x7C, mapping));
             case 3:
-                return Ok(Tlv.Encode(0x7C, Tlv.Encode(0x84, PaceKeyAgreement(pace, Tlv.Find(data, 0x83)!))));
+                byte[] pcdEphemeral = Tlv.Find(data, 0x83)!;
+                byte[] piccEphemeral = PaceKeyAgreement(pace, pcdEphemeral);
+                piccEphemeral = Fault switch
+                {
+                    ChipFault.PaceInvalidEphemeralKey => InvalidPublicKey(pace.EphemeralParameters!),
+                    ChipFault.PaceEchoedEphemeralKey => pcdEphemeral,
+                    _ => piccEphemeral,
+                };
+                return Ok(Tlv.Encode(0x7C, Tlv.Encode(0x84, piccEphemeral)));
             default:
                 _pace = null;
                 return PaceTokens(pace, Tlv.Find(data, 0x85)!);
         }
+    }
+
+    /// <summary>A public key encoding that no valid key has: an EC point with its y coordinate changed,
+    /// so that it is off the curve, or the DH value 1.</summary>
+    private static byte[] InvalidPublicKey(object parameters)
+    {
+        if (parameters is ECDomainParameters ec)
+        {
+            byte[] point = EncodePoint(ec.G);
+            point[^1] ^= 0x01;
+            return point;
+        }
+        return [0x01];
     }
 
     private static byte[] PaceMap(PaceState pace, byte[] mappingData)
