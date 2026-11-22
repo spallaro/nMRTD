@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.8.6-alpha (2026-11-23)
 
 ### Added
 
@@ -27,6 +27,11 @@
 - **Explicit EC domain parameters** built in memory (rather than read from bytes) are now accepted by
   `PACEDomainParameterInfo.GetParameters()`; the parser cast the ASN.1 elements instead of converting
   them.
+
+### Documentation
+
+- **README:** a table of contents, a link to [DOCUMENTATION.md](DOCUMENTATION.md), an updated status
+  note on testing, and the .NET and Native AOT badges no longer link to their own image.
 
 ## 0.8.5-alpha (2026-11-22)
 
