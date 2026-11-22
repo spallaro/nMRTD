@@ -13,6 +13,7 @@
 
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.X509;
@@ -85,7 +86,7 @@ public class ChipAuthenticationPublicKeyInfo : SecurityInfo
     public override Asn1Object GetDERObject()
     {
         var vector = new Asn1EncodableVector();
-        SubjectPublicKeyInfo subjectPublicKeyInfo = SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(publicKey);
+        SubjectPublicKeyInfo subjectPublicKeyInfo = ToSubjectPublicKeyInfo(publicKey);
         vector.Add(new DerObjectIdentifier(oid));
         vector.Add(subjectPublicKeyInfo.ToAsn1Object());
         if (keyId != null)
@@ -93,6 +94,37 @@ public class ChipAuthenticationPublicKeyInfo : SecurityInfo
             vector.Add(new DerInteger(keyId));
         }
         return new DLSequence(vector);
+    }
+
+    /// <summary>
+    /// Encodes the public key. A DH key whose domain parameters include the subgroup order q is encoded
+    /// as an X9.42 <c>dhpublicnumber</c> key (RFC 3279: p, g, q and the optional j and validation
+    /// parameters), the form TR-03110 and ICAO Doc 9303-11 refer to; any other key is encoded by Bouncy
+    /// Castle as before (a DH key without q as PKCS #3 <c>dhKeyAgreement</c>).
+    /// </summary>
+    /// <remarks>
+    /// Divergence from JMRTD: <c>Util.toSubjectPublicKeyInfo</c> always writes PKCS #3 parameters (p, g, l)
+    /// under the key's algorithm identifier, as does Bouncy Castle's <c>SubjectPublicKeyInfoFactory</c>.
+    /// So q was lost, and a key read from an X9.42 encoding was written back with the
+    /// <c>dhpublicnumber</c> identifier but PKCS #3 parameters, which no longer decodes to the same key.
+    /// </remarks>
+    private static SubjectPublicKeyInfo ToSubjectPublicKeyInfo(AsymmetricKeyParameter publicKey)
+    {
+        if (publicKey is DHPublicKeyParameters { Parameters.Q: not null } dhPublicKey)
+        {
+            DHParameters parameters = dhPublicKey.Parameters;
+            DHValidationParameters? validation = parameters.ValidationParameters;
+            var domainParameters = new DHDomainParameters(
+                new DerInteger(parameters.P),
+                new DerInteger(parameters.G),
+                new DerInteger(parameters.Q),
+                parameters.J == null ? null : new DerInteger(parameters.J),
+                validation == null ? null : new DHValidationParms(new DerBitString(validation.GetSeed()), new DerInteger(validation.Counter)));
+            return new SubjectPublicKeyInfo(
+                new AlgorithmIdentifier(X9ObjectIdentifiers.DHPublicNumber, domainParameters),
+                new DerInteger(dhPublicKey.Y));
+        }
+        return SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(publicKey);
     }
 
     public override string GetObjectIdentifier() => oid;
