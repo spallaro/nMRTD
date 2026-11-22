@@ -195,17 +195,24 @@ static async Task<bool> TryPerformPaceAsync(PassportService passportService, IAc
         return false;
     }
 
+    // Standardized domain parameters (parameter id 0-31) or explicit ones from a PACEDomainParameterInfo
+    // in EF.CardAccess (parameter id 32 and up, or no parameter id).
     Org.BouncyCastle.Math.BigInteger? parameterId = paceInfo.GetParameterId();
-    if (parameterId == null)
+    object staticParameters;
+    try
     {
-        // Custom (non-standardized) PACE domain parameters require a companion PACEDomainParameterInfo
-        // in EF.CardAccess to resolve; this CLI only supports the common case of a standardized
-        // parameter id (BSI TR-03110 Table 6).
-        Console.WriteLine("PACE is advertised but uses non-standardized domain parameters, which this CLI does not resolve -- falling back to BAC.");
+        staticParameters = PaceParameters.Resolve(paceInfo, cardAccessFile.GetSecurityInfos());
+    }
+    catch (ArgumentException e)
+    {
+        Console.WriteLine($"PACE is advertised but its domain parameters cannot be resolved ({e.Message}) -- falling back to BAC.");
         return false;
     }
 
-    object staticParameters = PACEInfo.ToParameterSpec(parameterId);
+    if (parameterId == null || parameterId.IntValue > PaceParameters.MaxStandardizedParameterId)
+    {
+        Console.WriteLine("Using explicit PACE domain parameters from EF.CardAccess.");
+    }
 
     Console.WriteLine($"Performing PACE (protocol {paceInfo.GetObjectIdentifier()})...");
     passportService.DoPace(paceKey, paceInfo.GetObjectIdentifier(), staticParameters, parameterId);

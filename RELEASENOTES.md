@@ -1,5 +1,23 @@
 # Release Notes
 
+## Unreleased
+
+### Added
+
+- **`PaceParameters.Resolve(paceInfo, securityInfos)`** finds the static domain parameters to pass to
+  `DoPace` for a `PACEInfo` from EF.CardAccess: standardized parameters for parameter ids 0 to 31, or
+  the explicit parameters of the matching `PACEDomainParameterInfo` for a proprietary parameter id
+  (32 and up) or none (ICAO Doc 9303-11, BSI TR-03110-3). An nMRTD addition, not part of JMRTD.
+- **CLI:** PACE now also works with documents whose EF.CardAccess carries explicit domain
+  parameters. Before, the CLI fell back to BAC when the `PACEInfo` had no parameter id, and stopped with
+  an error on a proprietary parameter id.
+
+### Fixed
+
+- **Explicit EC domain parameters** built in memory (rather than read from bytes) are now accepted by
+  `PACEDomainParameterInfo.GetParameters()`; the parser cast the ASN.1 elements instead of converting
+  them.
+
 ## 0.8.5-alpha (2026-11-22)
 
 ### Fixed

@@ -331,7 +331,8 @@ var paceInfo = cardAccessFile.GetSecurityInfos().OfType<PACEInfo>().FirstOrDefau
 if (paceInfo != null)
 {
     var parameterId = paceInfo.GetParameterId();
-    object staticParameters = PACEInfo.ToParameterSpec(parameterId);
+    // Standardized parameters, or explicit ones from a PACEDomainParameterInfo in EF.CardAccess.
+    object staticParameters = PaceParameters.Resolve(paceInfo, cardAccessFile.GetSecurityInfos());
     IAccessKeySpec paceKey = PaceKeySpec.CreateMrzKey(bacKey);
 
     passportService.DoPace(paceKey, paceInfo.GetObjectIdentifier(), staticParameters, parameterId);
@@ -465,7 +466,15 @@ The `ToParameterSpec` mapping covers the 19 ICAO-standardized domain-parameter I
 (`PARAM_ID_GFP_1024_160` … `PARAM_ID_ECP_NIST_P521_R1`), returning either a BouncyCastle
 `DHParameters` (RFC 5114 groups) or `ECDomainParameters` (NIST/Brainpool named curves).
 `PACEDomainParameterInfo` is used instead of `PACEInfo` when the document specifies
-explicit, non-standard domain parameters (via a BouncyCastle `AlgorithmIdentifier`).
+explicit, non-standard domain parameters (via a BouncyCastle `AlgorithmIdentifier`);
+its `GetParameters()` returns them as `ECDomainParameters` (explicit EC parameters) or
+`DHParameters` (X9.42 DH parameters).
+
+`PaceParameters.Resolve(paceInfo, securityInfos)` (an nMRTD addition, not part of JMRTD)
+picks the right one for a `PACEInfo` from all the security infos of EF.CardAccess: a
+parameter id from 0 to 31 is standardized (`ToParameterSpec`), any other parameter id
+names the `PACEDomainParameterInfo` with the same id, and no parameter id means the only
+`PACEDomainParameterInfo` for the protocol. It throws `ArgumentException` when none fits.
 
 `CardAccessFile` (`EF.CardAccess`) parses the bare `SET OF SecurityInfo` and exposes
 `GetSecurityInfos()`, from which a consumer filters for a `PACEInfo`.

@@ -164,11 +164,35 @@ internal sealed class SimulatedDocument
         }
         if (Pace.Count > 0)
         {
-            chip.MasterFiles[PassportService.EF_CARD_ACCESS] = new CardAccessFile(
-                Pace.Select(p => (SecurityInfo)new PACEInfo(p.Oid, 2, p.ParameterId))).GetEncoded()!;
+            var cardAccess = new List<SecurityInfo>();
+            foreach (SimulatedChip.PaceSupport pace in Pace)
+            {
+                cardAccess.Add(new PACEInfo(pace.Oid, 2, pace.ParameterId));
+                if (pace.ExplicitParameters != null)
+                {
+                    cardAccess.Add(new PACEDomainParameterInfo(DomainParameterProtocol(pace.Oid),
+                        ExplicitDomainParameters(pace.ExplicitParameters), BigInteger.ValueOf(pace.ParameterId)));
+                }
+            }
+            chip.MasterFiles[PassportService.EF_CARD_ACCESS] = new CardAccessFile(cardAccess).GetEncoded()!;
         }
         return chip;
     }
+
+    /// <summary>The PACEDomainParameterInfo protocol for a PACEInfo protocol: id-PACE-ECDH-GM for
+    /// id-PACE-ECDH-GM-AES-CBC-CMAC-128, and so on.</summary>
+    private static string DomainParameterProtocol(string paceOid) => paceOid[..paceOid.LastIndexOf('.')];
+
+    /// <summary>Explicit EC parameters (ecPublicKey) or X9.42 DH parameters (dhpublicnumber).</summary>
+    private static Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier ExplicitDomainParameters(object parameters) => parameters switch
+    {
+        ECDomainParameters ec => new(new Org.BouncyCastle.Asn1.DerObjectIdentifier(PACEDomainParameterInfo.ID_EC_PUBLIC_KEY),
+            new Org.BouncyCastle.Asn1.X9.X9ECParameters(ec.Curve, new Org.BouncyCastle.Asn1.X9.X9ECPoint(ec.G, false), ec.N, ec.H).ToAsn1Object()),
+        DHParameters dh => new(new Org.BouncyCastle.Asn1.DerObjectIdentifier(PACEDomainParameterInfo.ID_DH_PUBLIC_NUMBER),
+            new Org.BouncyCastle.Asn1.X9.DHDomainParameters(new Org.BouncyCastle.Asn1.DerInteger(dh.P), new Org.BouncyCastle.Asn1.DerInteger(dh.G),
+                new Org.BouncyCastle.Asn1.DerInteger(dh.Q), null, null)),
+        _ => throw new ArgumentException("Unsupported domain parameters", nameof(parameters)),
+    };
 
     /// <summary>A CV certificate chain CVCA -> DV -> IS on the curve of <paramref name="cvca"/>.</summary>
     public static (CardVerifiableCertificate Dv, CardVerifiableCertificate Is, AsymmetricCipherKeyPair IsKey) CreateTerminalChain(

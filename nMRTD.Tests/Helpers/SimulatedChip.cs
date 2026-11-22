@@ -25,8 +25,11 @@ internal sealed class SimulatedChip : CardService
     private const short Dg4 = 0x0104;
     private const string TaEcdsaSha256 = "0.4.0.127.0.7.2.2.2.2.3";
 
-    /// <summary>A PACE protocol the chip supports, as advertised in EF.CardAccess.</summary>
-    public sealed record PaceSupport(string Oid, int ParameterId);
+    /// <summary>A PACE protocol the chip supports, as advertised in EF.CardAccess. With
+    /// <paramref name="ExplicitParameters"/> (<see cref="ECDomainParameters"/> or <see cref="DHParameters"/>),
+    /// <paramref name="ParameterId"/> is a proprietary id (32 and up) whose domain parameters EF.CardAccess
+    /// carries in a PACEDomainParameterInfo.</summary>
+    public sealed record PaceSupport(string Oid, int ParameterId, object? ExplicitParameters = null);
 
     /// <summary>A Chip Authentication key pair with its protocol and optional key ID.</summary>
     public sealed record CaKey(string Oid, AsymmetricCipherKeyPair KeyPair, int? KeyId = null);
@@ -507,7 +510,7 @@ internal sealed class SimulatedChip : CardService
             Mapping = mapping,
             Aes = aes,
             KeyBits = keyBits,
-            StaticParameters = StandardizedDomainParameters(support.ParameterId),
+            StaticParameters = support.ExplicitParameters ?? StandardizedDomainParameters(support.ParameterId),
             PasswordKey = Kdf(password, KdfPace, aes, keyBits),
         };
         return Ok([]);

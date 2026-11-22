@@ -288,7 +288,7 @@ public class PACEDomainParameterInfo : SecurityInfo
          * }
          */
 
-        var paramSequence = (Asn1Sequence)parameters;
+        var paramSequence = Asn1Sequence.GetInstance(parameters);
 
         if (paramSequence.Count < 5)
         {
@@ -299,25 +299,25 @@ public class PACEDomainParameterInfo : SecurityInfo
         {
             /* version = DerInteger.GetInstance(paramSequence[0]).Value; -- parsed but unused, same as the Java original. */
 
-            var fieldIdObject = (Asn1Sequence)paramSequence[1];
+            var fieldIdObject = Asn1Sequence.GetInstance(paramSequence[1]);
             /* fieldIdOID = ((DerObjectIdentifier)fieldIdObject[0]).Id; -- parsed but unused, same as the Java original. */
-            BigInteger p = ((DerInteger)fieldIdObject[1]).PositiveValue;
+            BigInteger p = DerInteger.GetInstance(fieldIdObject[1]).PositiveValue;
 
-            var curveObject = (Asn1Sequence)paramSequence[2];
-            var aObject = (Asn1OctetString)curveObject[0];
-            var bObject = (Asn1OctetString)curveObject[1];
+            var curveObject = Asn1Sequence.GetInstance(paramSequence[2]);
+            var aObject = Asn1OctetString.GetInstance(curveObject[0]);
+            var bObject = Asn1OctetString.GetInstance(curveObject[1]);
             BigInteger a = new(1, aObject.GetOctets());
             BigInteger b = new(1, bObject.GetOctets());
 
-            var orderObject = (DerInteger)paramSequence[4];
+            var orderObject = DerInteger.GetInstance(paramSequence[4]);
             BigInteger n = orderObject.PositiveValue;
 
             /* The cofactor is optional; 1 when absent. */
-            BigInteger coFactor = paramSequence.Count <= 5 ? BigInteger.One : ((DerInteger)paramSequence[5]).Value;
+            BigInteger coFactor = paramSequence.Count <= 5 ? BigInteger.One : DerInteger.GetInstance(paramSequence[5]).Value;
 
             var curve = new FpCurve(p, a, b, n, coFactor);
 
-            var basePointObject = (Asn1OctetString)paramSequence[3];
+            var basePointObject = Asn1OctetString.GetInstance(paramSequence[3]);
             ECPoint g = curve.DecodePoint(basePointObject.GetOctets());
 
             return new ECDomainParameters(curve, g, n, coFactor);
