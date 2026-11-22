@@ -20,6 +20,7 @@ It is a from-scratch **C# port of [JMRTD](https://jmrtd.org/)**, the reference J
 - [Quick start](#quick-start)
   - [Reading a document with BAC](#reading-a-document-with-bac)
   - [Authenticating with PACE, via MRZ or CAN](#authenticating-with-pace-via-mrz-or-can)
+- [Documentation](#documentation)
 - [Command-line tool (nMRTD.Cli)](#command-line-tool-nmrtdcli)
 - [Tested documents](#tested-documents)
 - [Tests](#tests)
@@ -131,6 +132,13 @@ passportService.SendSelectApplet(true);
 ```
 
 For a complete, runnable example covering reader selection, PACE-with-BAC-fallback, DG1/DG2 parsing, full Passive Authentication (EF.SOD hash and signature verification) and Chip Authentication, see the [command-line tool](#command-line-tool-nmrtdcli) and its source, [`nMRTD.Cli/Program.cs`](https://github.com/spallaro/nMRTD/blob/main/nMRTD.Cli/Program.cs).
+
+## Documentation
+
+[DOCUMENTATION.md](DOCUMENTATION.md) is the technical documentation: the architecture (card service,
+file system, secure messaging, `PassportService` API), the access control protocols (BAC, PACE, Chip
+and Terminal Authentication, Active Authentication), the LDS data groups and the biometric data
+model, Passive Authentication, and Native AOT and trimming.
 
 ## Command-line tool (nMRTD.Cli)
 
