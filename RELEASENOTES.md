@@ -1,5 +1,15 @@
 # Release Notes
 
+## Unreleased
+
+### Fixed
+
+- **`PACEDomainParameterInfo.GetParameters()` always threw.** It compared the PACE protocol identifier
+  with the key algorithm identifiers (`ecPublicKey`, `dhpublicnumber`), which can never match, so
+  explicit PACE domain parameters from EF.CardAccess could not be used. It now looks at the algorithm
+  identifier of the domain parameters: explicit EC parameters become `ECDomainParameters`, and X9.42
+  DH parameters (p, g, q), which were not implemented, become `DHParameters`.
+
 ## 0.8.4-alpha (2026-11-22)
 
 ### Packaging

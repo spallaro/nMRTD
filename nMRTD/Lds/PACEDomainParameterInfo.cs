@@ -105,18 +105,42 @@ public class PACEDomainParameterInfo : SecurityInfo
     /// (DH public number) or 1.2.840.10045.2.1 (EC public key), as <see cref="DHParameters"/> or
     /// <see cref="ECDomainParameters"/> respectively -- callers must downcast based on
     /// <see cref="GetObjectIdentifier"/>.</summary>
+    /// <remarks>
+    /// Divergence from JMRTD: <c>getParameters()</c> compares <c>oid</c>, the PACE protocol identifier
+    /// that the constructor requires, with the key algorithm identifiers above, so it can only throw.
+    /// The algorithm identifier of the domain parameters is the one to look at. JMRTD also leaves DH
+    /// unimplemented ("FIXME"); here X9.42 domain parameters (p, g, q, as TR-03110 uses for
+    /// <c>dhpublicnumber</c>) become <see cref="DHParameters"/>.
+    /// </remarks>
     public object GetParameters()
     {
-        if (ID_DH_PUBLIC_NUMBER.Equals(oid))
+        string algorithm = domainParameter.Algorithm.Id;
+        if (ID_DH_PUBLIC_NUMBER.Equals(algorithm))
         {
-            throw new InvalidOperationException("DH PACEDomainParameterInfo not yet implemented"); // FIXME
+            return ToDHParameters(domainParameter);
         }
-        if (ID_EC_PUBLIC_KEY.Equals(oid))
+        if (ID_EC_PUBLIC_KEY.Equals(algorithm))
         {
             return ToECDomainParametersCore(domainParameter);
         }
 
-        throw new InvalidOperationException("Unsupported PACEDomainParameterInfo type " + oid);
+        throw new InvalidOperationException("Unsupported PACEDomainParameterInfo type " + algorithm);
+    }
+
+    /// <summary>X9.42 DH domain parameters (<c>DomainParameters ::= SEQUENCE { p, g, q, j OPTIONAL,
+    /// validationParms OPTIONAL }</c>) as <see cref="DHParameters"/>.</summary>
+    private static DHParameters ToDHParameters(AlgorithmIdentifier domainParameter)
+    {
+        try
+        {
+            var parameters = DHDomainParameters.GetInstance(domainParameter.Parameters);
+            return new DHParameters(parameters.P.PositiveValue, parameters.G.PositiveValue, parameters.Q.PositiveValue,
+                parameters.J?.PositiveValue, null);
+        }
+        catch (Exception e)
+        {
+            throw new ArgumentException("Could not get DH parameters from domain parameters", e);
+        }
     }
 
     [Obsolete("This method will be removed from the visible interface (because of dependency on BC API)")]
