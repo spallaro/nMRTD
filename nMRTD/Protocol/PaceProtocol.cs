@@ -312,14 +312,17 @@ public class PaceProtocol
          */
         try
         {
-            long ssc = _wrapper?.SendSequenceCounter ?? 0L;
+            // Upstream JMRTD bug fixed here: JMRTD (PACEProtocol.java:334-338) starts the AES wrapper with the
+            // send sequence counter of the previous wrapper, so PACE over an existing secure channel (for
+            // example after BAC) kept that channel's counter and the card rejected the next command. As the
+            // comment above says, and as the 3DES branch and Chip Authentication do, the counter restarts at 0.
             if (cipherAlg.StartsWith("DESede", StringComparison.Ordinal))
             {
                 _wrapper = new DESedeSecureMessagingWrapper(encKey, macKey, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, 0L);
             }
             else if (cipherAlg.StartsWith("AES", StringComparison.Ordinal))
             {
-                _wrapper = new AESSecureMessagingWrapper(encKey, macKey, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, ssc);
+                _wrapper = new AESSecureMessagingWrapper(encKey, macKey, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, 0L);
             }
             else
             {

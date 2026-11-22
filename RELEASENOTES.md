@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Secure messaging was lost after the short-read fallback with short file identifiers** *(upstream
+  JMRTD bug, fixed in nMRTD)*. When a card rejects a long READ BINARY with a wrong-length status,
+  `DefaultFileSystem` retries with shorter reads and restores the secure messaging wrapper saved before
+  the failed command. Only the file identifier path saved it (JMRTD `DefaultFileSystem.java:403`, not
+  `:421`), so with short file identifiers, which `PassportService` enables by default, the wrapper
+  restored after BAC or PACE was the one from before authentication (`null`) and the next READ BINARY
+  was sent without secure messaging; the card then ended the session. Both paths now save it.
+- **PACE with AES over an existing secure channel kept the old send sequence counter** *(upstream
+  JMRTD bug, fixed in nMRTD)*. After PACE, secure messaging restarts with the new keys and a send
+  sequence counter of 0 (TR-SAC 4.6, Doc 9303-11), as the 3DES branch and Chip Authentication already
+  did; the AES branch kept the previous channel's counter (JMRTD `PACEProtocol.java:338`), so PACE run
+  after BAC failed on the next command. A first PACE, with no previous channel, was not affected.
+
 ### Documentation
 
 - **README:** a section on the command-line tool (what it does, options, examples, personal data

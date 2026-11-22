@@ -110,14 +110,13 @@ public class AccessControlEndToEndTests
     /// <summary>
     /// PACE run over an existing secure channel (here, after BAC): its commands are protected with the old keys,
     /// and then secure messaging restarts with the new keys and, by TR-SAC 4.6 / Doc 9303-11, an SSC of 0.
+    /// Regression test for the upstream JMRTD bug (PACEProtocol.java:334-338) where the AES wrapper kept the
+    /// old wrapper's SSC.
     /// </summary>
-    private const string PaceAesSscBug =
-        "Library bug: PaceProtocol.cs:322 starts the new AES wrapper with the old wrapper's SSC (read at cs:315) instead of 0, as the 3DES branch (cs:318) and TR-SAC 4.6 do";
-
     [Theory]
     [InlineData(SecurityInfo.ID_PACE_ECDH_GM_3DES_CBC_CBC, 13)]
-    [InlineData(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13, Skip = PaceAesSscBug)]
-    [InlineData(SecurityInfo.ID_PACE_DH_GM_AES_CBC_CMAC_128, 0, Skip = PaceAesSscBug)]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13)]
+    [InlineData(SecurityInfo.ID_PACE_DH_GM_AES_CBC_CMAC_128, 0)]
     public void PaceOverAnExistingSecureChannelRestartsSecureMessaging(string oid, int parameterId)
     {
         var document = new SimulatedDocument();
