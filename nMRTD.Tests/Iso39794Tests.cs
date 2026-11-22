@@ -6,7 +6,6 @@ using static nMRTD.Tests.Helpers.TestData;
 
 namespace nMRTD.Tests;
 
-[Collection(nMRTD.Tests.Helpers.CbeffDataGroupCollection.Name)]
 public class Iso39794Tests
 {
     /// <summary>Regression (review fix 7): the ISO/IEC 39794 block types must be public.</summary>

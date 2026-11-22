@@ -24,7 +24,11 @@ namespace nMRTD.Lds.Icao;
 /// </summary>
 public class DG4File : CBEFFDataGroup
 {
-    private static readonly ISO781611Decoder<BiometricDataBlock> Decoder = new(GetDecoderMap());
+    /// <summary>The per-tag BDB decoders, stateless and shared. JMRTD shares one static
+    /// <c>ISO781611Decoder</c> per data group, but that decoder keeps the encoding type of the last block
+    /// it read in a field, so concurrent decodes could see each other's value; nMRTD creates one per
+    /// <see cref="GetDecoder"/> call instead.</summary>
+    private static readonly Dictionary<int, BiometricDataBlockDecoder<BiometricDataBlock>> DecoderMap = GetDecoderMap();
 
     private static readonly ISO781611Encoder<BiometricDataBlock> Iso19794EncoderInstance = new(new Iso19794IrisEncoder());
 
@@ -177,7 +181,7 @@ public class DG4File : CBEFFDataGroup
     public static DG4File CreateISO39794DG4File(List<IrisImageDataBlock> irisImageDataBlocks, ISO39794EncodingProfile profile) =>
         new(BiometricEncodingType.Iso39794, irisImageDataBlocks, false, profile);
 
-    public override ISO781611Decoder<BiometricDataBlock> GetDecoder() => Decoder;
+    public override ISO781611Decoder<BiometricDataBlock> GetDecoder() => new(DecoderMap);
 
     public override ISO781611Encoder<BiometricDataBlock> GetEncoder() =>
         EncodingType switch

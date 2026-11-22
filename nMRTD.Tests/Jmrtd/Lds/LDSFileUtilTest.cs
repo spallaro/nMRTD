@@ -20,7 +20,6 @@ namespace nMRTD.Tests.Jmrtd.Lds;
   *
   * @version $Revision$
   */
-[Collection(nMRTD.Tests.Helpers.CbeffDataGroupCollection.Name)]
 public class LDSFileUtilTest
 {
 

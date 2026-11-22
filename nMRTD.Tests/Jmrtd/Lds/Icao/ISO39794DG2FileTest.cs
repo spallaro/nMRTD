@@ -24,7 +24,6 @@ namespace nMRTD.Tests.Jmrtd.Lds.Icao;
 
 
 
-[Collection(nMRTD.Tests.Helpers.CbeffDataGroupCollection.Name)]
 public class ISO39794DG2FileTest
 {
 

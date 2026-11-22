@@ -14,6 +14,14 @@
   stream.")`, as JMRTD does; Bouncy Castle's own `ArgumentException` used to pass through unwrapped.
   The original exception is kept as `InnerException`.
 
+### Fixed
+
+- **DG2, DG3 and DG4 files can be decoded on several threads at once.** Each data group shared one
+  static `ISO781611Decoder` (as in JMRTD), which keeps the encoding type of the last biometric data
+  block it read; two concurrent decodes of ISO 19794 and ISO 39794 files could report each other's
+  encoding type. `GetDecoder()` now returns a new decoder on every call (the stateless per-tag block
+  decoders are still shared).
+
 ## 0.8.1-alpha (2026-11-22)
 
 ### Fixed
