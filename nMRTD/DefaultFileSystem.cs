@@ -378,9 +378,7 @@ public class DefaultFileSystem : IFileSystemStructured
     {
         lock (_lock)
         {
-            _oldWrapper = _wrapper is Protocol.SecureMessagingWrapper smWrapper
-                ? Protocol.SecureMessagingWrapper.GetInstance(smWrapper)
-                : _wrapper;
+            SaveWrapperForFallback();
             return _service.SendReadBinary(_wrapper, NoSfi, offset, le, false, isTlvEncodedOffsetNeeded);
         }
     }
@@ -396,8 +394,28 @@ public class DefaultFileSystem : IFileSystemStructured
     {
         lock (_lock)
         {
+            SaveWrapperForFallback();
             return _service.SendReadBinary(_wrapper, sfi, offset, le, true, isTlvEncodedOffsetNeeded);
         }
+    }
+
+    /// <summary>
+    /// Keeps a copy of the current wrapper (with its send sequence counter) so that <see cref="ReadBinary"/>
+    /// can restore it when the card rejects a READ BINARY with a wrong length and the read is retried with a
+    /// shorter length.
+    /// </summary>
+    /// <remarks>
+    /// Upstream JMRTD bug fixed here: JMRTD saves this copy only in the file identifier variant of
+    /// <c>sendReadBinary</c> (DefaultFileSystem.java:403), not in the short file identifier one
+    /// (DefaultFileSystem.java:421). With short file identifiers the fallback (DefaultFileSystem.java:267)
+    /// then restored the wrapper from before authentication, which is <c>null</c> after the first BAC or
+    /// PACE, and the next READ BINARY was sent without secure messaging.
+    /// </remarks>
+    private void SaveWrapperForFallback()
+    {
+        _oldWrapper = _wrapper is Protocol.SecureMessagingWrapper smWrapper
+            ? Protocol.SecureMessagingWrapper.GetInstance(smWrapper)
+            : _wrapper;
     }
 
     /// <summary>A file info for the ICAO MRTD file system.</summary>

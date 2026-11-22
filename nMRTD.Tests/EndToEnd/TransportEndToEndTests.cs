@@ -38,19 +38,16 @@ public class TransportEndToEndTests
     }
 
     /// <summary>
-    /// Library bug: after a 6700 on an SFI READ BINARY, DefaultFileSystem.ReadBinary (DefaultFileSystem.cs:226)
-    /// restores <c>_oldWrapper</c>, which only the FID path snapshots (DefaultFileSystem.cs:381); on the SFI
-    /// path (DefaultFileSystem.cs:178 -> 395) it still holds what SetWrapper left there (DefaultFileSystem.cs:91),
-    /// null after the first BAC or PACE, so the next READ BINARY is sent in plain and the chip ends the session.
+    /// After a 6700 on a long READ BINARY, the file system falls back to short reads with the secure messaging
+    /// wrapper saved before the failed command. The SFI rows are regression tests for the upstream JMRTD bug
+    /// (DefaultFileSystem.java:421) where the SFI path did not save it, so the next READ BINARY went out
+    /// without secure messaging.
     /// </summary>
-    private const string SfiFallbackBug =
-        "Library bug: DefaultFileSystem.cs:226 restores _oldWrapper, never snapshotted on the SFI path (cs:178/395), so after a 6700 the next READ BINARY goes out without secure messaging";
-
     [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
-    [InlineData(true, false, Skip = SfiFallbackBug)]
-    [InlineData(true, true, Skip = SfiFallbackBug)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
     public void ChipWithoutExtendedLengthFallsBackToShortReads(bool isSfiEnabled, bool usePace)
     {
         (SimulatedChip chip, PassportService service) = Prepare(false, isSfiEnabled, usePace);
