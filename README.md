@@ -1,8 +1,8 @@
 # nMRTD
 
 [![NuGet version](https://img.shields.io/nuget/v/nMRTD.svg)](https://www.nuget.org/packages/nMRTD/)
-<picture><img alt="Target Framework" src="https://img.shields.io/badge/.NET-6%20|%208%20|%2010-white"></picture>
-<picture><img alt="Native AOT" src="https://img.shields.io/badge/.NET%20AOT-8%20|%2010-white"></picture>
+[![Target Framework](https://img.shields.io/badge/.NET-6%20|%208%20|%2010-white)](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)
+[![Native AOT](https://img.shields.io/badge/.NET%20AOT-8%20|%2010-white)](https://learn.microsoft.com/dotnet/core/deploying/native-aot/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-white.svg)](https://opensource.org/license/lgpl-3-0)
 
 > **Status:** THIS IS AN EARLY-STAGE PORT: the core protocol stack (BAC, PACE, EAC, Active/Passive Authentication) and the LDS/biometric data model are implemented and covered by an automated test suite (the ported JMRTD tests, unit tests and end-to-end tests against a simulated chip), but the library has been exercised against only a few real-world documents (see [Tested documents](#tested-documents)). Treat it as a foundation to build on and validate for your own use case, not as a production-hardened SDK yet.

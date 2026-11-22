@@ -1,5 +1,13 @@
 # Release Notes
 
+## Unreleased
+
+### Documentation
+
+- **README:** the .NET and Native AOT badges link to the .NET support policy and to the Native AOT
+  documentation. The `<picture>` wrapping of 0.8.6-alpha showed as raw HTML on nuget.org, which does
+  not render HTML in package READMEs.
+
 ## 0.8.6-alpha (2026-11-23)
 
 ### Added
