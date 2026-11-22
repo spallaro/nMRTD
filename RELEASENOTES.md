@@ -19,6 +19,11 @@
   JMRTD does in Java, while `Equals` compares them by content; hash-based collections (`HashSet`,
   `Dictionary`) could then hold or miss equal blocks, including the face, finger and iris data blocks
   that contain them. The byte arrays are now hashed by content.
+- **Equal `FaceImageCaptureDeviceBlock`s and DG5/DG6/DG7 files could have different hash codes** (a
+  porting error, not in JMRTD): their `GetHashCode()` used the hash of a .NET `List`, which is per
+  instance, while Java's `List.hashCode()` is content-based. This also affected `FaceImageDataBlock`
+  and `DG2File` hash codes for ISO/IEC 39794 faces with a capture device. Lists are now hashed by
+  content.
 - **Explicit EC domain parameters** built in memory (rather than read from bytes) are now accepted by
   `PACEDomainParameterInfo.GetParameters()`; the parser cast the ASN.1 elements instead of converting
   them.

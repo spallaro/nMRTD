@@ -124,7 +124,19 @@ public abstract class DisplayedImageDataGroup : DataGroup
         return result.ToString();
     }
 
-    public override int GetHashCode() => 1337 + (_imageInfos == null ? 1 : _imageInfos.GetHashCode()) + 31337;
+    // Java's List.hashCode() is content-based; List<T>.GetHashCode() in .NET is per instance, so the
+    // element hashes are combined here as Java's AbstractList.hashCode() does.
+    public override int GetHashCode() => 1337 + (_imageInfos == null ? 1 : ListHashCode(_imageInfos)) + 31337;
+
+    private static int ListHashCode(List<DisplayedImageInfo> list)
+    {
+        int hash = 1;
+        foreach (DisplayedImageInfo info in list)
+        {
+            hash = (31 * hash) + (info?.GetHashCode() ?? 0);
+        }
+        return hash;
+    }
 
     public override bool Equals(object? other)
     {

@@ -61,7 +61,23 @@ public class FaceImageCaptureDeviceBlock : Block
 
     public List<RegistryIdBlock>? GetCertifications() => _certifications;
 
-    public override int GetHashCode() => HashCode.Combine(_certifications, _model);
+    // The certifications list is hashed by content, to match ListEquals in Equals; List<T>.GetHashCode()
+    // in .NET is per instance (Java's Objects.hash uses the content-based List.hashCode()).
+    public override int GetHashCode() => HashCode.Combine(ListHashCode(_certifications), _model);
+
+    private static int ListHashCode<T>(List<T>? list)
+    {
+        if (list == null)
+        {
+            return 0;
+        }
+        int hash = 1;
+        foreach (T element in list)
+        {
+            hash = (31 * hash) + (element?.GetHashCode() ?? 0);
+        }
+        return hash;
+    }
 
     public override bool Equals(object? other)
     {
