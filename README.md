@@ -5,7 +5,7 @@
 <picture><img alt="Native AOT" src="https://img.shields.io/badge/.NET%20AOT-8%20|%2010-white"></picture>
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-white.svg)](https://opensource.org/license/lgpl-3-0)
 
-> **Status:** THIS IS AN EARLY-STAGE PORT: the core protocol stack (BAC, PACE, EAC, Active/Passive Authentication) and the LDS/biometric data model are implemented and build cleanly, but the library has not yet been exercised against a broad range of real-world documents and its automated test suite is still small. Treat it as a foundation to build on and validate for your own use case, not as a production-hardened SDK yet.
+> **Status:** THIS IS AN EARLY-STAGE PORT: the core protocol stack (BAC, PACE, EAC, Active/Passive Authentication) and the LDS/biometric data model are implemented and covered by an automated test suite (the ported JMRTD tests, unit tests and end-to-end tests against a simulated chip), but the library has been exercised against only a few real-world documents (see [Tested documents](#tested-documents)). Treat it as a foundation to build on and validate for your own use case, not as a production-hardened SDK yet.
 
 > **Please note:** this project is AI-assisted.
 
