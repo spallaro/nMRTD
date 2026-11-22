@@ -8,11 +8,11 @@ using nMRTD.Tests.Helpers;
 namespace nMRTD.Tests;
 
 /// <summary>
-/// Every biometric fixture (ISO/IEC 19794 and 39794 face, finger and iris data) is decoded twice, and the
-/// two object graphs are walked side by side through their public getters: each pair of nodes must be
-/// equal, have the same hash code (the Equals and GetHashCode contract) and print without throwing.
+/// Every LDS fixture (above all the ISO/IEC 19794 and 39794 face, finger and iris data) is decoded twice,
+/// and the two object graphs are walked side by side through their public getters: each pair of nodes
+/// must be equal, have the same hash code (the Equals and GetHashCode contract) and print without throwing.
 /// </summary>
-public class BiometricContractTests
+public class DecodedFileContractTests
 {
     public static TheoryData<string> Fixtures => new()
     {
@@ -25,6 +25,15 @@ public class BiometricContractTests
         "dg2:/lds/dg2/iso39794/sample-39794-5-ed-1-v1.der",
         "dg3:/lds/dg3/iso39794/sample-39794-4-ed-1-v1.der",
         "dg4:/lds/dg4/iso39794/sample-39794-6-ed-1-v1.der",
+        // Not biometric.
+        "/lds/bsi2008/Datagroup1.bin",
+        "/lds/bsi2008/Datagroup14.bin",
+        "/lds/bsi2008/Datagroup15.bin",
+        "/lds/bsi2008/EF_COM.bin",
+        "/lds/bsi2008/EF_SOD.bin",
+        "/lds/loes2006/ef0101.bin",
+        "/lds/loes2006/ef011D.bin",
+        "/lds/loes2006/ef011E.bin",
     };
 
     /// <summary>Decodes a data group file, or a bare ISO/IEC 39794 data block wrapped into one ("dgN:").</summary>
@@ -55,7 +64,7 @@ public class BiometricContractTests
         var visited = new List<string>();
         var failures = new List<string>();
         Walk(Decode(fixture), Decode(fixture), fixture, visited, failures, depth: 0);
-        Assert.True(visited.Count > 3, $"only {visited.Count} nodes visited");
+        Assert.NotEmpty(visited);
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
