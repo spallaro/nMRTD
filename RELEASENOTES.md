@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.8.4-alpha (2026-11-22)
 
 ### Packaging
 
