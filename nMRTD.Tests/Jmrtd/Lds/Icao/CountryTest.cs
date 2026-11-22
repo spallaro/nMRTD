@@ -24,7 +24,7 @@ public class CountryTest
         Assert.Equal(isoGermany.ToAlpha2Code(), icaoGermany.ToAlpha2Code());
     }
 
-    [Fact(Skip = "Possible divergence from JMRTD: nMRTD names TWN \"Taiwan, Province of China\" (SmartCards/Country.cs:383), the name JMRTD's test rules out.")]
+    [Fact]
     public void testTaiwan()
     {
         Country icaoCountry = IcaoCountry.GetInstance("TWN");
@@ -43,7 +43,7 @@ public class CountryTest
         Assert.Equal(Country.GetInstance("NLD").Name, Country.GetInstanceByAlpha2("NL").Name); // Java: ISOCountry.NL.getName() equals UnicodeCountry.NL.getName()
     }
 
-    [Fact(Skip = "Possible divergence from JMRTD: SCUBA's Country.getInstance resolves \"UT\" and \"UTO\" to the test country Utopia; nMRTD has no test country and throws (SmartCards/Country.cs:90-114). See CVCPrincipalTest.testCVCPrincipalFromUT.")]
+    [Fact]
     public void testUtopia()
     {
         Country utopia = Country.GetInstanceByAlpha2("UT");

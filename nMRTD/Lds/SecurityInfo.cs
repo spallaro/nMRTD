@@ -248,7 +248,7 @@ public abstract class SecurityInfo : AbstractLDSInfo
              * non-essential-warning-omission precedent (see AbstractLDSFile.cs). */
             return null;
         }
-        catch (Exception e) when (e is not ArgumentException)
+        catch (Exception e)
         {
             throw new ArgumentException("Malformed input stream.", e);
         }

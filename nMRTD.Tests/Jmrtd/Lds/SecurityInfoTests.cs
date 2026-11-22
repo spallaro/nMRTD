@@ -310,7 +310,7 @@ public class SecurityInfoTest
         Assert.Equal(original, actual);
     }
 
-    [Fact(Skip = "Possible divergence from JMRTD: SecurityInfo.GetInstance lets Bouncy Castle's own ArgumentException through (catch ... when e is not ArgumentException), JMRTD wraps every exception as \"Malformed input stream.\".")]
+    [Fact]
     public void testMalformedInput()
     {
         Asn1Object nonSeq = new DerInteger(42);

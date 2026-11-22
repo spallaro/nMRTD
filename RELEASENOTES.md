@@ -1,5 +1,19 @@
 # Release Notes
 
+## Unreleased
+
+### Changed
+
+- **SCUBA's test countries are recognized.** `Country.GetInstance` and `Country.GetInstanceByAlpha2`
+  now resolve `UTO`/`UT` (Utopia), `XBP`/`BP` and `XDV`/`DV`, like SCUBA's `TestCountry`, which JMRTD
+  looks up after the ISO codes. A CV certificate reference such as `UTDVCS00001` now yields Utopia
+  instead of the unknown-country placeholder, and MRZ data with `UTO` (the ICAO specimen country)
+  resolves too.
+- **Taiwan is named "Taiwan"**, the name SCUBA's `Country.getInstance` returns for `TWN`/`TW`.
+- **`SecurityInfo.GetInstance` wraps every parse failure** as `ArgumentException("Malformed input
+  stream.")`, as JMRTD does; Bouncy Castle's own `ArgumentException` used to pass through unwrapped.
+  The original exception is kept as `InnerException`.
+
 ## 0.8.1-alpha (2026-11-22)
 
 ### Fixed

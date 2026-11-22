@@ -6,13 +6,14 @@ namespace nMRTD.Tests.Jmrtd.Cert;
 /// <summary>Port of JMRTD's <c>org.jmrtd.cert.CVCPrincipalTest</c>.</summary>
 public class CVCPrincipalTest
 {
-    [Fact(Skip = "Possible divergence from JMRTD: SCUBA's Country.getInstance(\"UT\") resolves to TestCountry.UT (UT/UTO, Utopia), nMRTD has no test country and returns an unknown placeholder (alpha-3 XXX).")]
+    [Fact]
     public void testCVCPrincipalFromUT()
     {
         var principal = new CVCPrincipal("UTDVCS00001");
         Assert.Equal("UT", principal.CountryCode);
 
         // Java: assertEquals(TestCountry.UT, principal.getCountry()), the test country "Utopia".
+        Assert.Same(Country.GetInstance("UTO"), principal.Country);
         Assert.Equal("UT", principal.Country.Alpha2Code);
         Assert.Equal("UTO", principal.Country.Alpha3Code);
     }

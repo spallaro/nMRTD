@@ -380,7 +380,7 @@ public sealed class Country
         new Country("TR", "TUR", 792, "Türkiye"),
         new Country("TT", "TTO", 780, "Trinidad and Tobago"),
         new Country("TV", "TUV", 798, "Tuvalu"),
-        new Country("TW", "TWN", 158, "Taiwan, Province of China"),
+        new Country("TW", "TWN", 158, "Taiwan"), // SCUBA: UnicodeCountry.TW ("Taiwan") wins over ISOCountry.TW in Country.getInstance
         new Country("TZ", "TZA", 834, "Tanzania, United Republic of"),
         new Country("UA", "UKR", 804, "Ukraine"),
         new Country("UG", "UGA", 800, "Uganda"),
@@ -402,5 +402,11 @@ public sealed class Country
         new Country("ZA", "ZAF", 710, "South Africa"),
         new Country("ZM", "ZMB", 894, "Zambia"),
         new Country("ZW", "ZWE", 716, "Zimbabwe"),
+
+        // SCUBA's net.sf.scuba.data.TestCountry, looked up after the ISO codes by Country.getInstance:
+        // used by test documents and test PKIs (e.g. "UTO" specimens, "UT" CVCA/DV references).
+        new Country("UT", "UTO", -1, "Utopia", "Utopian"),
+        new Country("BP", "XBP", -1, "BP", "BP"),
+        new Country("DV", "XDV", -1, "DV", "DV"),
     };
 }
