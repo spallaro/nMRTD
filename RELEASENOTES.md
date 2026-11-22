@@ -14,6 +14,11 @@
 
 ### Fixed
 
+- **Equal `PADDataBlock`s and `StandardBiometricHeader`s could have different hash codes.** Their
+  `GetHashCode()` hashed the PAD challenges and the header values (byte arrays) by array identity, as
+  JMRTD does in Java, while `Equals` compares them by content; hash-based collections (`HashSet`,
+  `Dictionary`) could then hold or miss equal blocks, including the face, finger and iris data blocks
+  that contain them. The byte arrays are now hashed by content.
 - **Explicit EC domain parameters** built in memory (rather than read from bytes) are now accepted by
   `PACEDomainParameterInfo.GetParameters()`; the parser cast the ASN.1 elements instead of converting
   them.

@@ -11,7 +11,6 @@
  * See LICENSE for more information.
  */
 
-using System.Runtime.CompilerServices;
 using Org.BouncyCastle.Asn1;
 using nMRTD.SmartCards;
 
@@ -469,14 +468,10 @@ public class PADDataBlock : Block
     }
 
     /// <summary>
-    /// NOTE: preserved Java quirk -- Java's <c>List&lt;byte[]&gt;.hashCode()</c> (via <c>AbstractList</c>)
-    /// sums each element's <c>hashCode()</c>, and <c>byte[]</c> doesn't override <c>hashCode()</c> in Java
-    /// (identity-based), so <c>challenges</c>' contribution to <see cref="GetHashCode"/> is array-identity-
-    /// based even though <see cref="Equals(object?)"/> compares <c>challenges</c> by content
-    /// (<c>Arrays.equals</c> per element via <see cref="EqualBytes"/>) -- a real equals/hashCode contract
-    /// violation in the original JMRTD code (two content-equal instances can hash differently), preserved
-    /// here rather than "fixed", matching the identical quirk already documented in
-    /// <c>StandardBiometricHeader.cs</c>.
+    /// Divergence from JMRTD: Java's <c>List&lt;byte[]&gt;.hashCode()</c> uses each array's identity-based
+    /// <c>hashCode()</c>, while <see cref="Equals(object?)"/> compares the challenges by content
+    /// (<see cref="EqualBytes"/>), so two equal blocks could hash differently and break hash-based
+    /// collections. The challenges are hashed by content here.
     /// </summary>
     private static int JavaChallengesHashCode(List<byte[]>? challenges)
     {
@@ -488,7 +483,7 @@ public class PADDataBlock : Block
         int hash = 1;
         foreach (byte[] challenge in challenges)
         {
-            hash = (31 * hash) + RuntimeHelpers.GetHashCode(challenge);
+            hash = (31 * hash) + JavaArrayHashCode(challenge);
         }
 
         return hash;

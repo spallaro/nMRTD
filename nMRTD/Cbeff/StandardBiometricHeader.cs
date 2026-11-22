@@ -11,7 +11,6 @@
  * See LICENSE for more information.
  */
 
-using System.Runtime.CompilerServices;
 using System.Text;
 using nMRTD.SmartCards;
 
@@ -123,14 +122,10 @@ public class StandardBiometricHeader
     }
 
     /*
-     * NOTE: preserved Java quirk -- Java's Map.hashCode() sums each entry's key.hashCode() ^
-     * value.hashCode(), and for a byte[] value, Object.hashCode() is *identity*-based (arrays don't
-     * override hashCode()/equals() in Java). This means the original StandardBiometricHeader.hashCode()
-     * depends on object identity of the byte[] values even though Equals() below is content-based
-     * (Arrays.equals) -- a real equals/hashCode contract violation in the original JMRTD code (two
-     * content-equal instances can hash differently). Preserved here via RuntimeHelpers.GetHashCode,
-     * .NET's closest equivalent to Java's array identity hash, rather than "fixing" it with a
-     * content-based array hash.
+     * Divergence from JMRTD: Java's Map.hashCode() sums each entry's key.hashCode() ^ value.hashCode(),
+     * and a byte[] value has an identity-based hashCode() in Java, while equals() compares the values by
+     * content (Arrays.equals). Two equal headers could then hash differently, which breaks hash-based
+     * collections. The values are hashed by content here (as Arrays.hashCode would).
      */
     public override int GetHashCode()
     {
@@ -140,12 +135,28 @@ public class StandardBiometricHeader
         return result;
     }
 
+    /// <summary>Java-style <c>Arrays.hashCode(byte[])</c>: content-based.</summary>
+    private static int JavaArrayHashCode(byte[]? array)
+    {
+        if (array == null)
+        {
+            return 0;
+        }
+
+        int result = 1;
+        foreach (byte b in array)
+        {
+            result = (31 * result) + (sbyte)b;
+        }
+        return result;
+    }
+
     private static int JavaMapHashCode(SortedDictionary<int, byte[]> elements)
     {
         int hash = 0;
         foreach (KeyValuePair<int, byte[]> entry in elements)
         {
-            hash += entry.Key.GetHashCode() ^ RuntimeHelpers.GetHashCode(entry.Value);
+            hash += entry.Key.GetHashCode() ^ JavaArrayHashCode(entry.Value);
         }
         return hash;
     }
