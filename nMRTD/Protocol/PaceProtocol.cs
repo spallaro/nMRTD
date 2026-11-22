@@ -316,6 +316,7 @@ public class PaceProtocol
             // send sequence counter of the previous wrapper, so PACE over an existing secure channel (for
             // example after BAC) kept that channel's counter and the card rejected the next command. As the
             // comment above says, and as the 3DES branch and Chip Authentication do, the counter restarts at 0.
+            // Reported upstream as JMRTD bug #93 (https://sourceforge.net/p/jmrtd/bugs/93/).
             if (cipherAlg.StartsWith("DESede", StringComparison.Ordinal))
             {
                 _wrapper = new DESedeSecureMessagingWrapper(encKey, macKey, _maxTransceiveLengthForSecureMessaging, _shouldCheckMac, 0L);

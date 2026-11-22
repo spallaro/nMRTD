@@ -409,7 +409,8 @@ public class DefaultFileSystem : IFileSystemStructured
     /// <c>sendReadBinary</c> (DefaultFileSystem.java:403), not in the short file identifier one
     /// (DefaultFileSystem.java:421). With short file identifiers the fallback (DefaultFileSystem.java:267)
     /// then restored the wrapper from before authentication, which is <c>null</c> after the first BAC or
-    /// PACE, and the next READ BINARY was sent without secure messaging.
+    /// PACE, and the next READ BINARY was sent without secure messaging. Reported upstream as JMRTD bug #92
+    /// (https://sourceforge.net/p/jmrtd/bugs/92/).
     /// </remarks>
     private void SaveWrapperForFallback()
     {

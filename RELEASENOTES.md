@@ -11,11 +11,13 @@
   `:421`), so with short file identifiers, which `PassportService` enables by default, the wrapper
   restored after BAC or PACE was the one from before authentication (`null`) and the next READ BINARY
   was sent without secure messaging; the card then ended the session. Both paths now save it.
+  Reported upstream as [JMRTD bug #92](https://sourceforge.net/p/jmrtd/bugs/92/).
 - **PACE with AES over an existing secure channel kept the old send sequence counter** *(upstream
   JMRTD bug, fixed in nMRTD)*. After PACE, secure messaging restarts with the new keys and a send
   sequence counter of 0 (TR-SAC 4.6, Doc 9303-11), as the 3DES branch and Chip Authentication already
   did; the AES branch kept the previous channel's counter (JMRTD `PACEProtocol.java:338`), so PACE run
   after BAC failed on the next command. A first PACE, with no previous channel, was not affected.
+  Reported upstream as [JMRTD bug #93](https://sourceforge.net/p/jmrtd/bugs/93/).
 
 ### Documentation
 
