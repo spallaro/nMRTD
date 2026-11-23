@@ -1,5 +1,14 @@
 # Release Notes
 
+## Unreleased
+
+### Fixed
+
+- **`Util.ToSubjectPublicKeyInfo` lost the subgroup order q of DH keys.** It wrote PKCS #3 parameters
+  (p, g, l) under the X9.42 `dhpublicnumber` identifier. It now writes an X9.42 key (p, g, q) when the key
+  has q and a PKCS #3 `dhKeyAgreement` key otherwise, as `ChipAuthenticationPublicKeyInfo` already did
+  since 0.8.3-alpha; both now share this code.
+
 ## 0.8.7-alpha (2026-11-23)
 
 ### Fixed

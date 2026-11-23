@@ -763,18 +763,7 @@ public static class Util
                 }
 
                 case DHPublicKeyParameters dhPublicKey:
-                {
-                    /* NOTE: deviation from Java -- Java round-trips whatever AlgorithmIdentifier OID was
-                     * present in the key's own original encoding. BC's lightweight DHPublicKeyParameters
-                     * carries no such encoded-OID history, so the standard X9.42 "dhpublicnumber" OID
-                     * (matching PACEDomainParameterInfo.ID_DH_PUBLIC_NUMBER, which is what JMRTD's own DH
-                     * domain parameter encodings use) is used instead. */
-                    DHParameters dhParameters = dhPublicKey.Parameters;
-                    var algorithmIdentifier = new AlgorithmIdentifier(
-                        new DerObjectIdentifier(PACEDomainParameterInfo.ID_DH_PUBLIC_NUMBER),
-                        new DHParameter(dhParameters.P, dhParameters.G, dhParameters.L).ToAsn1Object());
-                    return new SubjectPublicKeyInfo(algorithmIdentifier, new DerInteger(dhPublicKey.Y));
-                }
+                    return ToDHSubjectPublicKeyInfo(dhPublicKey);
 
                 default:
                     throw new ArgumentException($"Unrecognized key type, found {publicKey?.GetType()}, should be DH or ECDH");
@@ -786,6 +775,38 @@ public static class Util
              * (see AbstractLDSFile.cs). */
             return null;
         }
+    }
+
+    /// <summary>
+    /// Encodes a DH public key. With the subgroup order q it is an X9.42 <c>dhpublicnumber</c> key (RFC 3279:
+    /// p, g, q and the optional j and validation parameters), the form TR-03110 and ICAO Doc 9303-11 refer
+    /// to; without q it is a PKCS #3 <c>dhKeyAgreement</c> key (p, g, l).
+    /// </summary>
+    /// <remarks>
+    /// Divergence from JMRTD: Java's <c>toSubjectPublicKeyInfo</c> writes PKCS #3 parameters (p, g, l) under
+    /// the key's own algorithm identifier. Java's DH keys carry no q, but Bouncy Castle's do, and an earlier
+    /// version of this port wrote PKCS #3 parameters under <c>dhpublicnumber</c>, which lost q.
+    /// </remarks>
+    internal static SubjectPublicKeyInfo ToDHSubjectPublicKeyInfo(DHPublicKeyParameters dhPublicKey)
+    {
+        DHParameters parameters = dhPublicKey.Parameters;
+        if (parameters.Q == null)
+        {
+            return new SubjectPublicKeyInfo(
+                new AlgorithmIdentifier(PkcsObjectIdentifiers.DhKeyAgreement, new DHParameter(parameters.P, parameters.G, parameters.L)),
+                new DerInteger(dhPublicKey.Y));
+        }
+
+        DHValidationParameters? validation = parameters.ValidationParameters;
+        var domainParameters = new DHDomainParameters(
+            new DerInteger(parameters.P),
+            new DerInteger(parameters.G),
+            new DerInteger(parameters.Q),
+            parameters.J == null ? null : new DerInteger(parameters.J),
+            validation == null ? null : new DHValidationParms(new DerBitString(validation.GetSeed()), new DerInteger(validation.Counter)));
+        return new SubjectPublicKeyInfo(
+            new AlgorithmIdentifier(X9ObjectIdentifiers.DHPublicNumber, domainParameters),
+            new DerInteger(dhPublicKey.Y));
     }
 
     /// <summary>Extracts a public key from a BC subject public key info structure.</summary>

@@ -109,24 +109,10 @@ public class ChipAuthenticationPublicKeyInfo : SecurityInfo
     /// was written back with the <c>dhpublicnumber</c> identifier but PKCS #3 parameters, which no longer
     /// decodes to the same key.
     /// </remarks>
-    private static SubjectPublicKeyInfo ToSubjectPublicKeyInfo(AsymmetricKeyParameter publicKey)
-    {
-        if (publicKey is DHPublicKeyParameters { Parameters.Q: not null } dhPublicKey)
-        {
-            DHParameters parameters = dhPublicKey.Parameters;
-            DHValidationParameters? validation = parameters.ValidationParameters;
-            var domainParameters = new DHDomainParameters(
-                new DerInteger(parameters.P),
-                new DerInteger(parameters.G),
-                new DerInteger(parameters.Q),
-                parameters.J == null ? null : new DerInteger(parameters.J),
-                validation == null ? null : new DHValidationParms(new DerBitString(validation.GetSeed()), new DerInteger(validation.Counter)));
-            return new SubjectPublicKeyInfo(
-                new AlgorithmIdentifier(X9ObjectIdentifiers.DHPublicNumber, domainParameters),
-                new DerInteger(dhPublicKey.Y));
-        }
-        return SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(publicKey);
-    }
+    private static SubjectPublicKeyInfo ToSubjectPublicKeyInfo(AsymmetricKeyParameter publicKey) =>
+        publicKey is DHPublicKeyParameters dhPublicKey
+            ? Util.ToDHSubjectPublicKeyInfo(dhPublicKey)
+            : SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(publicKey);
 
     public override string GetObjectIdentifier() => oid;
 
