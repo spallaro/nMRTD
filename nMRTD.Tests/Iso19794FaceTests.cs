@@ -134,4 +134,19 @@ public class Iso19794FaceTests
         Assert.False(face.Equals(null));
         Assert.False(face.Equals("face"));
     }
+
+    [Fact]
+    public void FeaturePointsCompareEveryField()
+    {
+        var point = new FeaturePoint(1, 12, 1, 100, 120);
+
+        Assert.Equal(point, new FeaturePoint(1, 12, 1, 100, 120));
+        Assert.Equal(point.GetHashCode(), new FeaturePoint(1, 12, 1, 100, 120).GetHashCode());
+        Assert.NotEqual(point, new FeaturePoint(2, 12, 1, 100, 120));
+        Assert.NotEqual(point, new FeaturePoint(1, 11, 1, 100, 120));
+        Assert.NotEqual(point, new FeaturePoint(1, 12, 2, 100, 120));
+        Assert.NotEqual(point, new FeaturePoint(1, 12, 1, 101, 120));
+        Assert.NotEqual(point, new FeaturePoint(1, 12, 1, 100, 121));
+        Assert.False(point.Equals("point"));
+    }
 }
