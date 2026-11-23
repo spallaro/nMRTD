@@ -47,6 +47,10 @@ internal sealed class SimulatedChip : CardService
     public List<PaceSupport> PaceProtocols { get; } = new();
     public List<CaKey> ChipAuthenticationKeys { get; } = new();
     public AsymmetricCipherKeyPair? ActiveAuthenticationKey { get; init; }
+
+    /// <summary>With an RSA Active Authentication key: sign with SHA-256 and an explicit ISO/IEC 9796-2 trailer
+    /// instead of SHA-1 with the implicit trailer.</summary>
+    public bool ActiveAuthenticationRsaSha256 { get; set; }
     public string? CvcaReference { get; init; }
     public ECPublicKeyParameters? CvcaPublicKey { get; init; }
 
@@ -92,6 +96,9 @@ internal sealed class SimulatedChip : CardService
 
         /// <summary>PACE key agreement: the chip returns the terminal's own ephemeral public key.</summary>
         PaceEchoedEphemeralKey,
+
+        /// <summary>Active Authentication: the signature over the challenge is corrupted.</summary>
+        ActiveAuthenticationSignature,
     }
 
     // ---- Observations ----
@@ -820,12 +827,14 @@ internal sealed class SimulatedChip : CardService
         {
             case RsaKeyParameters rsa:
             {
-                var signer = new Iso9796d2Signer(new RsaEngine(), new Sha1Digest(), true);
+                IDigest digest = ActiveAuthenticationRsaSha256 ? new Sha256Digest() : new Sha1Digest();
+                var signer = new Iso9796d2Signer(new RsaEngine(), digest, !ActiveAuthenticationRsaSha256);
                 signer.Init(true, rsa);
-                byte[] m1 = RandomBytes((rsa.Modulus.BitLength + 7) / 8 - 20 - 2);
+                int trailerLength = ActiveAuthenticationRsaSha256 ? 2 : 1;
+                byte[] m1 = RandomBytes((rsa.Modulus.BitLength + 7) / 8 - digest.GetDigestSize() - trailerLength - 1);
                 byte[] message = [.. m1, .. c.Data];
                 signer.BlockUpdate(message, 0, message.Length);
-                return Ok(signer.GenerateSignature());
+                return Ok(CorruptIfFaulty(signer.GenerateSignature()));
             }
             case ECPrivateKeyParameters ec:
             {
@@ -833,11 +842,20 @@ internal sealed class SimulatedChip : CardService
                 signer.Init(true, ec);
                 BigInteger[] rs = signer.GenerateSignature(Digest(new Sha256Digest(), c.Data));
                 int size = FieldBytes(ec.Parameters.Curve);
-                return Ok([.. Fixed(rs[0], size), .. Fixed(rs[1], size)]);
+                return Ok(CorruptIfFaulty([.. Fixed(rs[0], size), .. Fixed(rs[1], size)]));
             }
             default:
                 return Status(0x6A80);
         }
+    }
+
+    private byte[] CorruptIfFaulty(byte[] signature)
+    {
+        if (Fault == ChipFault.ActiveAuthenticationSignature)
+        {
+            signature[signature.Length / 2] ^= 0x01;
+        }
+        return signature;
     }
 
     // ---- Secure messaging (Doc 9303-11 9.8) ----

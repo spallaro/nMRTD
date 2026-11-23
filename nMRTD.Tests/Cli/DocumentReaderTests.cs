@@ -135,4 +135,77 @@ public sealed class DocumentReaderTests : IDisposable
         Assert.Single(root.GetProperty("savedFiles").EnumerateArray());
         Assert.DoesNotContain("\"can\"", System.Text.Encoding.UTF8.GetString(buffer.ToArray()), StringComparison.OrdinalIgnoreCase); // no access key in the output
     }
+
+    [Theory]
+    [InlineData("RSA-1024", false, "SHA-1")]
+    [InlineData("RSA-2048", true, "SHA-256")]
+    [InlineData("ECDSA", false, "SHA256withECDSA")]
+    public void ActiveAuthenticationIsVerified(string keyKind, bool rsaSha256, string algorithm)
+    {
+        var document = new SimulatedDocument
+        {
+            ActiveAuthenticationKey = keyKind switch
+            {
+                "RSA-1024" => SimulatedDocument.RsaKey1024,
+                "RSA-2048" => SimulatedDocument.RsaKey2048,
+                _ => SimulatedDocument.GenerateEc(12),
+            },
+        };
+        SimulatedChip chip = document.Build();
+        chip.ActiveAuthenticationRsaSha256 = rsaSha256;
+        var text = new StringWriter();
+        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), text);
+
+        reader.Read(Mrz, forceBac: false, outDir);
+
+        Assert.Equal("succeeded", reader.Report.ActiveAuthentication.Status);
+        Assert.Contains(algorithm, reader.Report.ActiveAuthentication.Protocol);
+        Assert.Equal("match", reader.Report.DataGroups.Single(d => d.Number == 15).Hash);
+        Assert.Contains("Active Authentication succeeded", text.ToString());
+    }
+
+    [Theory]
+    [InlineData("RSA-1024")]
+    [InlineData("ECDSA")]
+    public void WrongActiveAuthenticationSignatureFails(string keyKind)
+    {
+        var document = new SimulatedDocument
+        {
+            ActiveAuthenticationKey = keyKind == "ECDSA" ? SimulatedDocument.GenerateEc(12) : SimulatedDocument.RsaKey1024,
+        };
+        SimulatedChip chip = document.Build();
+        chip.Fault = SimulatedChip.ChipFault.ActiveAuthenticationSignature;
+        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), new StringWriter());
+
+        reader.Read(Mrz, forceBac: false, outDir);
+
+        Assert.Equal("failed", reader.Report.ActiveAuthentication.Status);
+    }
+
+    [Fact]
+    public void DocumentWithoutDg15HasNoActiveAuthentication()
+    {
+        (DocumentReader reader, StringWriter text, _) = Run(new SimulatedDocument(), Mrz);
+
+        Assert.Equal("not-available", reader.Report.ActiveAuthentication.Status);
+        Assert.Contains("DG15 not present", text.ToString());
+    }
+
+    [Fact]
+    public void EcdsaResponseWithoutTheHashAlgorithmIsUnverifiable()
+    {
+        var key = SimulatedDocument.GenerateEc(12);
+
+        ActiveAuthenticationVerifier.Result result = ActiveAuthenticationVerifier.Verify(key.Public, null, new byte[8], new byte[64]);
+
+        Assert.Null(result.Valid);
+    }
+
+    [Fact]
+    public void EmptyResponseIsNeverValid()
+    {
+        Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.RsaKey1024.Public, null, new byte[8], []).Valid);
+        Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.GenerateEc(12).Public,
+            ActiveAuthenticationInfo.ECDSA_PLAIN_SHA256_OID, new byte[8], []).Valid);
+    }
 }

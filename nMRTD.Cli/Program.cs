@@ -402,7 +402,7 @@ static Dictionary<string, string> ParseArgs(string[] args)
 static void PrintUsage()
 {
     Console.WriteLine("""
-        nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive Authentication, Chip Authentication) via a PC/SC reader.
+        nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive, Chip and Active Authentication) via a PC/SC reader.
 
         Usage:
           nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--json]
@@ -434,7 +434,8 @@ static void PrintUsage()
         skipped. A DG the document does not have is reported as "not present"; each DG that is
         read is printed both as a parsed summary (where this port has a parser for it) and as a
         full raw hex dump. If DG14 offers it, Chip Authentication is then performed and checked by
-        reading EF.COM with the new session keys.
+        reading EF.COM with the new session keys. Last, if DG15 is present, Active Authentication
+        signs a random challenge, and the signature is verified with the DG15 public key.
         """);
 }
 

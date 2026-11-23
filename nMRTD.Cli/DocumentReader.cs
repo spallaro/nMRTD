@@ -81,6 +81,10 @@ public sealed class DocumentReader
         VerifyPassiveAuthentication(sodFile, dataGroupBytes);
 
         PerformChipAuthentication(passportService, dataGroupBytes.GetValueOrDefault(14));
+
+        // Last: under secure messaging a chip ends the session on an error status, so a failing Active
+        // Authentication must not come before anything else.
+        PerformActiveAuthentication(dataGroupBytes.GetValueOrDefault(15), dataGroupBytes.GetValueOrDefault(14));
         return true;
     }
 
@@ -674,6 +678,64 @@ public sealed class DocumentReader
             {
                 _out.WriteLine($"  caused by {inner.GetType().Name}: {inner.Message}");
             }
+        }
+    }
+
+    /// <summary>
+    /// Performs Active Authentication (ICAO Doc 9303-11, 6.1) with the DG15 key: sends a random challenge and
+    /// verifies the chip's signature, which shows that the chip holds the private key matching DG15 (and so is
+    /// not a copy). DG15's integrity is covered by Passive Authentication.
+    /// </summary>
+    private void PerformActiveAuthentication(byte[]? dg15Bytes, byte[]? dg14Bytes)
+    {
+        _out.WriteLine();
+        _out.WriteLine("=== Active Authentication ===");
+
+        AsymmetricKeyParameter? publicKey = dg15Bytes == null ? null : new DG15File(new MemoryStream(dg15Bytes)).GetPublicKey();
+        if (publicKey == null)
+        {
+            _out.WriteLine(dg15Bytes == null
+                ? "DG15 not present; Active Authentication is not available on this document."
+                : "The DG15 public key could not be decoded; Active Authentication is not available.");
+            return;
+        }
+
+        string? signatureAlgorithmOid = dg14Bytes == null ? null
+            : new DG14File(new MemoryStream(dg14Bytes)).GetSecurityInfos().OfType<ActiveAuthenticationInfo>().FirstOrDefault()?.GetSignatureAlgorithmOID();
+        byte[] challenge = new byte[8];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(challenge);
+        _out.WriteLine($"Performing Active Authentication (key {Util.GetDetailedPublicKeyAlgorithm(publicKey)})...");
+
+        byte[] response;
+        try
+        {
+            response = passportService.DoAA(publicKey, null, signatureAlgorithmOid ?? "", challenge).GetResponse() ?? [];
+        }
+        catch (Exception e)
+        {
+            report.ActiveAuthentication.Status = "failed";
+            report.ActiveAuthentication.Error = e.Message;
+            _out.WriteLine($"Active Authentication FAILED: the chip did not answer the challenge ({e.Message}).");
+            return;
+        }
+
+        ActiveAuthenticationVerifier.Result result = ActiveAuthenticationVerifier.Verify(publicKey, signatureAlgorithmOid, challenge, response);
+        report.ActiveAuthentication.Protocol = result.Algorithm;
+        switch (result.Valid)
+        {
+            case true:
+                report.ActiveAuthentication.Status = "succeeded";
+                _out.WriteLine($"Active Authentication succeeded ({result.Algorithm}): the chip signed the challenge with the private key for the DG15 public key.");
+                break;
+            case false:
+                report.ActiveAuthentication.Status = "failed";
+                report.ActiveAuthentication.Error = "signature does not verify";
+                _out.WriteLine($"Active Authentication FAILED ({result.Algorithm}): the signature does not verify with the DG15 public key -- the chip may be a copy!");
+                break;
+            default:
+                report.ActiveAuthentication.Status = "unverifiable";
+                _out.WriteLine($"Active Authentication response received but cannot be verified: {result.Algorithm}.");
+                break;
         }
     }
 
