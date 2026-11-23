@@ -601,22 +601,27 @@ public static class Util
     {
         ArgumentNullException.ThrowIfNull(cipherAlg);
 
-        if (cipherAlg == "DESede" || cipherAlg == "AES-128")
+        // Divergence from JMRTD: the names are compared as DeriveKey compares them (ignoring case, "3DES" as
+        // an alias of "DESede"); JMRTD compares them exactly here, so DeriveKey's "3DES" and lower-case
+        // branches could never be reached.
+        bool Is(string name) => string.Equals(cipherAlg, name, StringComparison.OrdinalIgnoreCase);
+
+        if (Is("DESede") || Is("3DES") || Is("AES-128"))
         {
             return "SHA-1";
         }
 
-        if (cipherAlg == "AES" && keyLength == 128)
+        if (Is("AES") && keyLength == 128)
         {
             return "SHA-1";
         }
 
-        if (cipherAlg == "AES-256" || cipherAlg == "AES-192")
+        if (Is("AES-256") || Is("AES-192"))
         {
             return "SHA-256";
         }
 
-        if (cipherAlg == "AES" && (keyLength == 192 || keyLength == 256))
+        if (Is("AES") && (keyLength == 192 || keyLength == 256))
         {
             return "SHA-256";
         }

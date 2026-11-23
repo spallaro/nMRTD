@@ -88,6 +88,24 @@ public class UtilCryptoTests
     }
 
     [Theory]
+    [InlineData("3DES")]
+    [InlineData("desede")]
+    public void TripleDesAliasesDeriveTheSameKey(string alias)
+    {
+        byte[] seed = Hex("0102030405060708090A0B0C0D0E0F10");
+
+        Assert.Equal(Util.DeriveKey(seed, "DESede", 128, null, Util.ENC_MODE), Util.DeriveKey(seed, alias, 128, null, Util.ENC_MODE));
+    }
+
+    [Fact]
+    public void LowerCaseAesDerivesTheSameKey()
+    {
+        byte[] seed = Hex("0102030405060708090A0B0C0D0E0F10");
+
+        Assert.Equal(Util.DeriveKey(seed, "AES", 256, null, Util.ENC_MODE), Util.DeriveKey(seed, "aes", 256, null, Util.ENC_MODE));
+    }
+
+    [Theory]
     [InlineData("DESede", 192)]
     [InlineData("AES", 100)]
     [InlineData("Blowfish", 128)]
