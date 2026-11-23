@@ -109,4 +109,30 @@ public sealed class DocumentReaderTests : IDisposable
         Assert.Equal("mismatch", reader.Report.DataGroups.Single(d => d.Number == 2).Hash);
         Assert.Equal("match", reader.Report.DataGroups.Single(d => d.Number == 1).Hash);
     }
+
+    [Fact]
+    public void ReportIsWrittenAsJson()
+    {
+        var document = new SimulatedDocument();
+        document.Pace.Add(new SimulatedChip.PaceSupport(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13));
+        (DocumentReader reader, _, _) = Run(document, Can);
+        var buffer = new MemoryStream();
+
+        ReadReportJson.Write(reader.Report, buffer);
+
+        using var json = System.Text.Json.JsonDocument.Parse(buffer.ToArray());
+        System.Text.Json.JsonElement root = json.RootElement;
+        Assert.Equal("PACE", root.GetProperty("accessProtocol").GetString());
+        Assert.Equal(SimulatedDocument.DocumentNumber, root.GetProperty("mrz").GetProperty("documentNumber").GetString());
+        Assert.Equal("F", root.GetProperty("mrz").GetProperty("gender").GetString()[..1]);
+        System.Text.Json.JsonElement dg1 = root.GetProperty("dataGroups").EnumerateArray().First(d => d.GetProperty("number").GetInt32() == 1);
+        Assert.True(dg1.GetProperty("present").GetBoolean());
+        Assert.Equal("match", dg1.GetProperty("hash").GetString());
+        Assert.Equal("valid", root.GetProperty("passiveAuthentication").GetProperty("signature").GetString());
+        Assert.Equal("not-checked", root.GetProperty("passiveAuthentication").GetProperty("csca").GetString());
+        Assert.Equal("not-available", root.GetProperty("chipAuthentication").GetProperty("status").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, root.GetProperty("error").ValueKind);
+        Assert.Single(root.GetProperty("savedFiles").EnumerateArray());
+        Assert.DoesNotContain("\"can\"", System.Text.Encoding.UTF8.GetString(buffer.ToArray()), StringComparison.OrdinalIgnoreCase); // no access key in the output
+    }
 }

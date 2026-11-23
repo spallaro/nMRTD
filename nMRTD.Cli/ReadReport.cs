@@ -37,6 +37,9 @@ public sealed class ReadReport
     public ProtocolResult ChipAuthentication { get; } = new();
 
     public ProtocolResult ActiveAuthentication { get; } = new();
+
+    /// <summary>Why reading stopped early, if it did.</summary>
+    public string? Error { get; set; }
 }
 
 /// <summary>The fields of the machine readable zone.</summary>

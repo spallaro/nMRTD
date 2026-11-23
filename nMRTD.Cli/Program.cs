@@ -53,6 +53,14 @@ static async Task<int> RunAsync(string[] args)
         return 0;
     }
 
+    // With --json, stdout carries only the JSON report; everything else (progress, the text summary,
+    // prompts) goes to stderr.
+    bool json = options.ContainsKey("json");
+    if (json)
+    {
+        Console.SetOut(Console.Error);
+    }
+
     string? readerName = options.GetValueOrDefault("reader");
     string? outDir = options.GetValueOrDefault("out", Directory.GetCurrentDirectory());
 
@@ -89,39 +97,52 @@ static async Task<int> RunAsync(string[] args)
         Console.WriteLine("Verbose logging enabled -- APDU exchanges and protocol steps are printed to stderr.");
     }
 
+    if (options.ContainsKey("bac") && credentials.Mode == AccessKeyMode.Can)
+    {
+        await Console.Error.WriteLineAsync("--bac needs the MRZ access key; a CAN cannot be used for BAC.");
+        return 1;
+    }
+
+    var reader = new DocumentReader(passportService, Console.Out);
+    int exitCode;
     try
     {
         Console.WriteLine("Opening card service...");
         passportService.Open();
 
-        if (options.ContainsKey("bac") && credentials.Mode == AccessKeyMode.Can)
+        if (reader.Read(credentials, options.ContainsKey("bac"), outDir!))
         {
-            await Console.Error.WriteLineAsync("--bac needs the MRZ access key; a CAN cannot be used for BAC.");
-            return 1;
+            exitCode = 0;
         }
-
-        var reader = new DocumentReader(passportService, Console.Out);
-        if (!reader.Read(credentials, options.ContainsKey("bac"), outDir!))
+        else
         {
             // A CAN can only be used to perform PACE (BSI TR-03110): it is not valid BAC key material
             // (BAC is derived from the MRZ), so there is no fallback to offer here.
-            await Console.Error.WriteLineAsync(
-                "PACE is not available on this document (no EF.CardAccess, or no PACEInfo in it), and "
-                + "a Card Access Number can only be used to perform PACE -- cannot fall back to BAC.");
-            return 1;
+            const string message = "PACE is not available on this document (no EF.CardAccess, or no PACEInfo in it), and "
+                + "a Card Access Number can only be used to perform PACE -- cannot fall back to BAC.";
+            reader.Report.Error = message;
+            await Console.Error.WriteLineAsync(message);
+            exitCode = 1;
         }
-
-        return 0;
     }
     catch (CardServiceException e)
     {
-        await Console.Error.WriteLineAsync($"Card communication error: {e.Message}");
-        return 2;
+        reader.Report.Error = $"Card communication error: {e.Message}";
+        await Console.Error.WriteLineAsync(reader.Report.Error);
+        exitCode = 2;
     }
     finally
     {
         passportService.Close();
     }
+
+    if (json)
+    {
+        using Stream stdout = Console.OpenStandardOutput();
+        ReadReportJson.Write(reader.Report, stdout);
+    }
+
+    return exitCode;
 }
 
 /// <summary>Short human-readable status line to print next to the raw status word hex in
@@ -356,6 +377,9 @@ static Dictionary<string, string> ParseArgs(string[] args)
             case "--bac":
                 options["bac"] = "true";
                 break;
+            case "--json":
+                options["json"] = "true";
+                break;
             case "--reader":
             case "--doc":
             case "--dob":
@@ -381,8 +405,8 @@ static void PrintUsage()
         nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive Authentication, Chip Authentication) via a PC/SC reader.
 
         Usage:
-          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>]
-          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>]
+          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--json]
+          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>] [--json]
           nMRTD.Cli --list-readers
 
         Options:
@@ -394,6 +418,7 @@ static void PrintUsage()
           --out <dir>       Directory to save extracted images (DG2/DG5/DG6/DG7) to (default: current directory)
           --bac             Skip PACE and use BAC (needs --doc/--dob/--doe), even if the document supports PACE
           --verbose         Print APDU exchanges and protocol steps (BAC/PACE/...) to stderr as they happen
+          --json            Write the results as JSON to stdout (the text output goes to stderr)
           --list-readers    List available PC/SC readers and exit
           -h, --help        Show this help
 
