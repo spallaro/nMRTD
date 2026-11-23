@@ -152,10 +152,13 @@ For each document it:
    when the document does not support PACE (or uses BAC directly with `--bac`);
 2. reads every standard data group except DG3 and DG4 (fingerprints and iris need Terminal
    Authentication), printing a summary and a hex dump of each, and saves the images (DG2, DG5–DG7);
-3. performs **Passive Authentication**: checks each data group hash against EF.SOD and verifies the
-   EF.SOD signature (RSA, RSASSA-PSS, ECDSA) with the document signer certificate it contains;
+3. performs **Passive Authentication**: checks each data group hash against EF.SOD, verifies the
+   EF.SOD signature (RSA, RSASSA-PSS, ECDSA) with the document signer certificate it contains and, with
+   `--csca`, checks that this certificate was issued by a Country Signing CA you trust;
 4. performs **Chip Authentication** when DG14 offers it, and checks it by reading EF.COM with the new
-   session keys.
+   session keys;
+5. performs **Active Authentication** when DG15 is present: the chip signs a random challenge, and the
+   signature (RSA ISO/IEC 9796-2 or ECDSA) is verified with the DG15 public key.
 
 Run it from the repository root:
 
@@ -171,6 +174,9 @@ dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 
 
 # Same, skipping PACE and using BAC
 dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --bac --out ./out
+
+# Check the document signer against trusted CSCA certificates, and write the results as JSON
+dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --csca ./csca --json > result.json
 ```
 
 | Option | Meaning |
@@ -180,16 +186,25 @@ dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 
 | `--bac` | Skip PACE and use BAC with the MRZ access key |
 | `--reader <name>` | PC/SC reader to use (default: the first one found) |
 | `--out <dir>` | Folder for the extracted images (default: the current folder) |
+| `--csca <path>` | Trusted CSCA certificates: a `.cer`/`.crt`/`.der`/`.pem` file, an ICAO master list (`.ml`), or a folder of them |
+| `--json` | Write the results as JSON to stdout; the text output goes to stderr |
 | `--verbose` | Print the APDU exchanges and protocol steps to stderr |
 | `--list-readers` | List the PC/SC readers and exit |
 | `-h`, `--help` | Show the help |
 
 Without `--can` or the MRZ options, the tool asks which access key to use. The exit code is `0` on
 success, `1` for invalid arguments (or a CAN on a document without PACE) and `2` for a card
-communication error.
+communication error; with `--json` the outcome of each check is in the JSON (for example
+`"passiveAuthentication": { "signature": "valid", "csca": "trusted" }`).
 
-> **Personal data:** the output, the `--verbose` trace and the images saved to `--out` contain the
-> holder's personal data and photo. Use `--out` to write the images outside the repository, and do not
+With `--csca`, the document signer certificate is trusted when its signature verifies with one of the
+given CSCA certificates that is named as its issuer. Get the CSCA certificates from the issuing country
+(for example its ministry's CSCA page) or from a master list published by a document verification
+authority, and keep them outside the repository. The tool does not check the signature of a master
+list, nor revocation (CRLs).
+
+> **Personal data:** the output, the JSON, the `--verbose` trace and the images saved to `--out`
+> contain the holder's personal data and photo. Use `--out` to write the images outside the repository, and do not
 > share the output or traces unredacted.
 
 The tool also publishes as a Native AOT executable for `net8.0` and `net10.0`:
@@ -203,10 +218,10 @@ dotnet publish nMRTD.Cli -c Release -f net10.0 -r win-x64
 Results of reading real documents with `nMRTD.Cli` (nMRTD 0.8.0-alpha, Windows, REINER SCT
 cyberJack RFID basis reader), as a JIT build and as a Native AOT executable.
 
-| Document | BAC | PACE | Passive Authentication | Chip Authentication | LDS |
-|---|---|---|---|---|---|
-| Italian identity card (CIE 3.0) | ✅ MRZ | ✅ CAN; DH, Generic Mapping, 3DES (`id-PACE-DH-GM-3DES-CBC-CBC`) | ✅ SHA-512 hashes; RSASSA-PSS SHA-512 signature | ✅ DH 2048-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | 1.8 |
-| Italian passport | ✅ MRZ | n.a. | ✅ SHA-1 hashes; SHA1withRSA signature | ✅ DH 1024-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | 1.7 |
+| Document | BAC | PACE | Passive Authentication | Chip Authentication | Active Authentication | LDS |
+|---|---|---|---|---|---|---|
+| Italian identity card (CIE 3.0) | ✅ MRZ | ✅ CAN; DH, Generic Mapping, 3DES (`id-PACE-DH-GM-3DES-CBC-CBC`) | ✅ SHA-512 hashes; RSASSA-PSS SHA-512 signature | ✅ DH 2048-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | n.a. | 1.8 |
+| Italian passport | ✅ MRZ | n.a. | ✅ SHA-1 hashes; SHA1withRSA signature | ✅ DH 1024-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | n.a. | 1.7 |
 
 These two documents do not cover:
 
@@ -216,12 +231,13 @@ These two documents do not cover:
   verifier to read the fingerprints (DG3).
 
 Passive Authentication here checks the document signature with the signer certificate stored in
-EF.SOD; it does not validate that certificate against the issuing country's CSCA.
+EF.SOD; these results predate `--csca`, so that certificate was not validated against the issuing
+country's CSCA.
 
 > ***Please help extend this table.*** *If you read another document with `nMRTD.Cli` (another country,
 > another document type, or the same document with a different access method), please
 > [open an issue](https://github.com/spallaro/nMRTD/issues) with the document type and issuing
-> country, the reader and operating system, and the BAC, PACE, Passive Authentication and Chip
+> country, the reader and operating system, and the BAC, PACE, Passive, Chip and Active
 > Authentication lines of the output, including any error. Leave out names, document numbers, dates,
 > photos and hex dumps: the protocol and algorithm lines are all that is needed.*
 

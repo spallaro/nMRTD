@@ -1193,6 +1193,10 @@ not in the protocol library. Consumers building a production verifier should com
 checks above with `X509Chain`/`CertPathValidator`-style validation against their own CSCA
 store.
 
+`nMRTD.Cli` shows one way to do this in application code: its `--csca` option loads trusted CSCA
+certificates (files or an ICAO master list) and checks that the Document Signer certificate was
+signed by one of them (`nMRTD.Cli/CscaTrustStore.cs`).
+
 ---
 
 ## 5. Native AOT & Trimming Best Practices

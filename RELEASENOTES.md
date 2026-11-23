@@ -11,6 +11,27 @@
 - **`Util.DeriveKey` with the cipher name `3DES`, or a cipher name in lower case, always threw.** It
   accepts these names, but the digest choice compared the names exactly (as in JMRTD) and rejected them.
 
+### Command-line tool
+
+- **`--csca <path>`** checks that the Document Signer certificate of EF.SOD was issued by a trusted
+  Country Signing CA, from certificate files (`.cer`/`.crt`/`.der`/`.pem`), an ICAO CSCA master list
+  (`.ml`) or a folder of them. Candidates are matched by issuer name and authority key identifier, and
+  each CSCA key with that name is tried. Validity dates are reported, not enforced; master list
+  signatures and revocation are not checked.
+- **Active Authentication**: when DG15 is present the tool sends a random challenge as its last step
+  and verifies the signature with the DG15 key (RSA ISO/IEC 9796-2 with implicit SHA-1 or an explicit
+  trailer, ECDSA with the hash named in DG14).
+- **`--json`** writes the results as JSON to stdout (access protocol, MRZ, data groups and hash checks,
+  saved files, Passive, Chip and Active Authentication); all other output goes to stderr. It works in
+  the Native AOT build.
+- DG2 face images in the ISO/IEC 39794-5 format are now saved too; only ISO/IEC 19794-5 faces were.
+- The reading flow moved into `DocumentReader`, which the tests run on the simulated chip.
+
+### Documentation
+
+- **README:** the command-line tool section covers `--csca`, `--json` and Active Authentication, and
+  the tested documents table has an Active Authentication column.
+
 ## 0.8.7-alpha (2026-11-23)
 
 ### Fixed
