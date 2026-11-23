@@ -454,7 +454,9 @@ public class FingerImageInfo : AbstractImageInfo
         POSITION_PLAIN_THUMBS => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_THUMB,
         POSITION_UNKNOWN_PALM => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE,
         POSITION_RIGHT_FULL_PALM => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
-        POSITION_RIGHT_WRITER_S_PALM => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE,
+        // Divergence from JMRTD: JMRTD returns BIOMETRIC_SUBTYPE_NONE here, without the "right" bit that
+        // every other right-hand position (and the left writer's palm, with "left") has.
+        POSITION_RIGHT_WRITER_S_PALM => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
         POSITION_LEFT_FULL_PALM => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
         POSITION_LEFT_WRITER_S_PALM => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
         POSITION_RIGHT_LOWER_PALM => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,

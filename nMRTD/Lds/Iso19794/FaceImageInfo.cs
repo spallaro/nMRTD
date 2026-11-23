@@ -202,14 +202,9 @@ public class FaceImageInfo : AbstractImageInfo
     /// Feature points as described in Section 5.6.3 of ISO/IEC FCD 19794-5.
     /// </summary>
     /// <remarks>
-    /// NOTE: preserved Java quirk -- Java's <c>FeaturePoint</c> does not override <c>equals()</c>/
-    /// <c>hashCode()</c>, so <c>Arrays.equals</c>/<c>Arrays.hashCode</c> on a <c>FeaturePoint[]</c> in
-    /// <see cref="FaceImageInfo"/>'s own <c>equals()</c>/<c>hashCode()</c> compare/hash by object
-    /// *identity*, not by field content -- two structurally-identical <see cref="FaceImageInfo"/>
-    /// instances built from the same bytes will generally NOT compare equal, because reading creates
-    /// fresh <see cref="FeaturePoint"/> instances each time. Preserved here by likewise not overriding
-    /// <see cref="object.Equals(object?)"/>/<see cref="object.GetHashCode"/> on this class, so C#'s
-    /// default reference-identity semantics apply the same way.
+    /// Divergence from JMRTD: Java's <c>FeaturePoint</c> does not override <c>equals()</c>/<c>hashCode()</c>,
+    /// so <see cref="FaceImageInfo"/>'s equality compared its feature points by identity and a face image
+    /// with feature points never equalled a decoded copy of itself. Feature points compare by value here.
     /// </remarks>
     public sealed class FeaturePoint
     {
@@ -269,6 +264,13 @@ public class FaceImageInfo : AbstractImageInfo
         /// <summary>Generates a textual representation of this point.</summary>
         public override string ToString() =>
             $"( point: {GetMajorCode()}.{GetMinorCode()}, type: {_type:x}, ({_x}, {_y}))";
+
+        public override bool Equals(object? obj) =>
+            obj is FeaturePoint other
+            && _type == other._type && _majorCode == other._majorCode && _minorCode == other._minorCode
+            && _x == other._x && _y == other._y;
+
+        public override int GetHashCode() => HashCode.Combine(_type, _majorCode, _minorCode, _x, _y);
     }
 
     /// <summary>Index into the pose angle array.</summary>
@@ -607,7 +609,7 @@ public class FaceImageInfo : AbstractImageInfo
             && _eyeColor == other._eyeColor
             && _faceImageType == other._faceImageType
             && _featureMask == other._featureMask
-            && _featurePoints.AsSpan().SequenceEqual(other._featurePoints) /* NOTE: identity-based, see FeaturePoint remarks */
+            && _featurePoints.AsSpan().SequenceEqual(other._featurePoints)
             && _gender == other._gender
             && _hairColor == other._hairColor
             && _imageDataType == other._imageDataType
@@ -836,7 +838,7 @@ public class FaceImageInfo : AbstractImageInfo
         _ => 0xFF, /* Unknown or any other value */
     };
 
-    /// <summary>Java <c>Arrays.hashCode(Object[])</c> equivalent: identity-based per-element hash (see <see cref="FeaturePoint"/> remarks).</summary>
+    /// <summary>Java <c>Arrays.hashCode(Object[])</c> equivalent, over the feature points' value-based hash codes.</summary>
     private static int ArrayHashCode(FeaturePoint[] array)
     {
         int result = 1;

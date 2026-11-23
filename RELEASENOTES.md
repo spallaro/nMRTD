@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- **An ISO/IEC 19794-5 face image with feature points never equalled a decoded copy of itself.**
+  `FaceImageInfo.FeaturePoint` had no `Equals`/`GetHashCode` (as in JMRTD), so the feature points were
+  compared by identity. They are now compared by value.
+- **The right writer's palm** (ISO/IEC 19794-4 finger position 22) mapped to a CBEFF biometric subtype
+  without the "right" bit, unlike every other right-hand position (a slip copied from JMRTD).
+
 ### Documentation
 
 - **README:** the .NET and Native AOT badges link to the .NET support policy and to the Native AOT
