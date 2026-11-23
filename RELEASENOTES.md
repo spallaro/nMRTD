@@ -1,6 +1,6 @@
 # Release Notes
 
-## Unreleased
+## 0.8.7-alpha (2026-11-23)
 
 ### Fixed
 
