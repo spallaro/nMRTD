@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\nMRTD\nMRTD.csproj" />
+    <ProjectReference Include="..\nMRTD.Cli\nMRTD.Cli.csproj" />
   </ItemGroup>
 
   <ItemGroup>
