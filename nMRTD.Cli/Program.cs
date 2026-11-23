@@ -103,7 +103,26 @@ static async Task<int> RunAsync(string[] args)
         return 1;
     }
 
-    var reader = new DocumentReader(passportService, Console.Out);
+    CscaTrustStore? trustStore = null;
+    if (options.GetValueOrDefault("csca") is { } cscaPath)
+    {
+        try
+        {
+            trustStore = CscaTrustStore.Load(cscaPath);
+        }
+        catch (FileNotFoundException e)
+        {
+            await Console.Error.WriteLineAsync($"Argument error: {e.Message}");
+            return 1;
+        }
+        foreach (string warning in trustStore.Warnings)
+        {
+            await Console.Error.WriteLineAsync($"Skipped CSCA file {warning}");
+        }
+        Console.WriteLine($"Loaded {trustStore.Certificates.Count} trusted CSCA certificate(s) from {cscaPath}.");
+    }
+
+    var reader = new DocumentReader(passportService, Console.Out) { TrustStore = trustStore };
     int exitCode;
     try
     {
@@ -386,6 +405,7 @@ static Dictionary<string, string> ParseArgs(string[] args)
             case "--doe":
             case "--can":
             case "--out":
+            case "--csca":
                 if (i + 1 >= args.Length)
                 {
                     throw new ArgumentException($"Missing value for {arg}");
@@ -405,8 +425,8 @@ static void PrintUsage()
         nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive, Chip and Active Authentication) via a PC/SC reader.
 
         Usage:
-          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--json]
-          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>] [--json]
+          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--csca <path>] [--json]
+          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>] [--csca <path>] [--json]
           nMRTD.Cli --list-readers
 
         Options:
@@ -418,6 +438,8 @@ static void PrintUsage()
           --out <dir>       Directory to save extracted images (DG2/DG5/DG6/DG7) to (default: current directory)
           --bac             Skip PACE and use BAC (needs --doc/--dob/--doe), even if the document supports PACE
           --verbose         Print APDU exchanges and protocol steps (BAC/PACE/...) to stderr as they happen
+          --csca <path>     Trusted CSCA certificates (.cer/.crt/.der/.pem, or an ICAO master list .ml), or a
+                            folder of them: checks that the Document Signer certificate was issued by one
           --json            Write the results as JSON to stdout (the text output goes to stderr)
           --list-readers    List available PC/SC readers and exit
           -h, --help        Show this help

@@ -42,6 +42,14 @@ internal sealed class SimulatedDocument
     public bool BacEnabled { get; set; } = true;
     public bool SupportsExtendedLength { get; set; } = true;
 
+    /// <summary>The Document Signer that signs EF.SOD: by default the self-signed <see cref="SigningFixtures"/>.</summary>
+    public AsymmetricKeyParameter DocumentSignerKey { get; set; } = SigningFixtures.KeyPair.Private;
+
+    public Org.BouncyCastle.X509.X509Certificate DocumentSignerCertificate { get; set; } = SigningFixtures.Certificate;
+
+    /// <summary>The EF.SOD signature algorithm, matching <see cref="DocumentSignerKey"/>.</summary>
+    public string DocumentSignerAlgorithm { get; set; } = "SHA256withRSA";
+
     /// <summary>The application files, by file identifier, as personalized.</summary>
     public Dictionary<short, byte[]> Files { get; } = new();
 
@@ -137,8 +145,8 @@ internal sealed class SimulatedDocument
             Files[(short)(0x0100 + number)] = content;
         }
         Files[PassportService.EF_COM] = new COMFile("1.7", "4.0.0", tags).GetEncoded()!;
-        Files[PassportService.EF_SOD] = new SODFile("SHA-256", "SHA256withRSA", hashes,
-            SigningFixtures.KeyPair.Private, SigningFixtures.Certificate).GetEncoded()!;
+        Files[PassportService.EF_SOD] = new SODFile("SHA-256", DocumentSignerAlgorithm, hashes,
+            DocumentSignerKey, DocumentSignerCertificate).GetEncoded()!;
         if (CvcaKey != null)
         {
             Files[PassportService.EF_CVCA] = new CVCAFile(PassportService.EF_CVCA, CvcaReference).GetEncoded()!;

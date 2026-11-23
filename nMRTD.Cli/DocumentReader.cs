@@ -45,6 +45,10 @@ public sealed class DocumentReader
 
     public ReadReport Report => report;
 
+    /// <summary>Trusted CSCA certificates (<c>--csca</c>); without them the Document Signer certificate is not
+    /// checked against a trust anchor.</summary>
+    public CscaTrustStore? TrustStore { get; init; }
+
     /// <summary>
     /// Authenticates (PACE, falling back to BAC unless <paramref name="forceBac"/>), reads the data groups,
     /// checks Passive Authentication and performs Chip Authentication.
@@ -550,6 +554,15 @@ public sealed class DocumentReader
 
         report.PassiveAuthentication.SignatureAlgorithm = digestEncryptionAlgorithm;
         report.PassiveAuthentication.Signer = docSigningCertificate?.SubjectDN.ToString();
+        if (docSigningCertificate != null)
+        {
+            report.PassiveAuthentication.SignerCertificateValidNow = docSigningCertificate.IsValidNow;
+        }
+        else if (TrustStore != null)
+        {
+            report.PassiveAuthentication.Csca = "no-certificate";
+        }
+
         if (digestEncryptionAlgorithm == null || docSigningCertificate == null)
         {
             report.PassiveAuthentication.Signature = "error";
@@ -579,10 +592,31 @@ public sealed class DocumentReader
             _out.WriteLine($"Could not verify the EF.SOD signature (algorithm '{digestEncryptionAlgorithm}' not supported by this CLI): {e.Message}");
         }
 
-        _out.WriteLine(
-            "NOTE: this only proves EF.SOD and the data groups above are internally consistent and unmodified. "
-            + "The document signing certificate itself was NOT validated against a trusted CSCA root (no trust "
-            + "store is configured by this CLI), so this does NOT prove the document was issued by a legitimate authority.");
+        if (TrustStore == null)
+        {
+            _out.WriteLine(
+                "NOTE: this only proves EF.SOD and the data groups above are internally consistent and unmodified. "
+                + "The document signing certificate itself was NOT validated against a trusted CSCA root (use --csca "
+                + "to give trusted CSCA certificates), so this does NOT prove the document was issued by a legitimate authority.");
+            return;
+        }
+
+        CscaTrustStore.Verification verification = TrustStore.Verify(docSigningCertificate);
+        report.PassiveAuthentication.Csca = verification.Trusted ? "trusted" : "untrusted";
+        report.PassiveAuthentication.CscaSubject = verification.Csca?.SubjectDN.ToString();
+        report.PassiveAuthentication.CscaDetail = verification.Detail;
+        if (verification.Trusted)
+        {
+            _out.WriteLine($"Document Signer certificate is issued by the trusted CSCA {verification.Csca!.SubjectDN} ({verification.Detail}).");
+        }
+        else
+        {
+            _out.WriteLine($"Document Signer certificate is NOT issued by a trusted CSCA: {verification.Detail}.");
+        }
+        _out.WriteLine(docSigningCertificate.IsValidNow
+            ? $"Document Signer certificate valid until {docSigningCertificate.NotAfter:yyyy-MM-dd}."
+            : $"Document Signer certificate expired on {docSigningCertificate.NotAfter:yyyy-MM-dd} (normal for an expired document).");
+        _out.WriteLine("NOTE: revocation (CRLs) is not checked.");
     }
 
     /// <summary>
