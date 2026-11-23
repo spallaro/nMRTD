@@ -23,7 +23,10 @@
   trailer, ECDSA with the hash named in DG14).
 - **`--json`** writes the results as JSON to stdout (access protocol, MRZ, data groups and hash checks,
   saved files, Passive, Chip and Active Authentication); all other output goes to stderr. It works in
-  the Native AOT build.
+  the Native AOT build. For Chip and Active Authentication, `keyAuthenticated` tells whether the key is
+  covered by a valid EF.SOD signature, and an Active Authentication that could not be completed is
+  reported as `error`, apart from a wrong signature (`failed`). Errors before the card is read are
+  reported in the JSON too, and an unexpected error ends with exit code 3 instead of a crash.
 - DG2 face images in the ISO/IEC 39794-5 format are now saved too; only ISO/IEC 19794-5 faces were.
 - The reading flow moved into `DocumentReader`, which the tests run on the simulated chip.
 

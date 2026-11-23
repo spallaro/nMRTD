@@ -70,6 +70,7 @@ public sealed class DocumentReaderTests : IDisposable
         Assert.False(reader.Report.ExplicitPaceParameters);
         Assert.Equal("match", reader.Report.DataGroups.Single(d => d.Number == 14).Hash);
         Assert.Equal("succeeded", reader.Report.ChipAuthentication.Status);
+        Assert.True(reader.Report.ChipAuthentication.KeyAuthenticated);
         Assert.Equal(SecurityInfo.ID_CA_ECDH_AES_CBC_CMAC_128, reader.Report.ChipAuthentication.Protocol);
         Assert.Contains("Chip Authentication succeeded", text.ToString());
     }
@@ -124,13 +125,14 @@ public sealed class DocumentReaderTests : IDisposable
         System.Text.Json.JsonElement root = json.RootElement;
         Assert.Equal("PACE", root.GetProperty("accessProtocol").GetString());
         Assert.Equal(SimulatedDocument.DocumentNumber, root.GetProperty("mrz").GetProperty("documentNumber").GetString());
-        Assert.Equal("F", root.GetProperty("mrz").GetProperty("gender").GetString()[..1]);
+        Assert.StartsWith("F", root.GetProperty("mrz").GetProperty("gender").GetString());
         System.Text.Json.JsonElement dg1 = root.GetProperty("dataGroups").EnumerateArray().First(d => d.GetProperty("number").GetInt32() == 1);
         Assert.True(dg1.GetProperty("present").GetBoolean());
         Assert.Equal("match", dg1.GetProperty("hash").GetString());
         Assert.Equal("valid", root.GetProperty("passiveAuthentication").GetProperty("signature").GetString());
         Assert.Equal("not-checked", root.GetProperty("passiveAuthentication").GetProperty("csca").GetString());
         Assert.Equal("not-available", root.GetProperty("chipAuthentication").GetProperty("status").GetString());
+        Assert.False(root.GetProperty("activeAuthentication").GetProperty("keyAuthenticated").GetBoolean());
         Assert.Equal(System.Text.Json.JsonValueKind.Null, root.GetProperty("error").ValueKind);
         Assert.Single(root.GetProperty("savedFiles").EnumerateArray());
         Assert.DoesNotContain("\"can\"", System.Text.Encoding.UTF8.GetString(buffer.ToArray()), StringComparison.OrdinalIgnoreCase); // no access key in the output
@@ -159,6 +161,7 @@ public sealed class DocumentReaderTests : IDisposable
         reader.Read(Mrz, forceBac: false, outDir);
 
         Assert.Equal("succeeded", reader.Report.ActiveAuthentication.Status);
+        Assert.True(reader.Report.ActiveAuthentication.KeyAuthenticated);
         Assert.Contains(algorithm, reader.Report.ActiveAuthentication.Protocol);
         Assert.Equal("match", reader.Report.DataGroups.Single(d => d.Number == 15).Hash);
         Assert.Contains("Active Authentication succeeded", text.ToString());
@@ -207,5 +210,33 @@ public sealed class DocumentReaderTests : IDisposable
         Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.RsaKey1024.Public, null, new byte[8], []).Valid);
         Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.GenerateEc(12).Public,
             ActiveAuthenticationInfo.ECDSA_PLAIN_SHA256_OID, new byte[8], []).Valid);
+    }
+
+    /// <summary>A chip that answers Active Authentication with a key that is not the one in EF.SOD: the
+    /// protocol succeeds, but the key is not authenticated, which the report must make visible.</summary>
+    [Fact]
+    public void ActiveAuthenticationWithAKeyNotCoveredByTheSodIsFlagged()
+    {
+        var document = new SimulatedDocument { ActiveAuthenticationKey = SimulatedDocument.RsaKey1024 };
+        SimulatedChip chip = document.Build();
+        // A validly signed EF.SOD whose DG15 hash is not the hash of DG15.
+        var hashes = new Dictionary<int, byte[]>
+        {
+            [1] = Org.BouncyCastle.Security.DigestUtilities.CalculateDigest("SHA-256", chip.ApplicationFiles[PassportService.EF_DG1]),
+            [2] = Org.BouncyCastle.Security.DigestUtilities.CalculateDigest("SHA-256", chip.ApplicationFiles[PassportService.EF_DG2]),
+            [15] = Org.BouncyCastle.Security.DigestUtilities.CalculateDigest("SHA-256", new byte[] { 0x42 }),
+        };
+        chip.ApplicationFiles[PassportService.EF_SOD] = new SODFile("SHA-256", "SHA256withRSA", hashes,
+            SigningFixtures.KeyPair.Private, SigningFixtures.Certificate).GetEncoded()!;
+        var text = new StringWriter();
+        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), text);
+
+        reader.Read(Mrz, forceBac: false, outDir);
+
+        Assert.Equal("valid", reader.Report.PassiveAuthentication.Signature);
+        Assert.Equal("mismatch", reader.Report.DataGroups.Single(d => d.Number == 15).Hash);
+        Assert.Equal("succeeded", reader.Report.ActiveAuthentication.Status);
+        Assert.False(reader.Report.ActiveAuthentication.KeyAuthenticated);
+        Assert.Contains("not covered by a valid EF.SOD signature", text.ToString());
     }
 }

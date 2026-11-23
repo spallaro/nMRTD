@@ -103,6 +103,7 @@ public static class ReadReportJson
     {
         json.WriteStartObject(name);
         json.WriteString("status", result.Status);
+        json.WriteBoolean("keyAuthenticated", result.KeyAuthenticated);
         json.WriteString("protocol", result.Protocol);
         json.WriteString("error", result.Error);
         json.WriteEndObject();

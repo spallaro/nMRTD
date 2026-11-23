@@ -84,13 +84,50 @@ public sealed class DocumentReader
         var sodFile = new SODFile(new MemoryStream(sodBytes));
         VerifyPassiveAuthentication(sodFile, dataGroupBytes);
 
-        PerformChipAuthentication(passportService, dataGroupBytes.GetValueOrDefault(14));
+        try
+        {
+            PerformChipAuthentication(passportService, dataGroupBytes.GetValueOrDefault(14));
+        }
+        catch (Exception e) when (e is not CardServiceException)
+        {
+            // A malformed DG14: report it and go on.
+            report.ChipAuthentication.Status = "error";
+            report.ChipAuthentication.Error = e.Message;
+            _out.WriteLine($"Chip Authentication could not be attempted: {e.Message}");
+        }
 
         // Last: under secure messaging a chip ends the session on an error status, so a failing Active
         // Authentication must not come before anything else.
-        PerformActiveAuthentication(dataGroupBytes.GetValueOrDefault(15), dataGroupBytes.GetValueOrDefault(14));
+        try
+        {
+            PerformActiveAuthentication(dataGroupBytes.GetValueOrDefault(15), dataGroupBytes.GetValueOrDefault(14));
+        }
+        catch (Exception e) when (e is not CardServiceException)
+        {
+            report.ActiveAuthentication.Status = "error";
+            report.ActiveAuthentication.Error = e.Message;
+            _out.WriteLine($"Active Authentication could not be attempted: {e.Message}");
+        }
+
+        // The chip proved it holds the private key for the DG14 or DG15 public key; that only says something
+        // about the document if the key itself is the one the issuer signed in EF.SOD.
+        report.ChipAuthentication.KeyAuthenticated = IsAuthenticatedBySod(14);
+        report.ActiveAuthentication.KeyAuthenticated = IsAuthenticatedBySod(15);
+        foreach ((string name, ProtocolResult result) in new[] { ("Chip", report.ChipAuthentication), ("Active", report.ActiveAuthentication) })
+        {
+            if (result.Status == "succeeded" && !result.KeyAuthenticated)
+            {
+                _out.WriteLine($"WARNING: {name} Authentication succeeded, but its public key is not covered by a valid EF.SOD "
+                    + "signature, so it does not show that the chip is genuine.");
+            }
+        }
         return true;
     }
+
+    /// <summary>Whether the data group's hash matches EF.SOD and the EF.SOD signature is valid.</summary>
+    private bool IsAuthenticatedBySod(int dataGroup) =>
+        report.PassiveAuthentication.Signature == "valid"
+        && report.DataGroups.Any(d => d.Number == dataGroup && d.Hash == "match");
 
     private void PerformBac(AccessCredentials credentials)
     {
@@ -601,7 +638,19 @@ public sealed class DocumentReader
             return;
         }
 
-        CscaTrustStore.Verification verification = TrustStore.Verify(docSigningCertificate);
+        CscaTrustStore.Verification verification;
+        try
+        {
+            verification = TrustStore.Verify(docSigningCertificate);
+        }
+        catch (Exception e)
+        {
+            report.PassiveAuthentication.Csca = "error";
+            report.PassiveAuthentication.CscaDetail = e.Message;
+            _out.WriteLine($"Could not check the Document Signer certificate against the trusted CSCAs: {e.Message}");
+            return;
+        }
+
         report.PassiveAuthentication.Csca = verification.Trusted ? "trusted" : "untrusted";
         report.PassiveAuthentication.CscaSubject = verification.Csca?.SubjectDN.ToString();
         report.PassiveAuthentication.CscaDetail = verification.Detail;
@@ -747,9 +796,11 @@ public sealed class DocumentReader
         }
         catch (Exception e)
         {
-            report.ActiveAuthentication.Status = "failed";
+            // Not a wrong signature: the challenge got no usable answer (for example the secure channel was
+            // already lost), which says nothing about whether the chip is a copy.
+            report.ActiveAuthentication.Status = "error";
             report.ActiveAuthentication.Error = e.Message;
-            _out.WriteLine($"Active Authentication FAILED: the chip did not answer the challenge ({e.Message}).");
+            _out.WriteLine($"Active Authentication could not be completed: the chip did not answer the challenge ({e.Message}).");
             return;
         }
 

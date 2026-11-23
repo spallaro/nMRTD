@@ -77,7 +77,7 @@ public sealed class PassiveAuthenticationResult
 
     public string? Error { get; set; }
 
-    /// <summary>"trusted", "untrusted", "no-certificate" or "not-checked" (no <c>--csca</c>).</summary>
+    /// <summary>"trusted", "untrusted", "no-certificate", "error" or "not-checked" (no <c>--csca</c>).</summary>
     public string Csca { get; set; } = "not-checked";
 
     public string? CscaSubject { get; set; }
@@ -92,8 +92,14 @@ public sealed class PassiveAuthenticationResult
 /// <summary>The outcome of Chip Authentication or Active Authentication.</summary>
 public sealed class ProtocolResult
 {
-    /// <summary>"succeeded", "failed", "not-available" or, for Active Authentication, "unverifiable".</summary>
+    /// <summary>"succeeded"; "failed" (the chip did not prove it holds the key: for Active Authentication a
+    /// wrong signature, the sign of a copied chip); "error" (the protocol could not be completed);
+    /// "not-available"; or, for Active Authentication, "unverifiable".</summary>
     public string Status { get; set; } = "not-available";
+
+    /// <summary>Whether the public key used (DG14 or DG15) is covered by a valid EF.SOD signature. A
+    /// "succeeded" status shows that the chip is genuine only when this is true.</summary>
+    public bool KeyAuthenticated { get; set; }
 
     public string? Protocol { get; set; }
 

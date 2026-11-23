@@ -193,9 +193,13 @@ dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --csca ./csca --json >
 | `-h`, `--help` | Show the help |
 
 Without `--can` or the MRZ options, the tool asks which access key to use. The exit code is `0` on
-success, `1` for invalid arguments (or a CAN on a document without PACE) and `2` for a card
-communication error; with `--json` the outcome of each check is in the JSON (for example
-`"passiveAuthentication": { "signature": "valid", "csca": "trusted" }`).
+success, `1` for invalid arguments (or a CAN on a document without PACE), `2` for a card
+communication error and `3` for any other error. A failed check (a hash mismatch, an invalid
+signature, an untrusted CSCA, a failed Chip or Active Authentication) does not change the exit code:
+with `--json` the outcome of each check is in the JSON (for example
+`"passiveAuthentication": { "signature": "valid", "csca": "trusted" }`). For Chip and Active
+Authentication, `keyAuthenticated` tells whether the public key used (DG14 or DG15) is covered by a
+valid EF.SOD signature: only then does `"status": "succeeded"` show that the chip is genuine.
 
 With `--csca`, the document signer certificate is trusted when its signature verifies with one of the
 given CSCA certificates that is named as its issuer. Get the CSCA certificates from the issuing country

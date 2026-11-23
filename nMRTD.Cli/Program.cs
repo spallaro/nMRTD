@@ -61,14 +61,28 @@ static async Task<int> RunAsync(string[] args)
         Console.SetOut(Console.Error);
     }
 
+    // An error before the card is read: reported on stderr and, with --json, as a JSON report too.
+    async Task<int> FailAsync(string message, bool showUsage)
+    {
+        await Console.Error.WriteLineAsync(message);
+        if (showUsage)
+        {
+            PrintUsage();
+        }
+        if (json)
+        {
+            using Stream stdout = Console.OpenStandardOutput();
+            ReadReportJson.Write(new ReadReport { Error = message }, stdout);
+        }
+        return 1;
+    }
+
     string? readerName = options.GetValueOrDefault("reader");
     string? outDir = options.GetValueOrDefault("out", Directory.GetCurrentDirectory());
 
     if (options.ContainsKey("bac") && options.ContainsKey("can"))
     {
-        await Console.Error.WriteLineAsync("Argument error: --bac needs the MRZ access key (--doc/--dob/--doe); a CAN cannot be used for BAC.");
-        PrintUsage();
-        return 1;
+        return await FailAsync("Argument error: --bac needs the MRZ access key (--doc/--dob/--doe); a CAN cannot be used for BAC.", showUsage: true);
     }
 
     AccessCredentials credentials;
@@ -78,9 +92,7 @@ static async Task<int> RunAsync(string[] args)
     }
     catch (ArgumentException e)
     {
-        await Console.Error.WriteLineAsync($"Cannot build access key: {e.Message}");
-        PrintUsage();
-        return 1;
+        return await FailAsync($"Cannot build access key: {e.Message}", showUsage: true);
     }
 
     PcscCardService cardService = new(readerName);
@@ -99,8 +111,7 @@ static async Task<int> RunAsync(string[] args)
 
     if (options.ContainsKey("bac") && credentials.Mode == AccessKeyMode.Can)
     {
-        await Console.Error.WriteLineAsync("--bac needs the MRZ access key; a CAN cannot be used for BAC.");
-        return 1;
+        return await FailAsync("--bac needs the MRZ access key; a CAN cannot be used for BAC.", showUsage: false);
     }
 
     CscaTrustStore? trustStore = null;
@@ -112,8 +123,7 @@ static async Task<int> RunAsync(string[] args)
         }
         catch (FileNotFoundException e)
         {
-            await Console.Error.WriteLineAsync($"Argument error: {e.Message}");
-            return 1;
+            return await FailAsync($"Argument error: {e.Message}", showUsage: false);
         }
         foreach (string warning in trustStore.Warnings)
         {
@@ -149,6 +159,13 @@ static async Task<int> RunAsync(string[] args)
         reader.Report.Error = $"Card communication error: {e.Message}";
         await Console.Error.WriteLineAsync(reader.Report.Error);
         exitCode = 2;
+    }
+    catch (Exception e)
+    {
+        // Anything else (a malformed file, for example): still report it, and still write the JSON.
+        reader.Report.Error = $"Unexpected error: {e.GetType().Name}: {e.Message}";
+        await Console.Error.WriteLineAsync(reader.Report.Error);
+        exitCode = 3;
     }
     finally
     {

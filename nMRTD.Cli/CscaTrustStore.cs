@@ -79,7 +79,11 @@ public sealed class CscaTrustStore
             byte[] bytes = File.ReadAllBytes(file);
             if (Path.GetExtension(file).Equals(".ml", StringComparison.OrdinalIgnoreCase))
             {
-                certificates.AddRange(ReadMasterList(bytes));
+                certificates.AddRange(ReadMasterList(bytes, out int skipped));
+                if (skipped > 0)
+                {
+                    Warnings.Add($"{file}: {skipped} certificate(s) of the master list could not be read");
+                }
             }
             else
             {
@@ -99,8 +103,9 @@ public sealed class CscaTrustStore
     }
 
     /// <summary>The certificates of an ICAO CSCA master list: CMS SignedData whose content
-    /// (id-icao-cscaMasterList, 2.23.136.1.1.2) is a <see cref="CscaMasterList"/>.</summary>
-    public static IEnumerable<X509Certificate> ReadMasterList(byte[] encoded)
+    /// (id-icao-cscaMasterList, 2.23.136.1.1.2) is a <c>CscaMasterList</c> (version, SET OF Certificate).
+    /// Certificates that cannot be read are skipped and counted in <paramref name="skipped"/>.</summary>
+    public static List<X509Certificate> ReadMasterList(byte[] encoded, out int skipped)
     {
         ContentInfo contentInfo = ContentInfo.GetInstance(Asn1Object.FromByteArray(encoded));
         SignedData signedData = SignedData.GetInstance(contentInfo.Content);
@@ -110,8 +115,21 @@ public sealed class CscaTrustStore
             throw new ArgumentException($"Not a CSCA master list (content type {content.ContentType})");
         }
         byte[] masterListBytes = Asn1OctetString.GetInstance(content.Content).GetOctets();
-        return CscaMasterList.GetInstance(Asn1Object.FromByteArray(masterListBytes)).GetCertStructs()
-            .Select(structure => new X509Certificate(structure));
+        Asn1Set certificateSet = Asn1Set.GetInstance(Asn1Sequence.GetInstance(Asn1Object.FromByteArray(masterListBytes))[1]);
+        var result = new List<X509Certificate>();
+        skipped = 0;
+        foreach (Asn1Encodable element in certificateSet)
+        {
+            try
+            {
+                result.Add(new X509Certificate(X509CertificateStructure.GetInstance(element)));
+            }
+            catch (Exception)
+            {
+                skipped++;
+            }
+        }
+        return result;
     }
 
     /// <summary>The outcome of checking a Document Signer certificate.</summary>
@@ -149,12 +167,10 @@ public sealed class CscaTrustStore
                     : "the CSCA certificate was NOT valid when the Document Signer certificate was issued";
                 return new Verification(true, csca, validity);
             }
-            catch (Exception e) when (e is Org.BouncyCastle.Security.InvalidKeyException
-                or Org.BouncyCastle.Security.SignatureException
-                or Org.BouncyCastle.Security.Certificates.CertificateException
-                or InvalidOperationException or ArgumentException)
+            catch (Exception)
             {
-                // Signed with another key of the same CSCA name (or not at all); try the next candidate.
+                // Signed with another key of the same CSCA name (or not at all): Bouncy Castle reports that
+                // with different exception types depending on the algorithm. Try the next candidate.
             }
         }
 

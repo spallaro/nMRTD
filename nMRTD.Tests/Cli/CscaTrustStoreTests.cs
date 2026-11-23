@@ -67,6 +67,42 @@ public sealed class CscaTrustStoreTests : IDisposable
         Assert.Contains("does not verify", result.Detail);
     }
 
+    [Theory]
+    [InlineData("SHA256WITHRSAANDMGF1")]
+    [InlineData("SHA256WITHECDSA")]
+    public void ImpostorCscaIsNotTrustedWithEveryAlgorithm(string signatureAlgorithm)
+    {
+        bool ec = signatureAlgorithm.EndsWith("ECDSA", StringComparison.Ordinal);
+        Issuer real = Csca(Utopia, ec ? Ec() : Rsa(), signatureAlgorithm);
+        Issuer impostor = Csca(Utopia, ec ? Ec() : Rsa(), signatureAlgorithm);
+
+        CscaTrustStore.Verification result = new CscaTrustStore([impostor.Certificate])
+            .Verify(DocumentSigner(real, (ec ? Ec() : Rsa()).Public, signatureAlgorithm, authorityKeyId: false));
+
+        Assert.False(result.Trusted);
+    }
+
+    [Fact]
+    public void UnreadableCertificateInAMasterListIsSkipped()
+    {
+        Issuer good = Csca(Utopia, Rsa());
+        var list = new Org.BouncyCastle.Asn1.DerSequence(new Org.BouncyCastle.Asn1.DerInteger(0),
+            new Org.BouncyCastle.Asn1.DerSet(new Org.BouncyCastle.Asn1.Asn1Encodable[]
+            {
+                good.Certificate.CertificateStructure, new Org.BouncyCastle.Asn1.DerSequence(new Org.BouncyCastle.Asn1.DerInteger(42)),
+            }));
+        var content = new Org.BouncyCastle.Asn1.Cms.ContentInfo(Org.BouncyCastle.Asn1.Icao.IcaoObjectIdentifiers.IdIcaoCscaMasterList,
+            new Org.BouncyCastle.Asn1.DerOctetString(list.GetEncoded()));
+        var signedData = new Org.BouncyCastle.Asn1.Cms.SignedData(new Org.BouncyCastle.Asn1.DerSet(), content, null, null, new Org.BouncyCastle.Asn1.DerSet());
+        File.WriteAllBytes(Path.Combine(folder, "list.ml"),
+            new Org.BouncyCastle.Asn1.Cms.ContentInfo(Org.BouncyCastle.Asn1.Cms.CmsObjectIdentifiers.SignedData, signedData).GetEncoded());
+
+        CscaTrustStore store = CscaTrustStore.Load(folder);
+
+        Assert.Single(store.Certificates);
+        Assert.Contains("1 certificate(s) of the master list could not be read", Assert.Single(store.Warnings));
+    }
+
     [Fact]
     public void AuthorityKeyIdentifierSelectsTheCsca()
     {
@@ -133,7 +169,7 @@ public sealed class CscaTrustStoreTests : IDisposable
             null, null, new Org.BouncyCastle.Asn1.DerSet());
         byte[] encoded = new Org.BouncyCastle.Asn1.Cms.ContentInfo(Org.BouncyCastle.Asn1.Cms.CmsObjectIdentifiers.SignedData, signedData).GetEncoded();
 
-        Assert.Throws<ArgumentException>(() => CscaTrustStore.ReadMasterList(encoded).ToList());
+        Assert.Throws<ArgumentException>(() => CscaTrustStore.ReadMasterList(encoded, out _));
     }
 
     [Fact]
