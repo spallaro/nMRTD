@@ -257,7 +257,7 @@ Example (a simulated test document):
     { "number": 1, "present": true, "length": 93, "hash": "match" },
     {
       "number": 2, "present": true, "length": 40094, "hash": "match",
-      "images": [ { "mimeType": "image/jpeg", "offset": 94, "length": 40000 } ]
+      "images": [ { "mimeType": "image/jpeg", "offset": 82, "length": 40000 } ]
     },
     { "number": 5, "present": false },
     { "number": 14, "present": true, "length": 357, "hash": "match" },
