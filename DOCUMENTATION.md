@@ -361,7 +361,7 @@ static byte[] ReadFileBytes(PassportService passportService, short fid)
 
 A complete runnable version of this flow — including reader selection, PACE-with-BAC
 fallback, DG1–DG16 parsing, and full Passive Authentication — is in
-[`nMRTD.Cli/Program.cs`](nMRTD.Cli/Program.cs).
+[`nMRTD.Cli/DocumentReader.cs`](nMRTD.Cli/DocumentReader.cs).
 
 ---
 
@@ -1083,7 +1083,7 @@ itself — it is a pure data object. The verification logic below is intentional
 the API consumer; **the library ships no orchestration method that performs it for you**
 (there is no `PassiveAuthenticationService`-style class), because the amount of trust
 material required (a CSCA store, revocation status, national deviation lists) is
-deployment-specific and outside the library's scope. `nMRTD.Cli/Program.cs` contains a
+deployment-specific and outside the library's scope. `nMRTD.Cli/DocumentReader.cs` contains a
 complete, runnable worked example — `VerifyPassiveAuthentication` — reproduced and
 explained below.
 

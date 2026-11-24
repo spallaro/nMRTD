@@ -9,12 +9,8 @@
  * See LICENSE for more information.
  */
 
-using System.Globalization;
-using System.Text;
-
 using nMRTD.Lds;
 using nMRTD.Lds.Icao;
-using nMRTD.Lds.Iso19794;
 using nMRTD.SmartCards;
 
 using Org.BouncyCastle.Asn1.Pkcs;
@@ -26,10 +22,38 @@ using Org.BouncyCastle.Security;
 
 namespace nMRTD.Cli;
 
+/// <summary>Which access control protocol to use.</summary>
+public enum AccessMode
+{
+    /// <summary>PACE when the document offers it, otherwise BAC (with the MRZ access key).</summary>
+    Auto,
+
+    /// <summary>PACE only (<c>--pace</c>).</summary>
+    Pace,
+
+    /// <summary>BAC only (<c>--bac</c>).</summary>
+    Bac,
+}
+
+/// <summary>Which kind of access key was given.</summary>
+public enum AccessKeyMode
+{
+    /// <summary>MRZ details (document number, date of birth, date of expiry): usable for PACE and BAC.</summary>
+    Mrz,
+
+    /// <summary>Card Access Number: usable for PACE only.</summary>
+    Can,
+}
+
+/// <summary>The access key, together with which kind it is. Exactly one of <see cref="BacKey"/>/<see cref="Can"/>
+/// is non-null, matching <see cref="Mode"/>.</summary>
+public sealed record AccessCredentials(AccessKeyMode Mode, IBacKeySpec? BacKey, string? Can);
+
 /// <summary>
-/// Reads a document end to end through a <see cref="PassportService"/>: PACE (falling back to BAC), every
-/// standard data group except DG3/DG4, Passive Authentication against EF.SOD and Chip Authentication. Writes
-/// the human-readable output to a <see cref="TextWriter"/> and fills a <see cref="ReadReport"/>.
+/// Reads a document end to end through a <see cref="PassportService"/>: access control (PACE or BAC), every
+/// standard data group except DG3/DG4, Passive Authentication against EF.SOD (optionally with trusted CSCAs),
+/// Chip Authentication and Active Authentication. Fills a <see cref="ReadReport"/>; the progress is written to a
+/// log (<c>--verbose</c>).
 /// </summary>
 public sealed class DocumentReader
 {
@@ -37,91 +61,59 @@ public sealed class DocumentReader
     private readonly TextWriter _out;
     private readonly ReadReport report = new();
 
-    public DocumentReader(PassportService passportService, TextWriter output)
+    /// <param name="passportService">the opened passport service</param>
+    /// <param name="log">where the progress is written (<see cref="TextWriter.Null"/> without <c>--verbose</c>)</param>
+    public DocumentReader(PassportService passportService, TextWriter log)
     {
         this.passportService = passportService;
-        _out = output;
+        _out = log;
     }
 
     public ReadReport Report => report;
-
-    /// <summary>The data group being printed, for the images found in it.</summary>
-    private DataGroupResult? currentDataGroup;
-
-    /// <summary>Records an image stored as bare bytes (DG12), with the format recognized from its first
-    /// bytes: JPEG, JPEG 2000 (file or codestream), or <c>null</c>.</summary>
-    private void AddImageBytes(byte[] image)
-    {
-        if (currentDataGroup?.Content is not { } content)
-        {
-            return;
-        }
-
-        string? mimeType = image switch
-        {
-            [0xFF, 0xD8, ..] => "image/jpeg",
-            [0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20, ..] or [0xFF, 0x4F, 0xFF, 0x51, ..] => "image/jp2",
-            _ => null,
-        };
-        currentDataGroup.Images.Add(new ImageSummary(mimeType, image.Length == 0 ? -1 : content.AsSpan().IndexOf(image), image.Length));
-    }
-
-    /// <summary>Records an image of the current data group: its format, and where its bytes are in the data
-    /// group's bytes, so that a program reading <c>--json-data</c> can cut it out directly. The image bytes are
-    /// stored as they are in the data group, so they are found by searching for them.</summary>
-    private void AddImage(Lds.ImageInfo image)
-    {
-        if (currentDataGroup?.Content is not { } content)
-        {
-            return;
-        }
-
-        using Stream stream = image.GetImageInputStream();
-        using var imageBytes = new MemoryStream();
-        stream.CopyTo(imageBytes);
-        byte[] bytes = imageBytes.ToArray();
-        int offset = bytes.Length == 0 ? -1 : content.AsSpan().IndexOf(bytes);
-        currentDataGroup.Images.Add(new ImageSummary(image.GetMimeType(), offset, bytes.Length));
-    }
 
     /// <summary>Trusted CSCA certificates (<c>--csca</c>); without them the Document Signer certificate is not
     /// checked against a trust anchor.</summary>
     public CscaTrustStore? TrustStore { get; init; }
 
     /// <summary>
-    /// Authenticates (PACE, falling back to BAC unless <paramref name="forceBac"/>), reads the data groups,
-    /// checks Passive Authentication and performs Chip Authentication.
+    /// Authenticates, reads the data groups, checks Passive Authentication (unless
+    /// <paramref name="skipPassiveAuthentication"/>) and performs Chip and Active Authentication.
     /// </summary>
-    /// <returns><see langword="false"/> if the document cannot be accessed with a Card Access Number because
-    /// it does not offer PACE; <see langword="true"/> otherwise.</returns>
-    public bool Read(AccessCredentials credentials, bool forceBac, string outDir)
+    /// <exception cref="ReadFailure">when access control fails or the card cannot be read; its exit code says why</exception>
+    public void Read(AccessCredentials credentials, AccessMode mode, bool skipPassiveAuthentication)
     {
-        IAccessKeySpec paceKey = credentials.Mode == AccessKeyMode.Can
-            ? PaceKeySpec.CreateCanKey(credentials.Can!)
-            : PaceKeySpec.CreateMrzKey(credentials.BacKey!);
-
-        bool usedPace = !forceBac && TryPerformPace(paceKey);
-        if (forceBac)
+        try
         {
-            _out.WriteLine("Skipping PACE (--bac): performing BAC.");
-            PerformBac(credentials);
+            report.Atr = Convert.ToHexString(passportService.GetAtr());
         }
-        else if (!usedPace)
+        catch (CardServiceException e)
         {
-            if (credentials.Mode == AccessKeyMode.Can)
+            _out.WriteLine($"Could not read the ATR: {e.Message}");
+        }
+
+        Authenticate(credentials, mode);
+
+        Dictionary<int, byte[]> dataGroupBytes = ReadDataGroups();
+
+        if (skipPassiveAuthentication)
+        {
+            report.PassiveAuthentication.Signature = "skipped";
+            report.PassiveAuthentication.Csca = "skipped";
+            _out.WriteLine("Passive Authentication skipped (--skip-passive-authentication).");
+        }
+        else
+        {
+            byte[] sodBytes;
+            try
             {
-                return false;
+                sodBytes = ReadFileBytes(passportService, PassportService.EF_SOD);
             }
-
-            _out.WriteLine("PACE not available (or not supported by this document) -- falling back to BAC.");
-            PerformBac(credentials);
+            catch (CardServiceException e)
+            {
+                throw new ReadFailure(ExitCodes.CommunicationError, $"EF.SOD could not be read: {e.Message}", e);
+            }
+            VerifyPassiveAuthentication(new SODFile(new MemoryStream(sodBytes)), dataGroupBytes);
         }
-
-        Dictionary<int, byte[]> dataGroupBytes = ReadAndPrintDataGroups(passportService, outDir);
-
-        byte[] sodBytes = ReadFileBytes(passportService, PassportService.EF_SOD);
-        var sodFile = new SODFile(new MemoryStream(sodBytes));
-        VerifyPassiveAuthentication(sodFile, dataGroupBytes);
 
         try
         {
@@ -152,15 +144,6 @@ public sealed class DocumentReader
         // about the document if the key itself is the one the issuer signed in EF.SOD.
         report.ChipAuthentication.KeyAuthenticated = IsAuthenticatedBySod(14);
         report.ActiveAuthentication.KeyAuthenticated = IsAuthenticatedBySod(15);
-        foreach ((string name, ProtocolResult result) in new[] { ("Chip", report.ChipAuthentication), ("Active", report.ActiveAuthentication) })
-        {
-            if (result.Status == "succeeded" && !result.KeyAuthenticated)
-            {
-                _out.WriteLine($"WARNING: {name} Authentication succeeded, but its public key is not covered by a valid EF.SOD "
-                    + "signature, so it does not show that the chip is genuine.");
-            }
-        }
-        return true;
     }
 
     /// <summary>Whether the data group's hash matches EF.SOD and the EF.SOD signature is valid.</summary>
@@ -168,18 +151,57 @@ public sealed class DocumentReader
         report.PassiveAuthentication.Signature == "valid"
         && report.DataGroups.Any(d => d.Number == dataGroup && d.Hash == "match");
 
+    /// <summary>PACE or BAC, as <paramref name="mode"/> and the document allow.</summary>
+    private void Authenticate(AccessCredentials credentials, AccessMode mode)
+    {
+        if (mode == AccessMode.Bac)
+        {
+            PerformBac(credentials);
+            return;
+        }
+
+        IAccessKeySpec paceKey = credentials.Mode == AccessKeyMode.Can
+            ? PaceKeySpec.CreateCanKey(credentials.Can!)
+            : PaceKeySpec.CreateMrzKey(credentials.BacKey!);
+        if (TryPerformPace(paceKey))
+        {
+            return;
+        }
+
+        if (mode == AccessMode.Pace)
+        {
+            throw new ReadFailure(ExitCodes.PaceNotAvailable, "PACE was requested (--pace) but the document does not offer it.");
+        }
+        if (credentials.Mode == AccessKeyMode.Can)
+        {
+            // A CAN is only valid for PACE (BSI TR-03110): it cannot derive a BAC key.
+            throw new ReadFailure(ExitCodes.PaceNotAvailable,
+                "The document does not offer PACE, and a Card Access Number can only be used for PACE: use the MRZ access key.");
+        }
+        _out.WriteLine("PACE not available on this document: falling back to BAC.");
+        PerformBac(credentials);
+    }
+
     private void PerformBac(AccessCredentials credentials)
     {
-        passportService.SendSelectApplet(false);
-        passportService.DoBAC(credentials.BacKey!);
+        _out.WriteLine("Performing BAC...");
+        try
+        {
+            passportService.SendSelectApplet(false);
+            passportService.DoBAC(credentials.BacKey!);
+        }
+        catch (CardServiceException e)
+        {
+            throw new ReadFailure(ExitCodes.BacFailed, $"BAC failed (check the MRZ access key): {e.Message}", e);
+        }
         report.AccessProtocol = "BAC";
         _out.WriteLine("BAC completed.");
     }
 
     /// <summary>Reads EF.CardAccess (if present) looking for a PACEInfo, and performs PACE if found.</summary>
-    /// <param name="passportService">the opened passport service</param>
     /// <param name="paceKey">the PACE access key to use (MRZ- or CAN-derived; see <see cref="PaceKeySpec"/>)</param>
-    /// <returns><see langword="true"/> if PACE was performed, <see langword="false"/> if the card has no EF.CardAccess (BAC-only document).</returns>
+    /// <returns><see langword="true"/> if PACE was performed, <see langword="false"/> if the document does not offer it.</returns>
+    /// <exception cref="ReadFailure">if PACE was attempted and failed</exception>
     private bool TryPerformPace(IAccessKeySpec paceKey)
     {
         byte[] cardAccessBytes;
@@ -193,16 +215,7 @@ public sealed class DocumentReader
         }
 
         var cardAccessFile = new CardAccessFile(new MemoryStream(cardAccessBytes));
-        PACEInfo? paceInfo = null;
-        foreach (SecurityInfo securityInfo in cardAccessFile.GetSecurityInfos())
-        {
-            if (securityInfo is PACEInfo candidate)
-            {
-                paceInfo = candidate;
-                break;
-            }
-        }
-
+        PACEInfo? paceInfo = cardAccessFile.GetSecurityInfos().OfType<PACEInfo>().FirstOrDefault();
         if (paceInfo == null)
         {
             return false;
@@ -218,7 +231,7 @@ public sealed class DocumentReader
         }
         catch (ArgumentException e)
         {
-            _out.WriteLine($"PACE is advertised but its domain parameters cannot be resolved ({e.Message}) -- falling back to BAC.");
+            _out.WriteLine($"PACE is advertised but its domain parameters cannot be resolved ({e.Message}).");
             return false;
         }
 
@@ -229,16 +242,22 @@ public sealed class DocumentReader
         }
 
         _out.WriteLine($"Performing PACE (protocol {paceInfo.GetObjectIdentifier()})...");
-        passportService.DoPace(paceKey, paceInfo.GetObjectIdentifier(), staticParameters, parameterId);
-        passportService.SendSelectApplet(true);
+        try
+        {
+            passportService.DoPace(paceKey, paceInfo.GetObjectIdentifier(), staticParameters, parameterId);
+            passportService.SendSelectApplet(true);
+        }
+        catch (CardServiceException e)
+        {
+            throw new ReadFailure(ExitCodes.PaceFailed, $"PACE failed (check the access key): {e.Message}", e);
+        }
         report.AccessProtocol = "PACE";
         report.PaceProtocol = paceInfo.GetObjectIdentifier();
         _out.WriteLine("PACE completed; secure messaging established.");
-
         return true;
     }
 
-    private byte[] ReadFileBytes(PassportService passportService, short fid)
+    private static byte[] ReadFileBytes(PassportService passportService, short fid)
     {
         using Stream stream = passportService.GetInputStream(fid, PassportService.DefaultMaxBlocksize);
         using var buffer = new MemoryStream();
@@ -247,14 +266,10 @@ public sealed class DocumentReader
     }
 
     /// <summary>
-    /// Standard EF.DG file identifiers to iterate for the post-authentication summary in
-    /// <see cref="ReadAndPrintDataGroups"/>, paired with their data group number. DG3 (fingerprints) and DG4
-    /// (iris) are deliberately excluded: both require Extended Access Control (Chip/Terminal Authentication
-    /// with an inspection-system certificate), which this CLI does not implement -- attempting to read them
-    /// against a document that enforces EAC would just fail with a security-status-not-satisfied error, so
-    /// they are skipped here rather than listed as "not present".
+    /// The standard data groups, by number and file identifier. DG3 (fingerprints) and DG4 (iris) are left out:
+    /// both need Terminal Authentication with an inspection system certificate, which this tool does not have.
     /// </summary>
-    private (int Number, short Fid)[] GetStandardDataGroupIds() =>
+    private static readonly (int Number, short Fid)[] StandardDataGroups =
     [
         (1, PassportService.EF_DG1),
         (2, PassportService.EF_DG2),
@@ -272,20 +287,12 @@ public sealed class DocumentReader
         (16, PassportService.EF_DG16),
     ];
 
-    /// <summary>
-    /// Reads every standard data group listed in <see cref="GetStandardDataGroupIds"/>. For each one actually
-    /// present on the document, prints a parsed summary (where this port has a parser for that DG -- see
-    /// <see cref="PrintDataGroupContent"/>) or a raw-bytes-only notice, followed by a full hex dump; for each
-    /// one absent, prints a clear "not present" line instead. Returns the raw bytes of every DG that was
-    /// successfully read, keyed by DG number, for the Passive Authentication hash check that follows.
-    /// </summary>
-    private Dictionary<int, byte[]> ReadAndPrintDataGroups(PassportService passportService, string outDir)
+    /// <summary>Reads every standard data group the document has, and parses it where the library can. Returns
+    /// the bytes of each data group read, by number, for the Passive Authentication hash check.</summary>
+    private Dictionary<int, byte[]> ReadDataGroups()
     {
-        _out.WriteLine();
-        _out.WriteLine("=== Data Groups ===");
-
         var dataGroupBytes = new Dictionary<int, byte[]>();
-        foreach ((int number, short fid) in GetStandardDataGroupIds())
+        foreach ((int number, short fid) in StandardDataGroups)
         {
             var result = new DataGroupResult(number);
             report.DataGroups.Add(result);
@@ -296,9 +303,7 @@ public sealed class DocumentReader
             }
             catch (CardServiceException e)
             {
-                _out.WriteLine();
-                _out.WriteLine($"--- DG{number} ---");
-                _out.WriteLine($"Not present on this document ({e.Message}).");
+                _out.WriteLine($"DG{number}: not present ({e.Message}).");
                 continue;
             }
 
@@ -306,287 +311,18 @@ public sealed class DocumentReader
             result.Present = true;
             result.Length = bytes.Length;
             result.Content = bytes;
+            _out.WriteLine($"DG{number}: read ({bytes.Length} bytes).");
             try
             {
-                result.Fields = DataGroupFields.For(number, bytes);
+                result.Information = DataGroupFields.For(number, bytes);
             }
             catch (Exception e)
             {
-                result.FieldsError = e.Message;
+                result.InformationError = e.Message;
+                _out.WriteLine($"DG{number}: could not be parsed ({e.Message}).");
             }
-
-            _out.WriteLine();
-            _out.WriteLine($"--- DG{number} ({bytes.Length} bytes) ---");
-            try
-            {
-                PrintDataGroupContent(number, bytes, outDir);
-            }
-            catch (Exception e)
-            {
-                _out.WriteLine($"(Could not parse DG{number} content: {e.Message})");
-            }
-
-            PrintHexDump(bytes);
         }
-
         return dataGroupBytes;
-    }
-
-    /// <summary>
-    /// Prints a parsed, human-readable summary of one data group's content, dispatching on its number to the
-    /// parser this port implements for it (if any). DGs this port has no dedicated parser for (8, 9, 10, 13,
-    /// 16 -- all rarely used in practice) fall through to a plain notice; their raw bytes are still shown by
-    /// the caller's subsequent <see cref="PrintHexDump"/> call.
-    /// </summary>
-    private void PrintDataGroupContent(int number, byte[] bytes, string outDir)
-    {
-        currentDataGroup = report.DataGroups.Single(d => d.Number == number);
-        switch (number)
-        {
-            case 1:
-                PrintMrzInfo(new DG1File(new MemoryStream(bytes)).GetMRZInfo());
-                break;
-            case 2:
-                SaveFaceImage(new DG2File(new MemoryStream(bytes)), outDir);
-                break;
-            case 5:
-                SaveDisplayedImages("DG5", new DG5File(new MemoryStream(bytes)).GetImages(), "dg5_portrait", outDir);
-                break;
-            case 6:
-                SaveDisplayedImages("DG6", new DG6File(new MemoryStream(bytes)).GetImages(), "dg6_image", outDir);
-                break;
-            case 7:
-                SaveDisplayedImages("DG7", new DG7File(new MemoryStream(bytes)).GetImages(), "dg7_signature", outDir);
-                break;
-            case 11:
-                PrintDG11(new DG11File(new MemoryStream(bytes)));
-                break;
-            case 12:
-                PrintDG12(new DG12File(new MemoryStream(bytes)));
-                break;
-            case 14:
-                PrintDG14(new DG14File(new MemoryStream(bytes)));
-                break;
-            case 15:
-                PrintDG15(new DG15File(new MemoryStream(bytes)));
-                break;
-            default:
-                _out.WriteLine($"No structured parser for DG{number} in this port -- raw bytes only (see below).");
-                break;
-        }
-    }
-
-    /// <summary>Prints the given bytes as a hex dump (offset + <c>0xNN</c> tokens, 16 per line) -- shown for
-    /// every data group read, regardless of whether this port has a structured parser for it.</summary>
-    private void PrintHexDump(byte[] bytes)
-    {
-        _out.WriteLine("Raw bytes (hex):");
-        if (bytes.Length == 0)
-        {
-            _out.WriteLine("  (empty)");
-            return;
-        }
-
-        const int bytesPerLine = 16;
-        var line = new StringBuilder();
-        for (int offset = 0; offset < bytes.Length; offset += bytesPerLine)
-        {
-            line.Clear();
-            line.Append("  ").Append(offset.ToString("X4", CultureInfo.InvariantCulture)).Append(": ");
-            int count = Math.Min(bytesPerLine, bytes.Length - offset);
-            for (int i = 0; i < count; i++)
-            {
-                line.Append("0x").Append(bytes[offset + i].ToString("X2", CultureInfo.InvariantCulture)).Append(' ');
-            }
-
-            _out.WriteLine(line.ToString().TrimEnd());
-        }
-    }
-
-    /// <summary>Prints a summary of, and saves to <paramref name="outDir"/>, each image in a DG5/DG6/DG7
-    /// displayed-image list (portrait for DG5, signature/mark for DG7, unspecified for DG6).</summary>
-    private void SaveDisplayedImages(string label, List<DisplayedImageInfo> images, string fileNamePrefix, string outDir)
-    {
-        if (images.Count == 0)
-        {
-            _out.WriteLine($"{label}: no images present.");
-            return;
-        }
-
-        Directory.CreateDirectory(outDir);
-        int index = 0;
-        foreach (DisplayedImageInfo image in images)
-        {
-            string extension = image.GetMimeType() switch
-            {
-                "image/jpeg" => "jpg",
-                "image/jp2" => "jp2",
-                _ => "bin",
-            };
-            string path = Path.Combine(outDir, $"{fileNamePrefix}_{index}.{extension}");
-            using (Stream imageStream = image.GetImageInputStream())
-            using (FileStream fileStream = File.Create(path))
-            {
-                imageStream.CopyTo(fileStream);
-            }
-
-            AddImage(image);
-            _out.WriteLine($"{label}: saved image {index} ({image.GetMimeType()}, {image.GetImageLength()} bytes) to {path}");
-            index++;
-        }
-    }
-
-    /// <summary>Prints DG11 (additional personal details) as a list of the fields actually present.</summary>
-    private void PrintDG11(DG11File dg11)
-    {
-        PrintFieldIfPresent("Name of holder", dg11.GetNameOfHolder());
-        PrintListIfPresent("Other names", dg11.GetOtherNames());
-        PrintFieldIfPresent("Personal number", dg11.GetPersonalNumber());
-        PrintFieldIfPresent("Full date of birth", dg11.GetFullDateOfBirth());
-        PrintListIfPresent("Place of birth", dg11.GetPlaceOfBirth());
-        PrintListIfPresent("Permanent address", dg11.GetPermanentAddress());
-        PrintFieldIfPresent("Telephone", dg11.GetTelephone());
-        PrintFieldIfPresent("Profession", dg11.GetProfession());
-        PrintFieldIfPresent("Title", dg11.GetTitle());
-        PrintFieldIfPresent("Personal summary", dg11.GetPersonalSummary());
-        byte[]? proofOfCitizenship = dg11.GetProofOfCitizenship();
-        if (proofOfCitizenship != null)
-        {
-            _out.WriteLine($"Proof of citizenship: image ({proofOfCitizenship.Length} bytes)");
-        }
-
-        PrintListIfPresent("Other valid travel document numbers", dg11.GetOtherValidTDNumbers());
-        PrintFieldIfPresent("Custody information", dg11.GetCustodyInformation());
-        if (dg11.GetTagPresenceList().Count == 0)
-        {
-            _out.WriteLine("(No fields present.)");
-        }
-    }
-
-    /// <summary>Prints DG12 (additional document details) as a list of the fields actually present.</summary>
-    private void PrintDG12(DG12File dg12)
-    {
-        PrintFieldIfPresent("Issuing authority", dg12.GetIssuingAuthority());
-        PrintFieldIfPresent("Date of issue", dg12.GetDateOfIssue());
-        PrintListIfPresent("Names of other persons", dg12.GetNamesOfOtherPersons());
-        PrintFieldIfPresent("Endorsements/observations", dg12.GetEndorsementsAndObservations());
-        PrintFieldIfPresent("Tax or exit requirements", dg12.GetTaxOrExitRequirements());
-        byte[]? imageOfFront = dg12.GetImageOfFront();
-        if (imageOfFront != null)
-        {
-            AddImageBytes(imageOfFront);
-            _out.WriteLine($"Image of front: image ({imageOfFront.Length} bytes)");
-        }
-
-        byte[]? imageOfRear = dg12.GetImageOfRear();
-        if (imageOfRear != null)
-        {
-            AddImageBytes(imageOfRear);
-            _out.WriteLine($"Image of rear: image ({imageOfRear.Length} bytes)");
-        }
-
-        PrintFieldIfPresent("Date/time of personalization", dg12.GetDateAndTimeOfPersonalization());
-        PrintFieldIfPresent("Personalization system serial number", dg12.GetPersonalizationSystemSerialNumber());
-        if (dg12.GetTagPresenceList().Count == 0)
-        {
-            _out.WriteLine("(No fields present.)");
-        }
-    }
-
-    /// <summary>Prints DG14 (EAC/PACE SecurityInfos) as a count plus one line per SecurityInfo.</summary>
-    private void PrintDG14(DG14File dg14)
-    {
-        IReadOnlyCollection<SecurityInfo> securityInfos = dg14.GetSecurityInfos();
-        _out.WriteLine($"{securityInfos.Count} SecurityInfo(s):");
-        foreach (SecurityInfo securityInfo in securityInfos)
-        {
-            _out.WriteLine($"  - {securityInfo.GetType().Name}: {securityInfo}");
-        }
-    }
-
-    /// <summary>Prints DG15 (Active Authentication public key) as its algorithm/size.</summary>
-    private void PrintDG15(DG15File dg15)
-    {
-        AsymmetricKeyParameter? publicKey = dg15.GetPublicKey();
-        _out.WriteLine(publicKey == null
-            ? "Could not decode the Active Authentication public key."
-            : $"Active Authentication public key: {Util.GetDetailedPublicKeyAlgorithm(publicKey)}");
-    }
-
-    private void PrintFieldIfPresent(string label, string? value)
-    {
-        if (!string.IsNullOrEmpty(value))
-        {
-            _out.WriteLine($"{label}: {value}");
-        }
-    }
-
-    private void PrintListIfPresent(string label, List<string>? values)
-    {
-        if (values != null && values.Count > 0)
-        {
-            _out.WriteLine($"{label}: {string.Join(", ", values)}");
-        }
-    }
-
-    private void PrintMrzInfo(MRZInfo mrz)
-    {
-        report.Mrz = new MrzSummary(mrz.GetDocumentCode(), mrz.GetDocumentNumber(), mrz.GetPrimaryIdentifier(),
-            mrz.GetSecondaryIdentifier(), mrz.GetNationality(), mrz.GetIssuingState(), mrz.GetDateOfBirth(),
-            mrz.GetDateOfExpiry(), mrz.GetGenderCode().ToString());
-        _out.WriteLine($"Document number: {mrz.GetDocumentNumber()}");
-        _out.WriteLine($"Name:            {mrz.GetPrimaryIdentifier()} / {mrz.GetSecondaryIdentifier()}");
-        _out.WriteLine($"Nationality:     {mrz.GetNationality()}");
-        _out.WriteLine($"Issuing state:   {mrz.GetIssuingState()}");
-        _out.WriteLine($"Date of birth:   {mrz.GetDateOfBirth()}");
-        _out.WriteLine($"Date of expiry:  {mrz.GetDateOfExpiry()}");
-        _out.WriteLine($"Gender:          {mrz.GetGenderCode()}");
-    }
-
-    /// <summary>Saves the face images of DG2, in the ISO/IEC 19794-5 format (<see cref="FaceInfo"/>) or the
-    /// ISO/IEC 39794-5 format (<see cref="Lds.Iso39794.FaceImageDataBlock"/>).</summary>
-    private void SaveFaceImage(DG2File dg2File, string outDir)
-    {
-        var images = new List<ImageInfo>();
-        foreach (var record in dg2File.GetSubRecords())
-        {
-            switch (record)
-            {
-                case FaceInfo faceInfo:
-                    images.AddRange(faceInfo.GetFaceImageInfos());
-                    break;
-                case Lds.Iso39794.FaceImageDataBlock dataBlock:
-                    images.AddRange(dataBlock.GetRepresentationBlocks().Where(block => block.GetImageRepresentation2DBlock() != null));
-                    break;
-            }
-        }
-
-        if (images.Count == 0)
-        {
-            _out.WriteLine("No face image found in DG2.");
-            return;
-        }
-
-        Directory.CreateDirectory(outDir);
-        int index = 0;
-        foreach (ImageInfo image in images)
-        {
-            string extension = image.GetMimeType() switch
-            {
-                "image/jp2" => "jp2",
-                "image/jpeg" => "jpg",
-                _ => "bin",
-            };
-            string path = Path.Combine(outDir, $"dg2_face_{index}.{extension}");
-            using (Stream imageStream = image.GetImageInputStream())
-            using (FileStream fileStream = File.Create(path))
-            {
-                imageStream.CopyTo(fileStream);
-            }
-            AddImage(image);
-            _out.WriteLine($"Saved face image {index} ({image.GetMimeType()}, {image.GetImageLength()} bytes) to {path}");
-            index++;
-        }
     }
 
     private void VerifyPassiveAuthentication(SODFile sodFile, IReadOnlyDictionary<int, byte[]> dataGroupBytes)

@@ -3,7 +3,9 @@
 `nMRTD.Cli` reads an electronic travel document (ePassport, electronic ID card) end to end with the
 nMRTD library: it authenticates, reads the data groups, and runs every check the library supports
 (Passive, Chip and Active Authentication, and optionally the Document Signer against trusted CSCAs).
-It is a sample application and a test tool. It is **not** part of the NuGet package.
+It is both a test tool and a way to verify documents, and its result is meant to be read by people and
+by programs (text, JSON or XML, and an exit code for each problem). It is **not** part of the NuGet
+package.
 
 ## Contents
 
@@ -17,10 +19,17 @@ It is a sample application and a test tool. It is **not** part of the NuGet pack
   - [4. Document Signer against trusted CSCAs (--csca)](#4-document-signer-against-trusted-cscas---csca)
   - [5. Chip Authentication](#5-chip-authentication)
   - [6. Active Authentication](#6-active-authentication)
-  - [7. Result](#7-result)
+  - [7. Failed checks](#7-failed-checks)
 - [Exit codes](#exit-codes)
-- [JSON output (--json)](#json-output---json)
-- [Verbose trace (--verbose)](#verbose-trace---verbose)
+- [Output](#output)
+  - [Text](#text)
+  - [JSON (--output-json)](#json---output-json)
+  - [XML (--output-xml)](#xml---output-xml)
+  - [Fields](#fields)
+  - [Data group information (--include-information)](#data-group-information---include-information)
+  - [Raw data groups (--include-raw)](#raw-data-groups---include-raw)
+- [Sharing a result (--share)](#sharing-a-result---share)
+- [Verbose mode (--verbose)](#verbose-mode---verbose)
 - [Personal data](#personal-data)
 - [Native AOT](#native-aot)
 - [Troubleshooting](#troubleshooting)
@@ -40,20 +49,29 @@ From the repository root:
 # List the PC/SC readers
 dotnet run --project nMRTD.Cli -f net10.0 -- --list-readers
 
-# Card Access Number (PACE only)
-dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --out ./out
+# Card Access Number (PACE)
+dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456
 
 # MRZ access key: document number (without check digit), date of birth and date of expiry (yyMMdd)
-dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --out ./out
+dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415
 
-# Same, skipping PACE and using BAC
-dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --bac --out ./out
+# Same, with BAC only
+dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --bac
 
-# Check the Document Signer against trusted CSCA certificates, and write the results as JSON
-dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --csca ./csca --json > result.json
+# Check the Document Signer against trusted CSCA certificates, with the result as JSON
+dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --csca ./csca --output-json > result.json
+
+# Everything the document holds, parsed, images included, as XML
+dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --include-information --output-xml > result.xml
+
+# A result without personal data, to share
+dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --include-information --share --output-json
 ```
 
-Without `--can` or the MRZ options, the tool asks which access key to use and prompts for it.
+`dotnet run` may print build messages to stdout; to capture the result alone, run the built executable
+(`nMRTD.Cli/bin/...`) or a [Native AOT](#native-aot) build.
+
+The access key is always given on the command line: the tool never prompts.
 
 ## Options
 
@@ -61,68 +79,78 @@ Without `--can` or the MRZ options, the tool asks which access key to use and pr
 |---|---|
 | `--can <CAN>` | Card Access Number: the access key for PACE. It cannot be used for BAC. |
 | `--doc <number>` | Document number, without the check digit (MRZ access key). |
-| `--dob <yyMMdd>` | Date of birth (MRZ access key). |
-| `--doe <yyMMdd>` | Date of expiry (MRZ access key). |
-| `--bac` | Skip PACE and use BAC with the MRZ access key, even if the document supports PACE. |
+| `--dob <yyMMdd>` | Date of birth of the holder (MRZ access key). |
+| `--doe <yyMMdd>` | Date of expiry of the document (MRZ access key). |
+| `--pace` | Use PACE only: fail if the document does not offer it. |
+| `--bac` | Use BAC only, even if the document offers PACE. Needs the MRZ access key. |
 | `--reader <name>` | PC/SC reader to use (default: the first one found). |
-| `--out <dir>` | Folder for the extracted images (default: the current folder). |
-| `--csca <path>` | Trusted CSCA certificates: a `.cer`, `.crt`, `.der` or `.pem` file (DER or PEM, one or more certificates), an ICAO master list (`.ml`), or a folder of them. |
-| `--json` | Write the results as JSON to stdout; all other output goes to stderr. |
-| `--json-data` | With `--json`, add each data group's contents, in Base64, to the JSON (`dataGroups[].data`). Needs `--json`. |
-| `--json-fields` | With `--json`, add each data group's parsed fields to the JSON (`dataGroups[].fields`). Needs `--json`. |
-| `--report-only` | Exit with 0 even when a security check fails (the results are still reported). |
-| `--verbose` | Print the APDU exchanges and the protocol steps to stderr. |
 | `--list-readers` | List the PC/SC readers and exit. |
+| `--csca <path>` | Trusted CSCA certificates: a `.cer`, `.crt`, `.der` or `.pem` file (DER or PEM, one or more certificates), an ICAO master list (`.ml`), or a folder of them. |
+| `--skip-passive-authentication` | Do not read EF.SOD: no data group hash and no signature is checked. |
+| `--output-json` | Write the result as JSON. |
+| `--output-xml` | Write the result as XML. |
+| `--include-information` | Add the parsed information of each data group, images in Base64. |
+| `--include-raw` | Add each data group's bytes in Base64. |
+| `--share` | Leave out everything that identifies the holder or the document, to share the result. |
+| `--verbose` | Print the progress and the APDU exchanges to stderr. |
 | `-h`, `--help` | Show the help. |
 
-`--can` and the MRZ options (`--doc`, `--dob`, `--doe`) are alternatives. `--bac` needs the MRZ options.
+Without `--output-json` or `--output-xml` the result is human readable text.
+
+- `--can` and the MRZ options (`--doc`, `--dob`, `--doe`) are alternatives; the three MRZ options go
+  together.
+- Without `--pace` or `--bac`, the tool uses PACE and falls back to BAC when the document has no PACE
+  (see [Access control](#1-access-control-pace-or-bac)).
+- These combinations are rejected (exit code `-1`): `--output-json` with `--output-xml`, `--pace` with
+  `--bac`, `--bac` with `--can`, `--can` with an MRZ option, `--share` with `--include-raw` (the raw data
+  groups hold all the personal data), `--skip-passive-authentication` with `--csca` (the Document Signer
+  certificate is in EF.SOD).
+- `--help` and `--list-readers` need no access key; any other run without one ends with exit code `-2`.
 
 ## What it does
 
 ### 1. Access control: PACE or BAC
 
-The tool reads EF.CardAccess. If it has a `PACEInfo`, the tool performs **PACE** with the access key
-given (CAN or MRZ):
+The tool reads the card's ATR, then EF.CardAccess. If it has a `PACEInfo`, the tool performs **PACE**
+with the access key given (CAN or MRZ):
 
 - standardized domain parameters (parameter id 0 to 31) are used directly;
 - explicit domain parameters are taken from the matching `PACEDomainParameterInfo` (a proprietary
   parameter id, 32 and up, or no parameter id).
 
-When the document has no EF.CardAccess or no `PACEInfo`, or when the parameters cannot be resolved, the
-tool falls back to **BAC** with the MRZ access key. With a CAN there is no fallback: a CAN is only valid
-for PACE, so the tool stops with exit code 1. With `--bac` the tool goes straight to BAC.
+| Mode | Behavior |
+|---|---|
+| default | PACE; when the document has no EF.CardAccess or no `PACEInfo`, or the parameters cannot be resolved, BAC with the MRZ access key. A CAN has no fallback (exit code `-20`). |
+| `--pace` | PACE only: a document without PACE ends with exit code `-20`. |
+| `--bac` | BAC only, straight away. |
+
+A rejected access key ends with exit code `-21` (PACE) or `-22` (BAC).
 
 ### 2. Data groups
 
 Every standard data group is read, except **DG3** (fingerprints) and **DG4** (iris), which need
-Terminal Authentication with an inspection system certificate. For each data group the tool prints a
-summary and a hex dump of its bytes, or "Not present on this document":
-
-| Data group | Summary |
-|---|---|
-| DG1 | MRZ: document number, name, nationality, issuing state, dates, sex |
-| DG2 | Face images, saved to `--out` as `dg2_face_<n>.jpg` or `.jp2` (ISO/IEC 19794-5 and 39794-5) |
-| DG5, DG6, DG7 | Displayed portrait, other images and signature, saved to `--out` |
-| DG11, DG12 | Additional personal and document details, the fields present |
-| DG14 | The security infos (Chip Authentication, PACE, Terminal Authentication) |
-| DG15 | The Active Authentication public key algorithm and size |
-| DG8–DG10, DG13, DG16 | Hex dump only (the library has no parser for them) |
+Terminal Authentication with an inspection system certificate. For each data group the result says
+whether it is present, its length and its hash check; with `--include-information` and
+`--include-raw`, also its content (see [Output](#output)).
 
 ### 3. Passive Authentication
 
 The tool reads EF.SOD and checks:
 
 1. **Data group hashes:** the hash of every data group read is compared with the hash signed in
-   EF.SOD ("hash matches EF.SOD", or "HASH MISMATCH"). A data group without a hash in EF.SOD is
-   reported but is not a failure: some documents have data groups that EF.SOD does not cover.
+   EF.SOD (`match` or `mismatch`). A data group without a hash in EF.SOD (`not-in-sod`) is not a
+   failure: some documents have data groups that EF.SOD does not cover.
 2. **Signed content:** the content of EF.SOD must match the message digest in its signed attributes.
 3. **Signature:** the EF.SOD signature is verified with the Document Signer certificate stored in
    EF.SOD. RSA (PKCS #1 v1.5), RSASSA-PSS (hash, mask generation hash and salt length taken from the
    signature parameters) and ECDSA are supported.
 
 Without `--csca` this proves that the data is unchanged and consistent with EF.SOD, but not that EF.SOD
-was signed by the issuing country: anyone can produce a self-signed Document Signer certificate. The
-tool says so in its output.
+was signed by the issuing country: anyone can produce a self-signed Document Signer certificate.
+
+`--skip-passive-authentication` skips this step: the data group hashes are `null` and the signature is
+`skipped`. Chip and Active Authentication still run, but their keys cannot be authenticated without
+EF.SOD, which is then not a failure.
 
 ### 4. Document Signer against trusted CSCAs (`--csca`)
 
@@ -132,15 +160,15 @@ With `--csca`, the tool checks that the Document Signer certificate was issued b
 - **Certificates:** read from `.cer`, `.crt`, `.der` and `.pem` files (DER or PEM, one or more per
   file) and from ICAO CSCA master lists (`.ml`: CMS signed data with content type
   `id-icao-cscaMasterList`). With a folder, every file with one of these extensions is read. Files and
-  master list entries that cannot be read are skipped with a message on stderr; the number of
-  certificates loaded is printed ("Loaded N trusted CSCA certificate(s)").
+  master list entries that cannot be read are skipped (listed with `--verbose`). A path that does not
+  exist, or from which no certificate can be read, ends with exit code `-3`.
 - **Matching:** the candidates are the CSCA certificates whose subject is the Document Signer
   certificate's issuer, narrowed by the authority key identifier when both certificates have one. Each
   candidate is tried, because a country can have several CSCA keys under the same name (key rollover).
 - **Verdict:** `trusted` when the certificate's signature verifies with a candidate's key (RSA,
   RSASSA-PSS or EC); `untrusted` otherwise, with the reason; `no-certificate` when EF.SOD has no
   Document Signer certificate.
-- **Dates:** reported, not enforced. The tool says whether the CSCA certificate was valid when the
+- **Dates:** reported, not enforced. The result says whether the CSCA certificate was valid when the
   Document Signer certificate was issued, and whether the Document Signer certificate is valid today.
   An expired document normally has an expired Document Signer certificate.
 - **Not checked:** the signature of a master list (loading one means trusting where it came from),
@@ -167,103 +195,148 @@ DG15 public key:
   and SHA-1 with the implicit trailer or the hash named by an explicit trailer (SHA-1, SHA-224, SHA-256,
   SHA-384, SHA-512);
 - **ECDSA:** the hash named by the `ActiveAuthenticationInfo` in DG14, with a plain signature (r || s,
-  BSI TR-03111). Without that info the response is reported as **unverifiable**, never as valid.
+  BSI TR-03111). Without that info the response is reported as `unverifiable`, never as valid.
 
 It runs last because, under secure messaging, a chip ends the session on an error status.
 
-### 7. Result
+### 7. Failed checks
 
 Chip and Active Authentication prove that the chip holds the private key for the DG14 or DG15 public
 key. That says the chip is genuine only if the key itself is the one the issuer signed: the data group
-hash must match EF.SOD and the EF.SOD signature must be valid. The tool reports this as
-`keyAuthenticated`, and warns when a protocol succeeded with a key that is not covered.
+hash must match EF.SOD and the EF.SOD signature must be valid. The result reports this as
+`keyAuthenticated`.
 
-The output ends with the list of failed security checks:
+The result lists every failed security check with its code (`failedChecks`):
 
-```text
-=== Result: no security check failed ===
-```
+| Code | Failed check |
+|---|---|
+| `-40` | A data group whose hash differs from EF.SOD (one entry per data group). |
+| `-41` | An invalid EF.SOD signature, or EF.SOD content that does not match its signed digest. |
+| `-42` | With `--csca`, a Document Signer certificate not issued by a trusted CSCA (or no certificate). |
+| `-43` | A failed Chip Authentication. |
+| `-44` | An Active Authentication signature that does not verify. |
+| `-45` | A Chip or Active Authentication that succeeded with a key not covered by a valid EF.SOD signature. |
 
-or, for example:
-
-```text
-=== Result: 1 security check(s) FAILED ===
-  - DG2 hash does not match EF.SOD
-```
-
-**Counted as failed checks:**
-
-- a data group whose hash differs from EF.SOD;
-- an invalid EF.SOD signature, or EF.SOD content that does not match its signed digest;
-- with `--csca`, a Document Signer certificate not issued by a trusted CSCA (or no certificate);
-- a failed Chip Authentication;
-- an Active Authentication signature that does not verify;
-- a Chip or Active Authentication that succeeded with a key not covered by a valid EF.SOD signature.
-
-**Not counted**, because they say nothing against the document:
+**Not failures**, because they say nothing against the document:
 
 - a protocol the document does not offer (no DG14 or no DG15);
 - an Active Authentication that cannot be verified, or that could not be completed;
 - a data group without a hash in EF.SOD;
 - a Document Signer certificate that is expired, or a CSCA that was not valid when it was issued
-  (reported only).
+  (reported only);
+- with `--skip-passive-authentication`, keys that could not be authenticated.
 
 ## Exit codes
 
+`0` means that the document was read and every check passed. Every problem has its own negative code:
+
 | Code | Meaning |
 |---|---|
-| `0` | The document was read and no security check failed (or `--report-only` was given). |
-| `1` | Invalid arguments, a missing `--csca` path, or a CAN on a document without PACE. |
-| `2` | Card communication error (reader not found, card removed, authentication rejected...). |
-| `3` | Unexpected error (for example a malformed file). |
-| `4` | The document was read, but a security check failed (see [Result](#7-result)). |
+| `0` | The document was read and no security check failed. |
+| `-1` | Invalid arguments: an unknown option, a missing value, or options that cannot go together. |
+| `-2` | No access key, or an incomplete MRZ access key. |
+| `-3` | The `--csca` certificates could not be loaded (missing path, or no readable certificate). |
+| `-10` | No PC/SC reader found, or the `--reader` name is not one of them. |
+| `-11` | The card could not be connected (no card on the reader, or it was removed). |
+| `-20` | PACE is not available: `--pace` or a CAN on a document without PACE. |
+| `-21` | PACE failed (wrong access key, or the chip rejected it). |
+| `-22` | BAC failed (wrong access key, or the chip rejected it). |
+| `-30` | Card communication error while reading (card removed, chip error). |
+| `-31` | Unexpected error (for example a malformed file). |
+| `-40` | A data group hash does not match EF.SOD. |
+| `-41` | The EF.SOD signature is invalid. |
+| `-42` | The Document Signer certificate was not issued by a trusted CSCA (`--csca`). |
+| `-43` | Chip Authentication failed. |
+| `-44` | Active Authentication failed. |
+| `-45` | Chip or Active Authentication used a key not covered by a valid EF.SOD signature. |
 
-With `--report-only` the exit code only tells whether the document could be read (`0` to `3`); the
-outcome of the checks is in the output and in the JSON.
+From `-1` to `-31` the reading stopped: the result has an `error` with the reason. From `-40` to `-45`
+the document was read and a check failed; when several checks fail, the exit code is the first of
+`failedChecks`, in the order of this table, and the result lists all of them.
 
-## JSON output (`--json`)
+On Windows the process exit code is the negative number itself (`$LASTEXITCODE` in PowerShell,
+`%ERRORLEVEL%` in cmd). On Linux and macOS exit codes are 0–255, so the shell sees `256 + code` (for
+example `216` for `-40`); the result's `exitCode` field always has the negative number.
 
-With `--json`, stdout contains only a JSON object; the text output, prompts and progress go to stderr.
-The JSON is also written when reading fails (with `error` set), including for invalid arguments once
-they have been parsed. It never contains the access key. By default it does not contain the data group
-contents either (only their length, hash check and the format of their images): add `--json-data` to
-get each data group's bytes, as read from the chip, in Base64 in `dataGroups[].data`. These are the
-raw data group files (for DG2, the whole biometric record including the face image), which a program
-can parse itself or check against EF.SOD.
+## Output
 
-For the data groups that hold images (DG2 faces, DG5 to DG7 displayed images, DG12 images of the
-front and rear of the document), `images` gives each image's format and where it is in the data
-group's bytes: with `--json-data`, the image is the
-`length` bytes of the decoded `data` starting at `offset`, ready to save with the extension of its
-`mimeType` (`image/jpeg`: `.jpg`, `image/jp2`: `.jp2`).
+The result is written to **stdout**, always, also when reading stops early (with the reason in
+`error`), so a program gets the same structure in every case. Only invalid arguments (`-1`, `-2`) are
+reported on stderr instead, since the output format is not known yet. Nothing else is printed unless
+`--verbose` is given.
 
-Example (a simulated test document):
+The three formats carry the same content, built from one tree of fields: the text has a line per field,
+the JSON an object, the XML an element.
+
+### Text
+
+The default. Example (a simulated test document read with a CAN):
+
+```text
+ATR: 3B80800101
+Access protocol: PACE
+PACE protocol: 0.4.0.127.0.7.2.2.4.2.2
+Explicit PACE parameters: false
+Data groups:
+  DG1
+    Length: 93
+    Hash: match
+  DG2
+    Length: 40094
+    Hash: match
+  DG5: not present
+  ...
+  DG14
+    Length: 357
+    Hash: match
+  DG15
+    Length: 165
+    Hash: match
+  DG16: not present
+Passive authentication:
+  Signature: valid
+  Digest algorithm: SHA-256
+  Signature algorithm: SHA256withRSA
+  Signer: C=UT,O=nMRTD tests,CN=Document Signer
+  CSCA: not-checked
+  Signer certificate valid now: true
+Chip authentication:
+  Status: succeeded
+  Key authenticated: true
+  Protocol: 0.4.0.127.0.7.2.2.3.2.2
+Active authentication:
+  Status: succeeded
+  Key authenticated: true
+  Protocol: RSA ISO/IEC 9796-2, SHA-1
+Failed checks: none
+Exit code: 0
+```
+
+Fields without a value are left out. A failed check reads, for example:
+
+```text
+Failed checks:
+  [-40] DG2 hash does not match EF.SOD
+Exit code: -40
+```
+
+### JSON (`--output-json`)
+
+The same document:
 
 ```json
 {
+  "atr": "3B80800101",
   "accessProtocol": "PACE",
   "paceProtocol": "0.4.0.127.0.7.2.2.4.2.2",
   "explicitPaceParameters": false,
-  "mrz": {
-    "documentCode": "P",
-    "documentNumber": "TST123456",
-    "primaryIdentifier": "SPECIMEN",
-    "secondaryIdentifier": "TEST",
-    "nationality": "UTO",
-    "issuingState": "UTO",
-    "dateOfBirth": "800101",
-    "dateOfExpiry": "351231",
-    "gender": "Female"
-  },
   "dataGroups": [
     { "number": 1, "present": true, "length": 93, "hash": "match" },
-    {
-      "number": 2, "present": true, "length": 40094, "hash": "match",
-      "images": [ { "mimeType": "image/jpeg", "offset": 82, "length": 40000 } ]
-    },
+    { "number": 2, "present": true, "length": 40094, "hash": "match" },
     { "number": 5, "present": false },
     { "number": 14, "present": true, "length": 357, "hash": "match" },
-    { "number": 15, "present": true, "length": 165, "hash": "match" }
+    { "number": 15, "present": true, "length": 165, "hash": "match" },
+    { "number": 16, "present": false }
   ],
   "passiveAuthentication": {
     "signature": "valid",
@@ -288,28 +361,64 @@ Example (a simulated test document):
     "protocol": "RSA ISO/IEC 9796-2, SHA-1",
     "error": null
   },
-  "error": null,
-  "failedChecks": []
+  "failedChecks": [],
+  "exitCode": 0,
+  "error": null
 }
 ```
 
-(`dataGroups` lists every data group the tool tried: DG1, DG2 and DG5 to DG16, shortened here.)
+(`dataGroups` lists every data group the tool tried: DG1, DG2 and DG5 to DG16, shortened here; the
+real output has one field per line.) The JSON has every field, `null` when it has no value. A failed
+check is `{ "code": -40, "description": "DG2 hash does not match EF.SOD" }`.
+
+### XML (`--output-xml`)
+
+The root element is `nmrtdReport`, with an element per field. An array is an element with one child
+per item, named after the array in the singular (`dataGroups` / `dataGroup`, `failedChecks` /
+`failedCheck`, `faces` / `face`, `securityInfos` / `securityInfo`); fields without a value are left
+out:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<nmrtdReport>
+  <atr>3B80800101</atr>
+  <accessProtocol>PACE</accessProtocol>
+  <paceProtocol>0.4.0.127.0.7.2.2.4.2.2</paceProtocol>
+  <explicitPaceParameters>false</explicitPaceParameters>
+  <dataGroups>
+    <dataGroup>
+      <number>1</number>
+      <present>true</present>
+      <length>93</length>
+      <hash>match</hash>
+    </dataGroup>
+    ...
+  </dataGroups>
+  ...
+  <failedChecks />
+  <exitCode>0</exitCode>
+</nmrtdReport>
+```
 
 ### Fields
 
 | Field | Values |
 |---|---|
+| `atr` | The card's Answer To Reset in hexadecimal, or `null` if it could not be read |
 | `accessProtocol` | `"PACE"`, `"BAC"`, or `null` if no access protocol succeeded |
 | `paceProtocol` | The PACE protocol object identifier, or `null` |
 | `explicitPaceParameters` | `true` when PACE used explicit domain parameters from EF.CardAccess |
-| `mrz` | The DG1 fields, or `null` if DG1 was not read |
-| `dataGroups[].hash` | `"match"`, `"mismatch"`, `"not-in-sod"`, or `null` if not checked (present data groups only) |
-| `dataGroups[].images` | For data groups with images: each image's `mimeType` (for example `image/jpeg`, `image/jp2`), `offset` in the data group's bytes (`-1` if not found) and `length` |
-| `dataGroups[].fields` | The parsed fields of DG1, DG2, DG11, DG12, DG14 and DG15 (only with `--json-fields`, see below) |
-| `dataGroups[].fieldsError` | Why the data group could not be parsed (only with `--json-fields`) |
-| `dataGroups[].data` | The data group's bytes in Base64 (present data groups, only with `--json-data`) |
-| `passiveAuthentication.signature` | `"valid"`, `"invalid"`, `"error"` (for example an unsupported algorithm), `"not-checked"` |
-| `passiveAuthentication.csca` | `"trusted"`, `"untrusted"`, `"no-certificate"`, `"error"`, `"not-checked"` (no `--csca`) |
+| `dataGroups[].number`, `.present` | The data group, and whether the document has it |
+| `dataGroups[].length` | Its length in bytes (present data groups) |
+| `dataGroups[].hash` | `"match"`, `"mismatch"`, `"not-in-sod"`, or `null` if not checked (present data groups) |
+| `dataGroups[].information` | The parsed information (only with `--include-information`, see below) |
+| `dataGroups[].informationError` | Why the data group could not be parsed (only with `--include-information`) |
+| `dataGroups[].raw` | The data group's bytes in Base64 (only with `--include-raw`) |
+| `passiveAuthentication.signature` | `"valid"`, `"invalid"`, `"error"` (for example an unsupported algorithm), `"skipped"` (`--skip-passive-authentication`), `"not-checked"` (reading stopped before) |
+| `passiveAuthentication.digestAlgorithm`, `.signatureAlgorithm` | The EF.SOD algorithms |
+| `passiveAuthentication.signer` | The Document Signer certificate's subject |
+| `passiveAuthentication.error` | Why the signature could not be checked |
+| `passiveAuthentication.csca` | `"trusted"`, `"untrusted"`, `"no-certificate"`, `"error"`, `"skipped"`, `"not-checked"` (no `--csca`) |
 | `passiveAuthentication.cscaSubject` | The trusted CSCA that issued the Document Signer certificate |
 | `passiveAuthentication.cscaDetail` | Why the certificate is not trusted, or a note on the CSCA's validity |
 | `passiveAuthentication.signerCertificateValidNow` | Whether the Document Signer certificate is within its validity period today |
@@ -317,50 +426,123 @@ Example (a simulated test document):
 | `activeAuthentication.status` | `"succeeded"`, `"failed"` (wrong signature), `"error"` (no usable answer), `"unverifiable"`, `"not-available"` |
 | `*.keyAuthenticated` | Whether the DG14 or DG15 key is covered by a valid EF.SOD signature |
 | `*.protocol` | The protocol object identifier (Chip Authentication) or the signature scheme (Active Authentication) |
+| `*.error` | Why the protocol could not be completed |
+| `failedChecks[]` | The failed security checks, `code` and `description` (see [Failed checks](#7-failed-checks)); empty when none failed |
+| `exitCode` | The process exit code (see [Exit codes](#exit-codes)) |
 | `error` | Why reading stopped early, or `null` |
-| `failedChecks` | The failed security checks (see [Result](#7-result)); empty when none failed |
 
-### Parsed fields (`--json-fields`)
+The result never contains the access key.
 
-With `--json-fields`, each data group the library can parse gets a `fields` object; fields that are
-absent from the document are left out. The other data groups (DG5 to DG10, DG13, DG16) have no
-`fields`: their images are in `images`, and their bytes in `data` with `--json-data`.
+### Data group information (`--include-information`)
 
-| Data group | `fields` |
+Each data group the library can parse gets an `information` object; fields that are absent from the
+document are left out. Images are in Base64 with their `mimeType` (`image/jpeg` or `image/jp2`, ready
+to save as `.jpg` or `.jp2`). DG8 to DG10, DG13 and DG16 have no parser: their content is only in
+`raw` with `--include-raw`.
+
+| Data group | `information` |
 |---|---|
 | DG1 | `documentCode`, `issuingState`, `documentNumber`, `primaryIdentifier`, `secondaryIdentifiers` (array), `nationality`, `dateOfBirth`, `gender`, `dateOfExpiry`, `optionalData1`, `optionalData2`, `personalNumber` |
-| DG2 | `faces`: one object per face image. ISO/IEC 19794-5: `format`, `mimeType`, `width`, `height`, `gender`, `eyeColor`, `hairColor`, `featureMask`, `expression`, `poseAngle` and `poseAngleUncertainty` (yaw, pitch, roll), `faceImageType`, `colorSpace`, `sourceType`, `deviceType`, `quality`, `featurePoints` (`type`, `majorCode`, `minorCode`, `x`, `y`); the numeric codes are those of the standard. ISO/IEC 39794-5: `format`, `mimeType`, `width`, `height`, and when present `faceImageKind`, `gender`, `eyeColour`, `hairColour`, `captureDateTime`, `landmarks` (count) |
-| DG11 | `nameOfHolder`, `otherNames`, `personalNumber`, `fullDateOfBirth`, `placeOfBirth`, `permanentAddress`, `telephone`, `profession`, `title`, `personalSummary`, `proofOfCitizenshipLength`, `otherValidTravelDocumentNumbers`, `custodyInformation` |
-| DG12 | `issuingAuthority`, `dateOfIssue`, `namesOfOtherPersons`, `endorsementsAndObservations`, `taxOrExitRequirements`, `imageOfFrontLength`, `imageOfRearLength`, `dateAndTimeOfPersonalization`, `personalizationSystemSerialNumber` |
+| DG2 | `faces`: one object per face image. ISO/IEC 19794-5: `format`, `mimeType`, `width`, `height`, `gender`, `eyeColor`, `hairColor`, `featureMask`, `expression`, `poseAngle` and `poseAngleUncertainty` (yaw, pitch, roll), `faceImageType`, `colorSpace`, `sourceType`, `deviceType`, `quality`, `featurePoints` (`type`, `majorCode`, `minorCode`, `x`, `y`), `image`; the numeric codes are those of the standard. ISO/IEC 39794-5: `format`, `mimeType`, `width`, `height`, and when present `faceImageKind`, `gender`, `eyeColour`, `hairColour`, `captureDateTime`, `landmarks` (count), and `image` |
+| DG5, DG6, DG7 | `images` (displayed portrait, other images, signature): `mimeType`, `width`, `height`, `image` |
+| DG11 | `nameOfHolder`, `otherNames`, `personalNumber`, `fullDateOfBirth`, `placeOfBirth`, `permanentAddress`, `telephone`, `profession`, `title`, `personalSummary`, `proofOfCitizenship` (`mimeType`, `image`), `otherValidTravelDocumentNumbers`, `custodyInformation` |
+| DG12 | `issuingAuthority`, `dateOfIssue`, `namesOfOtherPersons`, `endorsementsAndObservations`, `taxOrExitRequirements`, `imageOfFront` and `imageOfRear` (`mimeType`, `image`), `dateAndTimeOfPersonalization`, `personalizationSystemSerialNumber` |
 | DG14 | `securityInfos`: one object per security info, with `type`, `objectIdentifier`, `protocol`, and depending on the type `version`, `keyId`, `parameterId`, `publicKey` (algorithm and size), `signatureAlgorithm` |
 | DG15 | `publicKey`: the Active Authentication key algorithm and size, for example `RSA [1024 bit]` |
 
-Example (DG1 of the simulated document):
+Example (DG1 of the simulated document, JSON):
 
 ```json
 {
-  "number": 1, "present": true, "length": 93, "hash": "match",
-  "fields": {
-    "documentCode": "P", "issuingState": "UTO", "documentNumber": "TST123456",
-    "primaryIdentifier": "SPECIMEN", "secondaryIdentifiers": [ "TEST" ], "nationality": "UTO",
-    "dateOfBirth": "800101", "gender": "Female", "dateOfExpiry": "351231"
+  "number": 1,
+  "present": true,
+  "length": 93,
+  "hash": "match",
+  "information": {
+    "documentCode": "P",
+    "issuingState": "UTO",
+    "documentNumber": "TST123456",
+    "primaryIdentifier": "SPECIMEN",
+    "secondaryIdentifiers": [ "TEST" ],
+    "nationality": "UTO",
+    "dateOfBirth": "800101",
+    "gender": "Female",
+    "dateOfExpiry": "351231"
   }
 }
 ```
 
-## Verbose trace (`--verbose`)
+In the text output the same information is indented under the data group (`Document number:
+TST123456`); arrays of objects, such as the faces, are numbered.
 
-`--verbose` prints every APDU exchange (command and response, with the status word and its meaning)
-and every protocol step logged by the library to stderr, color-coded: requests, successful responses,
-warnings and errors.
+### Raw data groups (`--include-raw`)
+
+`--include-raw` adds each present data group's bytes, as read from the chip, in Base64 in
+`dataGroups[].raw`: the whole data group file (for DG2, the biometric record including the face
+image), which a program can parse itself or check against EF.SOD.
+
+## Sharing a result (`--share`)
+
+`--share` leaves out everything that identifies the holder or the document, and keeps what is useful
+to understand how the document and the tool behaved: the ATR, the protocols and algorithms, which data
+groups are present with their lengths and hash checks, the outcome of every check, the failed checks
+and the exit code. With `--include-information`:
+
+| Data group | Kept |
+|---|---|
+| DG1 | `documentCode`, `issuingState` |
+| DG2 | Per face: `format`, `mimeType`, `width`, `height`, `faceImageKind`, `faceImageType`, `colorSpace`, `sourceType`, `quality` (no image) |
+| DG5, DG6, DG7 | Per image: `mimeType`, `width`, `height` (no image) |
+| DG11, DG12 | `presentFields`: the names of the fields present, no values |
+| DG14, DG15 | Everything (protocols and public key algorithms) |
+
+The Document Signer and CSCA names (`signer`, `cscaSubject`, `cscaDetail`) are `null`.
+`--share` cannot be combined with `--include-raw`. Errors are kept as they are: check them before
+sharing, as an unusual error message could quote data from the card. `--verbose` output is not
+covered by `--share`.
+
+```json
+{
+  "number": 1,
+  "present": true,
+  "length": 93,
+  "hash": "match",
+  "information": {
+    "documentCode": "P",
+    "issuingState": "UTO"
+  }
+}
+```
+
+## Verbose mode (`--verbose`)
+
+Without `--verbose` the tool prints nothing besides the result. With it, stderr gets the progress of
+each step and every APDU exchange (command and response, with the status word and its meaning) and
+protocol step logged by the library, color-coded: requests, successful responses, warnings and errors.
+For example:
+
+```text
+Performing PACE (protocol 0.4.0.127.0.7.2.2.4.2.2)...
+PACE completed; secure messaging established.
+DG1: read (93 bytes).
+DG2: read (40094 bytes).
+DG5: not present (File not found, CAPDU = 00B0850008, RAPDU = 6A82).
+...
+DG1: hash matches EF.SOD (SHA-256).
+EF.SOD signature is VALID (SHA256withRSA, signed by: C=UT,O=nMRTD tests,CN=Document Signer).
+...
+Active Authentication succeeded (RSA ISO/IEC 9796-2, SHA-1): the chip signed the challenge with the private key for the DG15 public key.
+```
+
+Since the result goes to stdout and the trace to stderr, `--output-json > result.json` still gives a
+clean JSON file.
 
 ## Personal data
 
-The text output, the JSON, the `--verbose` trace and the images saved to `--out` contain the holder's
-personal data and photo; with `--json-fields` the JSON contains the personal details too, and with
-`--json-data` all of it, the face image included. Use `--out` to write the images outside the repository, and do not share the
-output, the JSON or the traces unredacted. When reporting a result (see the README's *Tested
-documents*), the protocol and algorithm lines are all that is needed.
+With `--include-information` the result contains the holder's personal data and photo, and with
+`--include-raw` all of the document's content; the `--verbose` trace contains the exchanged data too
+(under secure messaging, encrypted). Do not share these unredacted: use `--share` to produce a result
+to share, for example to report a document in the README's *Tested documents*.
 
 ## Native AOT
 
@@ -372,31 +554,36 @@ dotnet publish nMRTD.Cli -c Release -f net10.0 -r win-x64
 
 On Windows, Native AOT needs the Visual Studio C++ build tools, and `vswhere` (in
 `C:\Program Files (x86)\Microsoft Visual Studio\Installer`) on the `PATH`. The only expected warning
-is IL2104 from the PCSC package. The JSON output works in the AOT build (it is written without
-reflection).
+is IL2104 from the PCSC package. The JSON and XML outputs work in the AOT build (they are written
+without reflection).
 
 ## Troubleshooting
 
 | Symptom | Cause and remedy |
 |---|---|
-| "No PC/SC readers found" | The reader is not connected or the PC/SC service is not running (`pcscd` on Linux/macOS). |
-| "The specified reader name is not recognized" | Check the name with `--list-readers` and pass it to `--reader` exactly. |
-| "PACE not available ... falling back to BAC" | The document has no PACE (for example older passports): normal with the MRZ access key. |
-| "a Card Access Number can only be used to perform PACE" | The document has no PACE: use the MRZ options instead of `--can`. |
-| Authentication fails | Check the access key: the document number without check digit, dates as yyMMdd. |
-| "No response APDU" while reading | The card lost the field or the session: remove the card, put it back, and run again. |
-| Exit code 4 | A security check failed: see the list at the end of the output, or `failedChecks` in the JSON. |
-| "Loaded 0 trusted CSCA certificate(s)" | The `--csca` files could not be read: see the messages on stderr. |
+| Exit code `-10`, "No PC/SC reader found" | The reader is not connected or the PC/SC service is not running (`pcscd` on Linux/macOS). |
+| Exit code `-10`, "Reader ... not found" | Check the name with `--list-readers` and pass it to `--reader` exactly. |
+| Exit code `-11` | No card on the reader, or not in the field: place it and run again. |
+| Exit code `-20` | The document has no PACE (for example older passports): use the MRZ access key without `--pace`. |
+| Exit code `-21` or `-22` | Check the access key: the document number without check digit, dates as yyMMdd. |
+| Exit code `-30` | The card lost the field or the session: remove the card, put it back, and run again. |
+| Exit code `-40` to `-45` | A security check failed: see `failedChecks`. |
+| Exit code `-3` | The `--csca` files could not be read: run with `--verbose` to see which. |
+| Exit code `216`, `214`... on Linux/macOS | The negative code seen by the shell (`256 + code`): see [Exit codes](#exit-codes). |
 
 ## Code layout
 
 | File | Content |
 |---|---|
-| `nMRTD.Cli/Program.cs` | Arguments, access key prompts, logging, exit codes |
+| `nMRTD.Cli/Program.cs` | The run: CSCA loading, reader, logging, help |
+| `nMRTD.Cli/CliOptions.cs` | The options and their combinations |
+| `nMRTD.Cli/ExitCodes.cs` | The exit codes |
 | `nMRTD.Cli/DocumentReader.cs` | The reading flow: access control, data groups, Passive, Chip and Active Authentication |
+| `nMRTD.Cli/DataGroupFields.cs` | The parsed data group information (`--include-information`) |
+| `nMRTD.Cli/ReadReport.cs` | The result and the failed checks |
+| `nMRTD.Cli/ReportOutput.cs` | Text, JSON and XML output, and `--share` |
 | `nMRTD.Cli/CscaTrustStore.cs` | Loading CSCA certificates and checking the Document Signer certificate (`--csca`) |
 | `nMRTD.Cli/ActiveAuthenticationVerifier.cs` | Verifying the Active Authentication signature |
-| `nMRTD.Cli/ReadReport.cs`, `ReadReportJson.cs` | The results and their JSON form |
 
 The tests (`nMRTD.Tests/Cli`) run `DocumentReader` on a simulated chip, with Document Signer and CSCA
-certificates generated at run time.
+certificates generated at run time, and check the options, the exit codes and the three outputs.

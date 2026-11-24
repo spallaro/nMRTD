@@ -22,19 +22,23 @@ using Org.BouncyCastle.Crypto;
 namespace nMRTD.Cli;
 
 /// <summary>
-/// The parsed contents of a data group as a JSON object (<c>--json-fields</c>): the MRZ (DG1), the face image
-/// records (DG2), the additional personal and document details (DG11, DG12), the security infos (DG14) and
-/// the Active Authentication key (DG15). Only primitive values are used, so the JSON needs no reflection.
+/// The parsed contents of a data group (<c>--include-information</c>): the MRZ (DG1), the face image records
+/// (DG2), the displayed images (DG5-DG7), the additional personal and document details (DG11, DG12), the
+/// security infos (DG14) and the Active Authentication key (DG15). Images are included in Base64 with their
+/// format. Only primitive values are used, so writing it needs no reflection.
 /// </summary>
 public static class DataGroupFields
 {
-    /// <summary>The fields of the data group, or <c>null</c> for a data group without a parser (DG5-DG10,
-    /// DG13, DG16: their images and bytes are reported elsewhere).</summary>
+    /// <summary>The fields of the data group, or <c>null</c> for a data group without a parser (DG8-DG10,
+    /// DG13, DG16).</summary>
     /// <exception cref="Exception">if the data group cannot be parsed</exception>
     public static JsonObject? For(int number, byte[] bytes) => number switch
     {
         1 => Dg1(new DG1File(new MemoryStream(bytes)).GetMRZInfo()),
         2 => Dg2(new DG2File(new MemoryStream(bytes))),
+        5 => DisplayedImages(new DG5File(new MemoryStream(bytes)).GetImages()),
+        6 => DisplayedImages(new DG6File(new MemoryStream(bytes)).GetImages()),
+        7 => DisplayedImages(new DG7File(new MemoryStream(bytes)).GetImages()),
         11 => Dg11(new DG11File(new MemoryStream(bytes))),
         12 => Dg12(new DG12File(new MemoryStream(bytes))),
         14 => Dg14(new DG14File(new MemoryStream(bytes))),
@@ -104,6 +108,7 @@ public static class DataGroupFields
             ["sourceType"] = image.GetSourceType(),
             ["deviceType"] = image.GetDeviceType(),
             ["quality"] = image.GetQuality(),
+            ["image"] = Base64(image),
         };
         var points = new JsonArray();
         foreach (FaceImageInfo.FeaturePoint point in image.GetFeaturePoints())
@@ -159,6 +164,10 @@ public static class DataGroupFields
         {
             face["landmarks"] = landmarks.Count;
         }
+        if (representation.GetImageRepresentation2DBlock() != null)
+        {
+            face["image"] = Base64(representation);
+        }
         return face;
     }
 
@@ -177,7 +186,7 @@ public static class DataGroupFields
         Add(fields, "personalSummary", dg11.GetPersonalSummary());
         if (dg11.GetProofOfCitizenship() is { } proof)
         {
-            fields["proofOfCitizenshipLength"] = proof.Length;
+            fields["proofOfCitizenship"] = Image(proof);
         }
         Add(fields, "otherValidTravelDocumentNumbers", dg11.GetOtherValidTDNumbers());
         Add(fields, "custodyInformation", dg11.GetCustodyInformation());
@@ -194,11 +203,11 @@ public static class DataGroupFields
         Add(fields, "taxOrExitRequirements", dg12.GetTaxOrExitRequirements());
         if (dg12.GetImageOfFront() is { } front)
         {
-            fields["imageOfFrontLength"] = front.Length;
+            fields["imageOfFront"] = Image(front);
         }
         if (dg12.GetImageOfRear() is { } rear)
         {
-            fields["imageOfRearLength"] = rear.Length;
+            fields["imageOfRear"] = Image(rear);
         }
         Add(fields, "dateAndTimeOfPersonalization", dg12.GetDateAndTimeOfPersonalization());
         Add(fields, "personalizationSystemSerialNumber", dg12.GetPersonalizationSystemSerialNumber());
@@ -250,6 +259,45 @@ public static class DataGroupFields
     {
         AsymmetricKeyParameter? key = dg15.GetPublicKey();
         return new JsonObject { ["publicKey"] = key == null ? null : Util.GetDetailedPublicKeyAlgorithm(key) };
+    }
+
+    private static JsonObject DisplayedImages(List<DisplayedImageInfo> images)
+    {
+        var array = new JsonArray();
+        foreach (DisplayedImageInfo image in images)
+        {
+            array.Add((JsonNode)new JsonObject
+            {
+                ["mimeType"] = image.GetMimeType(),
+                ["width"] = image.GetWidth(),
+                ["height"] = image.GetHeight(),
+                ["image"] = Base64(image),
+            });
+        }
+        return new JsonObject { ["images"] = array };
+    }
+
+    /// <summary>An image stored as bare bytes (DG11, DG12), with its format recognized from its first bytes.</summary>
+    private static JsonObject Image(byte[] bytes) => new()
+    {
+        ["mimeType"] = MimeType(bytes),
+        ["image"] = Convert.ToBase64String(bytes),
+    };
+
+    /// <summary>JPEG, JPEG 2000 (file or codestream), or <c>null</c>.</summary>
+    public static string? MimeType(byte[] bytes) => bytes switch
+    {
+        [0xFF, 0xD8, ..] => "image/jpeg",
+        [0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20, ..] or [0xFF, 0x4F, 0xFF, 0x51, ..] => "image/jp2",
+        _ => null,
+    };
+
+    private static string Base64(ImageInfo image)
+    {
+        using Stream stream = image.GetImageInputStream();
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        return Convert.ToBase64String(buffer.ToArray());
     }
 
     private static void Add(JsonObject fields, string name, string? value)

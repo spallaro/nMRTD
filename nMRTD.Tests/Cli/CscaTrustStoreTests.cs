@@ -190,20 +190,18 @@ public sealed class CscaTrustStoreTests : IDisposable
             DocumentSignerCertificate = DocumentSigner(csca, signerKey.Public),
         };
         var store = new CscaTrustStore(trustTheCsca ? [csca.Certificate] : [Csca(Utopia, Rsa()).Certificate]);
-        var text = new StringWriter();
-        var reader = new DocumentReader(Open(document.Build(), isSfiEnabled: true), text) { TrustStore = store };
 
-        reader.Read(new AccessCredentials(AccessKeyMode.Mrz,
-            new BacKey(SimulatedDocument.DocumentNumber, SimulatedDocument.DateOfBirth, SimulatedDocument.DateOfExpiry), null), false, folder);
+        (ReadReport report, StringWriter log) = DocumentReaderTests.Run(document.Build(), new AccessCredentials(AccessKeyMode.Mrz,
+            new BacKey(SimulatedDocument.DocumentNumber, SimulatedDocument.DateOfBirth, SimulatedDocument.DateOfExpiry), null), trustStore: store);
 
-        Assert.Equal("valid", reader.Report.PassiveAuthentication.Signature);
-        Assert.Equal(expected, reader.Report.PassiveAuthentication.Csca);
-        Assert.Equal(trustTheCsca ? [] : ["Document Signer certificate is not issued by a trusted CSCA"], reader.Report.FailedChecks());
-        Assert.True(reader.Report.PassiveAuthentication.SignerCertificateValidNow);
-        Assert.Contains("revocation (CRLs) is not checked", text.ToString());
+        Assert.Equal("valid", report.PassiveAuthentication.Signature);
+        Assert.Equal(expected, report.PassiveAuthentication.Csca);
+        Assert.Equal(trustTheCsca ? ExitCodes.Success : ExitCodes.DocumentSignerNotTrusted, report.ExitCode());
+        Assert.True(report.PassiveAuthentication.SignerCertificateValidNow);
+        Assert.Contains("revocation (CRLs) is not checked", log.ToString());
         if (trustTheCsca)
         {
-            Assert.Contains("CN=CSCA Utopia", reader.Report.PassiveAuthentication.CscaSubject);
+            Assert.Contains("CN=CSCA Utopia", report.PassiveAuthentication.CscaSubject);
         }
     }
 

@@ -5,143 +5,139 @@ using static nMRTD.Tests.EndToEnd.EndToEnd;
 
 namespace nMRTD.Tests.Cli;
 
-/// <summary>The command-line tool's reading flow (<see cref="DocumentReader"/>) on the simulated chip.</summary>
-public sealed class DocumentReaderTests : IDisposable
+/// <summary>The command-line tool's reading flow (<see cref="DocumentReader"/>) on the simulated chip, and the
+/// exit code each outcome gives.</summary>
+public sealed class DocumentReaderTests
 {
-    private readonly string outDir = Path.Combine(Path.GetTempPath(), "nmrtd-cli-tests-" + Guid.NewGuid().ToString("N"));
-
-    public void Dispose()
-    {
-        if (Directory.Exists(outDir))
-        {
-            Directory.Delete(outDir, recursive: true);
-        }
-    }
-
     private static readonly AccessCredentials Mrz =
         new(AccessKeyMode.Mrz, new BacKey(SimulatedDocument.DocumentNumber, SimulatedDocument.DateOfBirth, SimulatedDocument.DateOfExpiry), null);
 
+    private static readonly AccessCredentials WrongMrz =
+        new(AccessKeyMode.Mrz, new BacKey(SimulatedDocument.DocumentNumber, SimulatedDocument.DateOfBirth, "301231"), null);
+
     private static readonly AccessCredentials Can = new(AccessKeyMode.Can, null, SimulatedDocument.Can);
 
-    private (DocumentReader Reader, StringWriter Text, bool Read) Run(SimulatedDocument document, AccessCredentials credentials, bool forceBac = false)
+    /// <summary>Reads the chip as the tool does, catching a <see cref="ReadFailure"/> into the report.</summary>
+    internal static (ReadReport Report, StringWriter Log) Run(SimulatedChip chip, AccessCredentials credentials,
+        AccessMode mode = AccessMode.Auto, bool skipPassiveAuthentication = false, CscaTrustStore? trustStore = null)
     {
-        PassportService service = Open(document.Build(), isSfiEnabled: true);
-        var text = new StringWriter();
-        var reader = new DocumentReader(service, text);
-        bool read = reader.Read(credentials, forceBac, outDir);
-        return (reader, text, read);
+        var log = new StringWriter();
+        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), log) { TrustStore = trustStore };
+        try
+        {
+            reader.Read(credentials, mode, skipPassiveAuthentication);
+        }
+        catch (ReadFailure e)
+        {
+            reader.Report.FailureExitCode = e.ExitCode;
+            reader.Report.Error = e.Message;
+        }
+        return (reader.Report, log);
+    }
+
+    private static SimulatedDocument WithPace()
+    {
+        var document = new SimulatedDocument();
+        document.Pace.Add(new SimulatedChip.PaceSupport(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13));
+        return document;
     }
 
     [Fact]
-    public void BacDocumentIsReadAndPassiveAuthenticationHolds()
+    public void BacDocumentIsReadAndPassesEveryCheck()
     {
-        (DocumentReader reader, StringWriter text, bool read) = Run(new SimulatedDocument(), Mrz);
+        (ReadReport report, StringWriter log) = Run(new SimulatedDocument().Build(), Mrz);
 
-        Assert.True(read);
-        ReadReport report = reader.Report;
         Assert.Equal("BAC", report.AccessProtocol);
-        Assert.Equal(SimulatedDocument.DocumentNumber, report.Mrz!.DocumentNumber);
-        Assert.Equal("SPECIMEN", report.Mrz.PrimaryIdentifier);
+        Assert.Equal("3B80800101", report.Atr);
         Assert.Equal([1, 2], report.DataGroups.Where(d => d.Present).Select(d => d.Number));
         Assert.All(report.DataGroups.Where(d => d.Present), d => Assert.Equal("match", d.Hash));
-        Assert.DoesNotContain(report.DataGroups, d => d.Number is 3 or 4); // EAC protected, never read
+        Assert.DoesNotContain(report.DataGroups, d => d.Number is 3 or 4); // need Terminal Authentication
         Assert.Equal("valid", report.PassiveAuthentication.Signature);
-        Assert.Contains("CN=Document Signer", report.PassiveAuthentication.Signer);
         Assert.Equal("not-checked", report.PassiveAuthentication.Csca);
         Assert.Equal("not-available", report.ChipAuthentication.Status);
-        ImageSummary face = Assert.Single(report.DataGroups.Single(d => d.Number == 2).Images);
-        Assert.Equal("image/jpeg", face.MimeType);
-        Assert.Equal(SimulatedDocument.FaceImage, report.DataGroups.Single(d => d.Number == 2).Content!.AsSpan(face.Offset, face.Length).ToArray());
-        Assert.True(File.Exists(Path.Combine(outDir, "dg2_face_0.jpg")));
-        Assert.Contains("EF.SOD signature is VALID", text.ToString());
-        Assert.Contains("BAC completed.", text.ToString());
+        Assert.Equal("not-available", report.ActiveAuthentication.Status);
+        Assert.Empty(report.FailedChecks());
+        Assert.Equal(ExitCodes.Success, report.ExitCode());
+        Assert.Contains("BAC completed.", log.ToString());
     }
 
     [Fact]
-    public void PaceAndChipAuthenticationAreReported()
+    public void PaceAndChipAuthentication()
     {
-        var document = new SimulatedDocument();
-        document.Pace.Add(new SimulatedChip.PaceSupport(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13));
+        SimulatedDocument document = WithPace();
         document.ChipAuthenticationKeys.Add(new SimulatedChip.CaKey(SecurityInfo.ID_CA_ECDH_AES_CBC_CMAC_128, SimulatedDocument.GenerateEc(13), 1));
 
-        (DocumentReader reader, StringWriter text, bool read) = Run(document, Can);
+        (ReadReport report, _) = Run(document.Build(), Can);
 
-        Assert.True(read);
-        Assert.Equal("PACE", reader.Report.AccessProtocol);
-        Assert.Equal(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, reader.Report.PaceProtocol);
-        Assert.False(reader.Report.ExplicitPaceParameters);
-        Assert.Equal("match", reader.Report.DataGroups.Single(d => d.Number == 14).Hash);
-        Assert.Equal("succeeded", reader.Report.ChipAuthentication.Status);
-        Assert.True(reader.Report.ChipAuthentication.KeyAuthenticated);
-        Assert.Equal(SecurityInfo.ID_CA_ECDH_AES_CBC_CMAC_128, reader.Report.ChipAuthentication.Protocol);
-        Assert.Contains("Chip Authentication succeeded", text.ToString());
+        Assert.Equal("PACE", report.AccessProtocol);
+        Assert.Equal(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, report.PaceProtocol);
+        Assert.Equal("succeeded", report.ChipAuthentication.Status);
+        Assert.True(report.ChipAuthentication.KeyAuthenticated);
+        Assert.Equal(ExitCodes.Success, report.ExitCode());
     }
 
     [Fact]
-    public void ForcedBacSkipsPace()
+    public void BacModeSkipsPace()
     {
-        var document = new SimulatedDocument();
-        document.Pace.Add(new SimulatedChip.PaceSupport(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13));
+        (ReadReport report, _) = Run(WithPace().Build(), Mrz, AccessMode.Bac);
 
-        (DocumentReader reader, StringWriter text, _) = Run(document, Mrz, forceBac: true);
-
-        Assert.Equal("BAC", reader.Report.AccessProtocol);
-        Assert.Contains("Skipping PACE (--bac)", text.ToString());
+        Assert.Equal("BAC", report.AccessProtocol);
     }
 
     [Fact]
-    public void CanWithoutPaceCannotReadTheDocument()
+    public void AutoModeFallsBackToBacWithTheMrz()
     {
-        (DocumentReader reader, _, bool read) = Run(new SimulatedDocument(), Can);
+        (ReadReport report, StringWriter log) = Run(new SimulatedDocument().Build(), Mrz);
 
-        Assert.False(read);
-        Assert.Null(reader.Report.AccessProtocol);
+        Assert.Equal("BAC", report.AccessProtocol);
+        Assert.Contains("falling back to BAC", log.ToString());
     }
 
     [Fact]
-    public void ModifiedDataGroupIsReportedAsAHashMismatch()
+    public void PaceModeOnADocumentWithoutPaceFails()
     {
-        var document = new SimulatedDocument();
-        SimulatedChip chip = document.Build();
+        (ReadReport report, _) = Run(new SimulatedDocument().Build(), Mrz, AccessMode.Pace);
+
+        Assert.Equal(ExitCodes.PaceNotAvailable, report.ExitCode());
+        Assert.Null(report.AccessProtocol);
+    }
+
+    [Fact]
+    public void CanOnADocumentWithoutPaceFails() =>
+        Assert.Equal(ExitCodes.PaceNotAvailable, Run(new SimulatedDocument().Build(), Can).Report.ExitCode());
+
+    [Fact]
+    public void WrongKeyFailsPace() =>
+        Assert.Equal(ExitCodes.PaceFailed, Run(WithPace().Build(), new AccessCredentials(AccessKeyMode.Can, null, "654321")).Report.ExitCode());
+
+    [Fact]
+    public void WrongKeyFailsBac() =>
+        Assert.Equal(ExitCodes.BacFailed, Run(new SimulatedDocument().Build(), WrongMrz).Report.ExitCode());
+
+    [Fact]
+    public void ChangedDataGroupIsAHashMismatch()
+    {
+        SimulatedChip chip = new SimulatedDocument().Build();
         chip.ApplicationFiles[PassportService.EF_DG2][^1] ^= 0x01;
-        PassportService service = Open(chip, isSfiEnabled: true);
-        var reader = new DocumentReader(service, new StringWriter());
 
-        reader.Read(Mrz, forceBac: false, outDir);
+        (ReadReport report, _) = Run(chip, Mrz);
 
-        Assert.Equal("mismatch", reader.Report.DataGroups.Single(d => d.Number == 2).Hash);
-        Assert.Equal("match", reader.Report.DataGroups.Single(d => d.Number == 1).Hash);
+        Assert.Equal("mismatch", report.DataGroups.Single(d => d.Number == 2).Hash);
+        Assert.Equal([new FailedCheck(ExitCodes.HashMismatch, "DG2 hash does not match EF.SOD")], report.FailedChecks());
+        Assert.Equal(ExitCodes.HashMismatch, report.ExitCode());
     }
 
     [Fact]
-    public void ReportIsWrittenAsJson()
+    public void SkippedPassiveAuthenticationChecksNothingAgainstEfSod()
     {
-        var document = new SimulatedDocument();
-        document.Pace.Add(new SimulatedChip.PaceSupport(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13));
-        (DocumentReader reader, _, _) = Run(document, Can);
-        var buffer = new MemoryStream();
+        SimulatedChip chip = new SimulatedDocument().Build();
+        chip.ApplicationFiles[PassportService.EF_DG2][^1] ^= 0x01;
 
-        ReadReportJson.Write(reader.Report, buffer);
+        (ReadReport report, _) = Run(chip, Mrz, skipPassiveAuthentication: true);
 
-        using var json = System.Text.Json.JsonDocument.Parse(buffer.ToArray());
-        System.Text.Json.JsonElement root = json.RootElement;
-        Assert.Equal("PACE", root.GetProperty("accessProtocol").GetString());
-        Assert.Equal(SimulatedDocument.DocumentNumber, root.GetProperty("mrz").GetProperty("documentNumber").GetString());
-        Assert.StartsWith("F", root.GetProperty("mrz").GetProperty("gender").GetString());
-        System.Text.Json.JsonElement dg1 = root.GetProperty("dataGroups").EnumerateArray().First(d => d.GetProperty("number").GetInt32() == 1);
-        Assert.True(dg1.GetProperty("present").GetBoolean());
-        Assert.Equal("match", dg1.GetProperty("hash").GetString());
-        Assert.Equal("valid", root.GetProperty("passiveAuthentication").GetProperty("signature").GetString());
-        Assert.Equal("not-checked", root.GetProperty("passiveAuthentication").GetProperty("csca").GetString());
-        Assert.Equal("not-available", root.GetProperty("chipAuthentication").GetProperty("status").GetString());
-        Assert.False(root.GetProperty("activeAuthentication").GetProperty("keyAuthenticated").GetBoolean());
-        Assert.Equal(System.Text.Json.JsonValueKind.Null, root.GetProperty("error").ValueKind);
-        Assert.False(root.TryGetProperty("savedFiles", out _));
-        System.Text.Json.JsonElement dg2 = root.GetProperty("dataGroups").EnumerateArray().First(d => d.GetProperty("number").GetInt32() == 2);
-        System.Text.Json.JsonElement image = Assert.Single(dg2.GetProperty("images").EnumerateArray());
-        Assert.Equal("image/jpeg", image.GetProperty("mimeType").GetString());
-        Assert.Equal(SimulatedDocument.FaceImage.Length, image.GetProperty("length").GetInt32());
-        Assert.DoesNotContain("\"can\"", System.Text.Encoding.UTF8.GetString(buffer.ToArray()), StringComparison.OrdinalIgnoreCase); // no access key in the output
+        Assert.Equal("skipped", report.PassiveAuthentication.Signature);
+        Assert.All(report.DataGroups, d => Assert.Null(d.Hash));
+        Assert.Equal(ExitCodes.Success, report.ExitCode());
     }
 
     [Theory]
@@ -161,16 +157,13 @@ public sealed class DocumentReaderTests : IDisposable
         };
         SimulatedChip chip = document.Build();
         chip.ActiveAuthenticationRsaSha256 = rsaSha256;
-        var text = new StringWriter();
-        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), text);
 
-        reader.Read(Mrz, forceBac: false, outDir);
+        (ReadReport report, _) = Run(chip, Mrz);
 
-        Assert.Equal("succeeded", reader.Report.ActiveAuthentication.Status);
-        Assert.True(reader.Report.ActiveAuthentication.KeyAuthenticated);
-        Assert.Contains(algorithm, reader.Report.ActiveAuthentication.Protocol);
-        Assert.Equal("match", reader.Report.DataGroups.Single(d => d.Number == 15).Hash);
-        Assert.Contains("Active Authentication succeeded", text.ToString());
+        Assert.Equal("succeeded", report.ActiveAuthentication.Status);
+        Assert.True(report.ActiveAuthentication.KeyAuthenticated);
+        Assert.Contains(algorithm, report.ActiveAuthentication.Protocol);
+        Assert.Equal(ExitCodes.Success, report.ExitCode());
     }
 
     [Theory]
@@ -178,54 +171,23 @@ public sealed class DocumentReaderTests : IDisposable
     [InlineData("ECDSA")]
     public void WrongActiveAuthenticationSignatureFails(string keyKind)
     {
-        var document = new SimulatedDocument
+        SimulatedChip chip = new SimulatedDocument
         {
             ActiveAuthenticationKey = keyKind == "ECDSA" ? SimulatedDocument.GenerateEc(12) : SimulatedDocument.RsaKey1024,
-        };
-        SimulatedChip chip = document.Build();
+        }.Build();
         chip.Fault = SimulatedChip.ChipFault.ActiveAuthenticationSignature;
-        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), new StringWriter());
 
-        reader.Read(Mrz, forceBac: false, outDir);
+        (ReadReport report, _) = Run(chip, Mrz);
 
-        Assert.Equal("failed", reader.Report.ActiveAuthentication.Status);
+        Assert.Equal("failed", report.ActiveAuthentication.Status);
+        Assert.Equal(ExitCodes.ActiveAuthenticationFailed, report.ExitCode());
     }
 
+    /// <summary>A chip that answers Active Authentication with a key that is not the one in EF.SOD.</summary>
     [Fact]
-    public void DocumentWithoutDg15HasNoActiveAuthentication()
+    public void ActiveAuthenticationWithAKeyNotCoveredByTheSodFails()
     {
-        (DocumentReader reader, StringWriter text, _) = Run(new SimulatedDocument(), Mrz);
-
-        Assert.Equal("not-available", reader.Report.ActiveAuthentication.Status);
-        Assert.Contains("DG15 not present", text.ToString());
-    }
-
-    [Fact]
-    public void EcdsaResponseWithoutTheHashAlgorithmIsUnverifiable()
-    {
-        var key = SimulatedDocument.GenerateEc(12);
-
-        ActiveAuthenticationVerifier.Result result = ActiveAuthenticationVerifier.Verify(key.Public, null, new byte[8], new byte[64]);
-
-        Assert.Null(result.Valid);
-    }
-
-    [Fact]
-    public void EmptyResponseIsNeverValid()
-    {
-        Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.RsaKey1024.Public, null, new byte[8], []).Valid);
-        Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.GenerateEc(12).Public,
-            ActiveAuthenticationInfo.ECDSA_PLAIN_SHA256_OID, new byte[8], []).Valid);
-    }
-
-    /// <summary>A chip that answers Active Authentication with a key that is not the one in EF.SOD: the
-    /// protocol succeeds, but the key is not authenticated, which the report must make visible.</summary>
-    [Fact]
-    public void ActiveAuthenticationWithAKeyNotCoveredByTheSodIsFlagged()
-    {
-        var document = new SimulatedDocument { ActiveAuthenticationKey = SimulatedDocument.RsaKey1024 };
-        SimulatedChip chip = document.Build();
-        // A validly signed EF.SOD whose DG15 hash is not the hash of DG15.
+        SimulatedChip chip = new SimulatedDocument { ActiveAuthenticationKey = SimulatedDocument.RsaKey1024 }.Build();
         var hashes = new Dictionary<int, byte[]>
         {
             [1] = Org.BouncyCastle.Security.DigestUtilities.CalculateDigest("SHA-256", chip.ApplicationFiles[PassportService.EF_DG1]),
@@ -234,72 +196,14 @@ public sealed class DocumentReaderTests : IDisposable
         };
         chip.ApplicationFiles[PassportService.EF_SOD] = new SODFile("SHA-256", "SHA256withRSA", hashes,
             SigningFixtures.KeyPair.Private, SigningFixtures.Certificate).GetEncoded()!;
-        var text = new StringWriter();
-        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), text);
 
-        reader.Read(Mrz, forceBac: false, outDir);
+        (ReadReport report, _) = Run(chip, Mrz);
 
-        Assert.Equal("valid", reader.Report.PassiveAuthentication.Signature);
-        Assert.Equal("mismatch", reader.Report.DataGroups.Single(d => d.Number == 15).Hash);
-        Assert.Equal("succeeded", reader.Report.ActiveAuthentication.Status);
-        Assert.False(reader.Report.ActiveAuthentication.KeyAuthenticated);
-        Assert.Contains("not covered by a valid EF.SOD signature", text.ToString());
-    }
-
-    [Fact]
-    public void GenuineDocumentFailsNoCheck()
-    {
-        var document = new SimulatedDocument { ActiveAuthenticationKey = SimulatedDocument.RsaKey1024 };
-        document.ChipAuthenticationKeys.Add(new SimulatedChip.CaKey(SecurityInfo.ID_CA_ECDH_AES_CBC_CMAC_128, SimulatedDocument.GenerateEc(13), 1));
-
-        (DocumentReader reader, _, _) = Run(document, Mrz);
-
-        Assert.Empty(reader.Report.FailedChecks());
-    }
-
-    [Fact]
-    public void ProtocolsTheDocumentDoesNotOfferAreNotFailures()
-    {
-        (DocumentReader reader, _, _) = Run(new SimulatedDocument(), Mrz); // no DG14, no DG15
-
-        Assert.Equal("not-available", reader.Report.ChipAuthentication.Status);
-        Assert.Equal("not-available", reader.Report.ActiveAuthentication.Status);
-        Assert.Empty(reader.Report.FailedChecks());
-    }
-
-    [Fact]
-    public void ChangedDataGroupIsAFailedCheck()
-    {
-        SimulatedChip chip = new SimulatedDocument().Build();
-        chip.ApplicationFiles[PassportService.EF_DG2][^1] ^= 0x01;
-        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), new StringWriter());
-
-        reader.Read(Mrz, forceBac: false, outDir);
-
-        Assert.Equal(["DG2 hash does not match EF.SOD"], reader.Report.FailedChecks());
-    }
-
-    [Fact]
-    public void WrongActiveAuthenticationSignatureIsAFailedCheck()
-    {
-        SimulatedChip chip = new SimulatedDocument { ActiveAuthenticationKey = SimulatedDocument.RsaKey1024 }.Build();
-        chip.Fault = SimulatedChip.ChipFault.ActiveAuthenticationSignature;
-        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), new StringWriter());
-
-        reader.Read(Mrz, forceBac: false, outDir);
-
-        Assert.Equal(["Active Authentication failed"], reader.Report.FailedChecks());
-    }
-
-    [Fact]
-    public void ProtocolWithAKeyNotCoveredByTheSodIsAFailedCheck()
-    {
-        var report = new ReadReport();
-        report.PassiveAuthentication.Signature = "valid";
-        report.DataGroups.Add(new DataGroupResult(15) { Present = true, Hash = "not-in-sod" });
-        report.ActiveAuthentication.Status = "succeeded";
-
-        Assert.Equal(["Active Authentication used a key not covered by a valid EF.SOD signature"], report.FailedChecks());
+        Assert.Equal("succeeded", report.ActiveAuthentication.Status);
+        Assert.False(report.ActiveAuthentication.KeyAuthenticated);
+        // The DG15 hash mismatch comes first in the order of the exit codes.
+        Assert.Equal([ExitCodes.HashMismatch, ExitCodes.KeyNotAuthenticated], report.FailedChecks().Select(c => c.Code));
+        Assert.Equal(ExitCodes.HashMismatch, report.ExitCode());
     }
 
     [Theory]
@@ -311,7 +215,7 @@ public sealed class DocumentReaderTests : IDisposable
         var report = new ReadReport();
         report.ActiveAuthentication.Status = status;
 
-        Assert.Empty(report.FailedChecks());
+        Assert.Equal(ExitCodes.Success, report.ExitCode());
     }
 
     [Fact]
@@ -325,32 +229,23 @@ public sealed class DocumentReaderTests : IDisposable
     }
 
     [Fact]
-    public void DataGroupContentsAreInTheJsonOnlyWhenAsked()
+    public void ProblemThatStoppedReadingWinsOverFailedChecks()
     {
-        var document = new SimulatedDocument();
-        SimulatedChip chip = document.Build();
-        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), new StringWriter());
-        reader.Read(Mrz, forceBac: false, outDir);
-        var without = new MemoryStream();
-        var with = new MemoryStream();
+        var report = new ReadReport { FailureExitCode = ExitCodes.CommunicationError };
+        report.DataGroups.Add(new DataGroupResult(1) { Present = true, Hash = "mismatch" });
 
-        ReadReportJson.Write(reader.Report, without);
-        ReadReportJson.Write(reader.Report, with, includeDataGroupContent: true);
+        Assert.Equal(ExitCodes.CommunicationError, report.ExitCode());
+    }
 
-        using var plain = System.Text.Json.JsonDocument.Parse(without.ToArray());
-        using var full = System.Text.Json.JsonDocument.Parse(with.ToArray());
-        Assert.All(plain.RootElement.GetProperty("dataGroups").EnumerateArray(), d => Assert.False(d.TryGetProperty("data", out _)));
-        foreach (System.Text.Json.JsonElement dataGroup in full.RootElement.GetProperty("dataGroups").EnumerateArray())
-        {
-            int number = dataGroup.GetProperty("number").GetInt32();
-            if (dataGroup.GetProperty("present").GetBoolean())
-            {
-                Assert.Equal(chip.ApplicationFiles[(short)(0x0100 + number)], dataGroup.GetProperty("data").GetBytesFromBase64());
-            }
-            else
-            {
-                Assert.False(dataGroup.TryGetProperty("data", out _));
-            }
-        }
+    [Fact]
+    public void EcdsaResponseWithoutTheHashAlgorithmIsUnverifiable() =>
+        Assert.Null(ActiveAuthenticationVerifier.Verify(SimulatedDocument.GenerateEc(12).Public, null, new byte[8], new byte[64]).Valid);
+
+    [Fact]
+    public void EmptyResponseIsNeverValid()
+    {
+        Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.RsaKey1024.Public, null, new byte[8], []).Valid);
+        Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.GenerateEc(12).Public,
+            ActiveAuthenticationInfo.ECDSA_PLAIN_SHA256_OID, new byte[8], []).Valid);
     }
 }

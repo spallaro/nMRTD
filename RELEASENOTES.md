@@ -4,30 +4,42 @@
 
 ### Command-line tool
 
-- **Exit code 4 when a security check fails:** a data group hash that differs from EF.SOD, an invalid
-  EF.SOD signature, a Document Signer not issued by a trusted CSCA (with `--csca`), a failed Chip
-  Authentication, an Active Authentication signature that does not verify, or a Chip or Active
-  Authentication that succeeded with a key not covered by a valid EF.SOD signature. A protocol the
-  document does not offer, an unverifiable or interrupted Active Authentication and a data group without
-  a hash in EF.SOD do not count. **`--report-only`** restores exit code 0 for a document that could be
-  read. The text output ends with the list of failed checks, and the JSON has a `failedChecks` array.
+The options and the output of the tool are reorganized, to make it a tool to verify documents as well
+as to test the library. **The options are not compatible with 0.8.8-alpha.**
+
+- **Output:** the result goes to stdout as human readable text (default), JSON (**`--output-json`**) or
+  XML (**`--output-xml`**), with the same content in the three formats, also when reading stops early.
+  Nothing else is printed unless **`--verbose`** is given, which writes the progress and the APDU trace
+  to stderr. The result now includes the card's **ATR**.
+- **`--include-information`** adds the parsed information of each data group: the MRZ (DG1), the
+  face records (DG2, ISO/IEC 19794-5 or 39794-5), the displayed images (DG5 to DG7), the additional
+  personal and document details (DG11, DG12), the security infos (DG14) and the Active Authentication
+  key (DG15). Images are in Base64 with their MIME type.
+- **`--include-raw`** adds each data group's bytes in Base64.
+- **`--share`** leaves out everything that identifies the holder or the document (names, numbers,
+  dates, images, certificate names) and keeps what is useful to understand the result (protocols,
+  algorithms, data group presence and hash checks, the outcome of every check).
+- **`--pace`** uses PACE only; **`--bac`** uses BAC only; without them the tool uses PACE and falls
+  back to BAC as before.
+- **`--skip-passive-authentication`** does not read EF.SOD.
+- **Exit codes:** `0` when the document was read and every check passed, and a negative code for each
+  problem: invalid arguments (`-1`), missing access key (`-2`), CSCA certificates not loaded (`-3`),
+  reader not found (`-10`), card not connected (`-11`), PACE not available (`-20`), PACE failed
+  (`-21`), BAC failed (`-22`), communication error (`-30`), unexpected error (`-31`), and the failed
+  security checks: data group hash mismatch (`-40`), invalid EF.SOD signature (`-41`), Document Signer
+  not trusted (`-42`), Chip Authentication failed (`-43`), Active Authentication failed (`-44`), key not
+  covered by EF.SOD (`-45`). The result lists every failed check with its code.
+- **Removed:** `--json` (now `--output-json`), `--out` (the images are in the result with
+  `--include-information`), the interactive prompts for the access key, and the hex dumps of the data
+  groups.
 - An EF.SOD whose content does not match its signed message digest is now reported as an invalid
   signature, not as an error.
-- **`--json-data`** adds each data group's contents, in Base64, to the JSON (`dataGroups[].data`). It
-  needs `--json`; without it the JSON has no data group contents, as before.
-- **`--json-fields`** adds each data group's parsed fields to the JSON (`dataGroups[].fields`): the MRZ
-  (DG1), the face records (DG2, ISO/IEC 19794-5 or 39794-5), the additional personal and document
-  details (DG11, DG12), the security infos (DG14) and the Active Authentication key (DG15). It needs
-  `--json`. The images of the front and rear of the document (DG12) are now listed in `images` too.
-- **JSON: `savedFiles` is replaced by `dataGroups[].images`:** for DG2 and DG5 to DG7, each image's
-  format (`mimeType`), its `offset` in the data group's bytes and its `length`, so that with
-  `--json-data` a program can cut the image out of the data group. The images are still saved to
-  `--out`.
 
 ### Documentation
 
 - **CLI.md:** complete documentation of the command-line tool (options, each step, the failed checks,
-  exit codes, every JSON field, Native AOT, troubleshooting). The README keeps a short introduction.
+  exit codes, every output field, `--share`, Native AOT, troubleshooting). The README keeps a short
+  introduction.
 
 ## 0.8.8-alpha (2026-11-23)
 

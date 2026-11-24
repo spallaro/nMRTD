@@ -131,7 +131,7 @@ passportService.SendSelectApplet(true);
 // From here on, read DG1/DG2/... exactly as in the BAC example above.
 ```
 
-For a complete, runnable example covering reader selection, PACE-with-BAC-fallback, DG1/DG2 parsing, full Passive Authentication (EF.SOD hash and signature verification) and Chip Authentication, see the [command-line tool](#command-line-tool-nmrtdcli) and its source, [`nMRTD.Cli/Program.cs`](https://github.com/spallaro/nMRTD/blob/main/nMRTD.Cli/Program.cs).
+For a complete, runnable example covering reader selection, PACE-with-BAC-fallback, DG1/DG2 parsing, full Passive Authentication (EF.SOD hash and signature verification) and Chip Authentication, see the [command-line tool](#command-line-tool-nmrtdcli) and its reading flow, [`nMRTD.Cli/DocumentReader.cs`](https://github.com/spallaro/nMRTD/blob/main/nMRTD.Cli/DocumentReader.cs).
 
 ## Documentation
 
@@ -143,22 +143,24 @@ model, Passive Authentication, and Native AOT and trimming.
 ## Command-line tool (nMRTD.Cli)
 
 The repository includes `nMRTD.Cli`, a console application that reads a document end to end with
-nMRTD, through a **contactless (NFC) PC/SC reader**. It is a sample and a test tool: it is not part of
-the NuGet package. It authenticates with PACE (falling back to BAC), reads the data groups and saves
-the images, and runs Passive Authentication (optionally checking the Document Signer against trusted
-CSCA certificates), Chip Authentication and Active Authentication. It exits with code 4 when a
-security check fails, and can write its results as JSON.
+nMRTD, through a **contactless (NFC) PC/SC reader**, to test the library and to verify documents. It
+is not part of the NuGet package. It authenticates with PACE (falling back to BAC), reads the data
+groups, and runs Passive Authentication (optionally checking the Document Signer against trusted CSCA
+certificates), Chip Authentication and Active Authentication. The result is text, JSON or XML, with
+the parsed data groups and their images on request, and the exit code is negative for each kind of
+problem (a failed check, a rejected access key, no reader...).
 
 ```bash
-dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --out ./out
-dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --csca ./csca --json > result.json
+dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456
+dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --csca ./csca --output-json > result.json
+dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --include-information --share --output-json
 ```
 
-**[CLI.md](CLI.md)** documents the options, each step, the exit codes, the JSON output, Native AOT
-publishing and troubleshooting.
+**[CLI.md](CLI.md)** documents the options, each step, the exit codes, the text, JSON and XML outputs,
+Native AOT publishing and troubleshooting.
 
-> **Personal data:** the output, the JSON, the `--verbose` trace and the saved images contain the
-> holder's personal data and photo. Do not share them unredacted.
+> **Personal data:** with `--include-information` or `--include-raw` the result contains the holder's
+> personal data and photo, and so does the `--verbose` trace. Use `--share` for a result to share.
 
 ## Tested documents
 
@@ -185,8 +187,9 @@ country's CSCA.
 > another document type, or the same document with a different access method), please
 > [open an issue](https://github.com/spallaro/nMRTD/issues) with the document type and issuing
 > country, the reader and operating system, and the BAC, PACE, Passive, Chip and Active
-> Authentication lines of the output, including any error. Leave out names, document numbers, dates,
-> photos and hex dumps: the protocol and algorithm lines are all that is needed.*
+> Authentication lines of the output, including any error. The output of `--share` (with
+> `--include-information`) has all that is needed and leaves out names, document numbers, dates and
+> photos.*
 
 ## Tests
 

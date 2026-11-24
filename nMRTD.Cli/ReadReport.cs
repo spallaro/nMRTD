@@ -9,12 +9,17 @@
  * See LICENSE for more information.
  */
 
+using System.Text.Json.Nodes;
+
 namespace nMRTD.Cli;
 
-/// <summary>What <see cref="DocumentReader"/> found on a document: the outcome of each step, for the JSON
-/// output and for tests. The text output is written while reading.</summary>
+/// <summary>What <see cref="DocumentReader"/> found on a document: the outcome of each step. It is rendered as
+/// text, JSON or XML by <see cref="ReportOutput"/>.</summary>
 public sealed class ReadReport
 {
+    /// <summary>The card's answer to reset, in hexadecimal, if available.</summary>
+    public string? Atr { get; set; }
+
     /// <summary>"PACE" or "BAC", or <c>null</c> if no access protocol succeeded.</summary>
     public string? AccessProtocol { get; set; }
 
@@ -23,9 +28,6 @@ public sealed class ReadReport
 
     /// <summary>Whether PACE used explicit domain parameters from EF.CardAccess.</summary>
     public bool ExplicitPaceParameters { get; set; }
-
-    /// <summary>The MRZ from DG1, if DG1 was read and parsed.</summary>
-    public MrzSummary? Mrz { get; set; }
 
     public List<DataGroupResult> DataGroups { get; } = [];
 
@@ -38,54 +40,64 @@ public sealed class ReadReport
     /// <summary>Why reading stopped early, if it did.</summary>
     public string? Error { get; set; }
 
+    /// <summary>The exit code for a problem that stopped reading, if any.</summary>
+    public int? FailureExitCode { get; set; }
+
     /// <summary>
-    /// The security checks the document failed, as short descriptions; empty when none failed. Counted: a data
-    /// group whose hash differs from EF.SOD, an invalid EF.SOD signature, a Document Signer certificate not
-    /// issued by a trusted CSCA (only when trusted CSCAs were given), a failed Chip Authentication, an Active
-    /// Authentication signature that does not verify, and a Chip or Active Authentication that succeeded with a
-    /// key not covered by a valid EF.SOD signature. Not counted, because they say nothing against the document:
+    /// The security checks the document failed, with their exit codes, in the order of
+    /// <see cref="ExitCodes"/>; empty when none failed. Counted: a data group whose hash differs from EF.SOD, an
+    /// invalid EF.SOD signature, a Document Signer certificate not issued by a trusted CSCA (only when trusted
+    /// CSCAs were given), a failed Chip Authentication, an Active Authentication signature that does not verify,
+    /// and a Chip or Active Authentication that succeeded with a key not covered by a valid EF.SOD signature
+    /// (unless Passive Authentication was skipped). Not counted, because they say nothing against the document:
     /// a protocol the document does not offer, an unverifiable Active Authentication, an Active Authentication
     /// that could not be completed, and a data group that EF.SOD has no hash for.
     /// </summary>
-    public List<string> FailedChecks()
+    public List<FailedCheck> FailedChecks()
     {
-        var failed = new List<string>();
+        var failed = new List<FailedCheck>();
         foreach (DataGroupResult dataGroup in DataGroups.Where(d => d.Hash == "mismatch"))
         {
-            failed.Add($"DG{dataGroup.Number} hash does not match EF.SOD");
+            failed.Add(new(ExitCodes.HashMismatch, $"DG{dataGroup.Number} hash does not match EF.SOD"));
         }
         if (PassiveAuthentication.Signature == "invalid")
         {
-            failed.Add("EF.SOD signature is invalid");
+            failed.Add(new(ExitCodes.SodSignatureInvalid, "EF.SOD signature is invalid"));
         }
         if (PassiveAuthentication.Csca is "untrusted" or "no-certificate")
         {
-            failed.Add("Document Signer certificate is not issued by a trusted CSCA");
+            failed.Add(new(ExitCodes.DocumentSignerNotTrusted, "Document Signer certificate is not issued by a trusted CSCA"));
         }
-        AddProtocol(failed, "Chip Authentication", ChipAuthentication);
-        AddProtocol(failed, "Active Authentication", ActiveAuthentication);
+        if (ChipAuthentication.Status == "failed")
+        {
+            failed.Add(new(ExitCodes.ChipAuthenticationFailed, "Chip Authentication failed"));
+        }
+        if (ActiveAuthentication.Status == "failed")
+        {
+            failed.Add(new(ExitCodes.ActiveAuthenticationFailed, "Active Authentication signature does not verify"));
+        }
+        if (PassiveAuthentication.Signature != "skipped")
+        {
+            foreach ((string name, ProtocolResult result) in new[] { ("Chip", ChipAuthentication), ("Active", ActiveAuthentication) })
+            {
+                if (result.Status == "succeeded" && !result.KeyAuthenticated)
+                {
+                    failed.Add(new(ExitCodes.KeyNotAuthenticated, $"{name} Authentication used a key not covered by a valid EF.SOD signature"));
+                }
+            }
+        }
         return failed;
     }
 
-    private static void AddProtocol(List<string> failed, string name, ProtocolResult result)
-    {
-        if (result.Status == "failed")
-        {
-            failed.Add($"{name} failed");
-        }
-        else if (result.Status == "succeeded" && !result.KeyAuthenticated)
-        {
-            failed.Add($"{name} used a key not covered by a valid EF.SOD signature");
-        }
-    }
+    /// <summary>The exit code: the code of the problem that stopped reading, or of the first failed check, or 0.</summary>
+    public int ExitCode() => FailureExitCode ?? (FailedChecks() is [var first, ..] ? first.Code : ExitCodes.Success);
 }
 
-/// <summary>The fields of the machine readable zone.</summary>
-public sealed record MrzSummary(
-    string DocumentCode, string DocumentNumber, string PrimaryIdentifier, string SecondaryIdentifier,
-    string Nationality, string IssuingState, string DateOfBirth, string DateOfExpiry, string Gender);
+/// <summary>A failed security check and its exit code.</summary>
+public sealed record FailedCheck(int Code, string Description);
 
-/// <summary>One data group: whether it is present, its size, and how its hash compares with EF.SOD.</summary>
+/// <summary>One data group: whether it is present, its size, how its hash compares with EF.SOD, and its
+/// contents.</summary>
 public sealed class DataGroupResult(int number)
 {
     public int Number { get; } = number;
@@ -100,26 +112,17 @@ public sealed class DataGroupResult(int number)
     /// <summary>The data group's bytes as read, or <c>null</c> if not present.</summary>
     public byte[]? Content { get; set; }
 
-    /// <summary>The images in the data group (DG2 faces, DG5-DG7 displayed images, DG12 document images).</summary>
-    public List<ImageSummary> Images { get; } = [];
-
-    /// <summary>The parsed fields (<see cref="DataGroupFields"/>), or <c>null</c> without a parser.</summary>
-    public System.Text.Json.Nodes.JsonObject? Fields { get; set; }
+    /// <summary>The parsed information (<see cref="DataGroupFields"/>), or <c>null</c> without a parser.</summary>
+    public JsonObject? Information { get; set; }
 
     /// <summary>Why the data group could not be parsed, if it could not.</summary>
-    public string? FieldsError { get; set; }
+    public string? InformationError { get; set; }
 }
-
-/// <summary>An image in a data group: its format, and where its bytes are in the data group's bytes.</summary>
-/// <param name="MimeType">the image format, for example "image/jpeg" or "image/jp2"</param>
-/// <param name="Offset">where the image starts in the data group's bytes, or -1 if it could not be found</param>
-/// <param name="Length">the image's length in bytes</param>
-public sealed record ImageSummary(string? MimeType, int Offset, int Length);
 
 /// <summary>The EF.SOD signature check and the Document Signer certificate check against trusted CSCAs.</summary>
 public sealed class PassiveAuthenticationResult
 {
-    /// <summary>"valid", "invalid", "error" or "not-checked".</summary>
+    /// <summary>"valid", "invalid", "error", "skipped" (<c>--skip-passive-authentication</c>) or "not-checked".</summary>
     public string Signature { get; set; } = "not-checked";
 
     public string? DigestAlgorithm { get; set; }
@@ -130,7 +133,7 @@ public sealed class PassiveAuthenticationResult
 
     public string? Error { get; set; }
 
-    /// <summary>"trusted", "untrusted", "no-certificate", "error" or "not-checked" (no <c>--csca</c>).</summary>
+    /// <summary>"trusted", "untrusted", "no-certificate", "error", "skipped" or "not-checked" (no <c>--csca</c>).</summary>
     public string Csca { get; set; } = "not-checked";
 
     public string? CscaSubject { get; set; }

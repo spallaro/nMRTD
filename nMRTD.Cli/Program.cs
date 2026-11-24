@@ -11,12 +11,8 @@
  * See LICENSE for more information.
  */
 
-// nMRTD.Cli: a small end-to-end test tool for the nMRTD library. Not a port of any JMRTD Java source
-// (JMRTD's own demo/test applications live outside src/main and were not part of this port) -- this is
-// new application code assembling the already-ported library pieces into the flow described in Doc 9303:
-// open a PC/SC reader, perform PACE (falling back to BAC when the card doesn't advertise PACE support),
-// read and summarize every standard Data Group the document has (except DG3/DG4, which require Extended
-// Access Control), and verify Passive Authentication against EF.SOD.
+// nMRTD.Cli: reads and checks an electronic travel document through a PC/SC reader with the nMRTD library.
+// Not a port of any JMRTD Java source. See CLI.md for the documentation.
 
 using System.Globalization;
 
@@ -25,176 +21,210 @@ using nMRTD.Cli;
 using nMRTD.Logging;
 using nMRTD.SmartCards;
 
-return await RunAsync(args);
+return Run(args);
 
-static async Task<int> RunAsync(string[] args)
+static int Run(string[] args)
 {
-    Dictionary<string, string> options;
+    (CliOptions? options, CliOptions.Problem? problem) = CliOptions.Parse(args);
+    if (problem != null)
+    {
+        Console.Error.WriteLine($"Error: {problem.Message}");
+        Console.Error.WriteLine("Use --help for the options.");
+        return problem.ExitCode;
+    }
+    if (options!.Help)
+    {
+        PrintUsage();
+        return ExitCodes.Success;
+    }
+    if (options.ListReaders)
+    {
+        return PrintReaderList();
+    }
+
+    // The progress and the APDU trace go to stderr, and only with --verbose: stdout carries the result alone.
+    TextWriter log = options.Verbose ? Console.Error : TextWriter.Null;
+
+    CscaTrustStore? trustStore = null;
+    if (options.CscaPath != null)
+    {
+        try
+        {
+            trustStore = CscaTrustStore.Load(options.CscaPath);
+        }
+        catch (FileNotFoundException e)
+        {
+            return Fail(options, ExitCodes.CscaNotLoaded, e.Message);
+        }
+        foreach (string warning in trustStore.Warnings)
+        {
+            log.WriteLine($"Skipped CSCA file {warning}");
+        }
+        if (trustStore.Certificates.Count == 0)
+        {
+            return Fail(options, ExitCodes.CscaNotLoaded, $"No CSCA certificate could be read from {options.CscaPath}.");
+        }
+        log.WriteLine($"Loaded {trustStore.Certificates.Count} trusted CSCA certificate(s) from {options.CscaPath}.");
+    }
+
+    // Find the reader first, to tell "no reader" from "no card".
+    string[] readers;
     try
     {
-        options = ParseArgs(args);
+        readers = PcscCardService.GetReaderNames();
     }
-    catch (ArgumentException e)
+    catch (CardServiceException e)
     {
-        await Console.Error.WriteLineAsync($"Argument error: {e.Message}");
-        PrintUsage();
-        return 1;
+        return Fail(options, ExitCodes.ReaderNotFound, $"PC/SC readers could not be listed: {e.Message}");
+    }
+    if (readers.Length == 0)
+    {
+        return Fail(options, ExitCodes.ReaderNotFound, "No PC/SC reader found.");
+    }
+    if (options.Reader != null && !readers.Contains(options.Reader))
+    {
+        return Fail(options, ExitCodes.ReaderNotFound, $"Reader \"{options.Reader}\" not found (see --list-readers).");
     }
 
-    if (options.ContainsKey("help"))
-    {
-        PrintUsage();
-        return 0;
-    }
-
-    if (options.ContainsKey("list-readers"))
-    {
-        PrintReaderList();
-        return 0;
-    }
-
-    // With --json, stdout carries only the JSON report; everything else (progress, the text summary,
-    // prompts) goes to stderr.
-    bool json = options.ContainsKey("json");
-    if ((options.ContainsKey("json-data") || options.ContainsKey("json-fields")) && !json)
-    {
-        await Console.Error.WriteLineAsync("Argument error: --json-data and --json-fields add to the JSON output, so they need --json.");
-        PrintUsage();
-        return 1;
-    }
-    if (json)
-    {
-        Console.SetOut(Console.Error);
-    }
-
-    // An error before the card is read: reported on stderr and, with --json, as a JSON report too.
-    async Task<int> FailAsync(string message, bool showUsage)
-    {
-        await Console.Error.WriteLineAsync(message);
-        if (showUsage)
-        {
-            PrintUsage();
-        }
-        if (json)
-        {
-            using Stream stdout = Console.OpenStandardOutput();
-            ReadReportJson.Write(new ReadReport { Error = message }, stdout);
-        }
-        return 1;
-    }
-
-    string? readerName = options.GetValueOrDefault("reader");
-    string? outDir = options.GetValueOrDefault("out", Directory.GetCurrentDirectory());
-
-    if (options.ContainsKey("bac") && options.ContainsKey("can"))
-    {
-        return await FailAsync("Argument error: --bac needs the MRZ access key (--doc/--dob/--doe); a CAN cannot be used for BAC.", showUsage: true);
-    }
-
-    AccessCredentials credentials;
-    try
-    {
-        credentials = ResolveAccessCredentials(options);
-    }
-    catch (ArgumentException e)
-    {
-        return await FailAsync($"Cannot build access key: {e.Message}", showUsage: true);
-    }
-
-    PcscCardService cardService = new(readerName);
-    PassportService passportService = new(
-        cardService,
+    var passportService = new PassportService(
+        new PcscCardService(options.Reader),
         PassportService.NormalMaxTransceiveLength,
         PassportService.DefaultMaxBlocksize,
         isSfiEnabled: true,
         shouldCheckMac: true);
-
-    if (options.ContainsKey("verbose"))
+    if (options.Verbose)
     {
         passportService.AddLogListener(new DelegateLogListener(WriteLogEvent));
-        Console.WriteLine("Verbose logging enabled -- APDU exchanges and protocol steps are printed to stderr.");
     }
 
-    if (options.ContainsKey("bac") && credentials.Mode == AccessKeyMode.Can)
-    {
-        return await FailAsync("--bac needs the MRZ access key; a CAN cannot be used for BAC.", showUsage: false);
-    }
-
-    CscaTrustStore? trustStore = null;
-    if (options.GetValueOrDefault("csca") is { } cscaPath)
-    {
-        try
-        {
-            trustStore = CscaTrustStore.Load(cscaPath);
-        }
-        catch (FileNotFoundException e)
-        {
-            return await FailAsync($"Argument error: {e.Message}", showUsage: false);
-        }
-        foreach (string warning in trustStore.Warnings)
-        {
-            await Console.Error.WriteLineAsync($"Skipped CSCA file {warning}");
-        }
-        Console.WriteLine($"Loaded {trustStore.Certificates.Count} trusted CSCA certificate(s) from {cscaPath}.");
-    }
-
-    var reader = new DocumentReader(passportService, Console.Out) { TrustStore = trustStore };
-    int exitCode;
+    var reader = new DocumentReader(passportService, log) { TrustStore = trustStore };
     try
     {
-        Console.WriteLine("Opening card service...");
-        passportService.Open();
-
-        if (reader.Read(credentials, options.ContainsKey("bac"), outDir!))
+        log.WriteLine($"Opening the card on {options.Reader ?? readers[0]}...");
+        try
         {
-            List<string> failedChecks = reader.Report.FailedChecks();
-            Console.WriteLine();
-            Console.WriteLine(failedChecks.Count == 0
-                ? "=== Result: no security check failed ==="
-                : $"=== Result: {failedChecks.Count} security check(s) FAILED ===");
-            foreach (string check in failedChecks)
-            {
-                Console.WriteLine($"  - {check}");
-            }
-            // With --report-only the exit code tells only whether the document could be read.
-            exitCode = failedChecks.Count > 0 && !options.ContainsKey("report-only") ? 4 : 0;
+            passportService.Open();
         }
-        else
+        catch (CardServiceException e)
         {
-            // A CAN can only be used to perform PACE (BSI TR-03110): it is not valid BAC key material
-            // (BAC is derived from the MRZ), so there is no fallback to offer here.
-            const string message = "PACE is not available on this document (no EF.CardAccess, or no PACEInfo in it), and "
-                + "a Card Access Number can only be used to perform PACE -- cannot fall back to BAC.";
-            reader.Report.Error = message;
-            await Console.Error.WriteLineAsync(message);
-            exitCode = 1;
+            throw new ReadFailure(ExitCodes.CardNotConnected, $"The card could not be connected (is it on the reader?): {e.Message}", e);
         }
+        reader.Read(options.Credentials, options.AccessMode, options.SkipPassiveAuthentication);
+    }
+    catch (ReadFailure e)
+    {
+        reader.Report.FailureExitCode = e.ExitCode;
+        reader.Report.Error = e.Message;
     }
     catch (CardServiceException e)
     {
+        reader.Report.FailureExitCode = ExitCodes.CommunicationError;
         reader.Report.Error = $"Card communication error: {e.Message}";
-        await Console.Error.WriteLineAsync(reader.Report.Error);
-        exitCode = 2;
     }
     catch (Exception e)
     {
-        // Anything else (a malformed file, for example): still report it, and still write the JSON.
+        reader.Report.FailureExitCode = ExitCodes.UnexpectedError;
         reader.Report.Error = $"Unexpected error: {e.GetType().Name}: {e.Message}";
-        await Console.Error.WriteLineAsync(reader.Report.Error);
-        exitCode = 3;
     }
     finally
     {
         passportService.Close();
     }
 
-    if (json)
+    WriteReport(reader.Report, options);
+    return reader.Report.ExitCode();
+}
+
+/// <summary>A problem before the card is read: the report in the chosen format on stdout, with the message in its
+/// error field (also on stderr with --verbose).</summary>
+static int Fail(CliOptions options, int exitCode, string message)
+{
+    if (options.Verbose)
     {
-        using Stream stdout = Console.OpenStandardOutput();
-        ReadReportJson.Write(reader.Report, stdout, options.ContainsKey("json-data"), options.ContainsKey("json-fields"));
+        Console.Error.WriteLine($"Error: {message}");
+    }
+    var report = new ReadReport { FailureExitCode = exitCode, Error = message };
+    WriteReport(report, options);
+    return exitCode;
+}
+
+static void WriteReport(ReadReport report, CliOptions options)
+{
+    using Stream stdout = Console.OpenStandardOutput();
+    ReportOutput.Write(report, options.Output, options.Format, stdout);
+}
+
+static int PrintReaderList()
+{
+    string[] readers;
+    try
+    {
+        readers = PcscCardService.GetReaderNames();
+    }
+    catch (CardServiceException e)
+    {
+        Console.Error.WriteLine($"Error: PC/SC readers could not be listed: {e.Message}");
+        return ExitCodes.ReaderNotFound;
     }
 
-    return exitCode;
+    if (readers.Length == 0)
+    {
+        Console.Error.WriteLine("Error: No PC/SC reader found.");
+        return ExitCodes.ReaderNotFound;
+    }
+
+    foreach (string reader in readers)
+    {
+        Console.WriteLine(reader);
+    }
+    return ExitCodes.Success;
+}
+
+static void PrintUsage()
+{
+    Console.WriteLine("""
+        nMRTD.Cli -- reads and checks an electronic travel document through a PC/SC reader.
+
+        Usage:
+          nMRTD.Cli --can <CAN> [options]
+          nMRTD.Cli --doc <number> --dob <yyMMdd> --doe <yyMMdd> [options]
+          nMRTD.Cli --list-readers
+
+        Access:
+          --can <CAN>                    Card Access Number (PACE only)
+          --doc <number>                 Document number, without check digit (MRZ access key)
+          --dob <yyMMdd>                 Date of birth (MRZ access key)
+          --doe <yyMMdd>                 Date of expiry (MRZ access key)
+          --pace                         Use PACE only (default: PACE, or BAC if the document has no PACE)
+          --bac                          Use BAC only (needs the MRZ access key)
+          --reader <name>                PC/SC reader to use (default: the first one found)
+          --list-readers                 List the PC/SC readers and exit
+
+        Checks:
+          --csca <path>                  Trusted CSCA certificates (.cer/.crt/.der/.pem, ICAO master list .ml,
+                                         or a folder of them): check the Document Signer certificate
+          --skip-passive-authentication  Do not check the data group hashes and the EF.SOD signature
+
+        Output (stdout):
+          --output-json                  JSON (default: human readable text)
+          --output-xml                   XML
+          --include-information          Add the parsed data group information (images in Base64)
+          --include-raw                  Add each data group's bytes in Base64
+          --share                        Leave out everything that identifies the holder or the document,
+                                         to share the result
+          --verbose                      Print the progress and the APDU exchanges to stderr
+          -h, --help                     Show this help
+
+        Exit codes: 0 read and every check passed; negative for each problem:
+          -1 invalid arguments, -2 missing access key, -3 CSCA certificates not loaded,
+          -10 reader not found, -11 card not connected,
+          -20 PACE not available, -21 PACE failed, -22 BAC failed,
+          -30 communication error, -31 unexpected error,
+          -40 data group hash mismatch, -41 invalid EF.SOD signature, -42 Document Signer not trusted,
+          -43 Chip Authentication failed, -44 Active Authentication failed,
+          -45 Chip/Active Authentication with a key not covered by EF.SOD.
+        When several checks fail, the code is the first in this list. See CLI.md.
+        """);
 }
 
 /// <summary>Short human-readable status line to print next to the raw status word hex in
@@ -238,7 +268,7 @@ static int ExtractStatusWord(string message)
 /// Prints a <see cref="LogEvent"/> raised by the library (via <c>PassportService.AddLogListener</c>) to
 /// stderr in real time, color-coded and formatted so a request is visually distinct from its response, and
 /// both are visually distinct from a plain protocol-step message or an error. Used only when
-/// <c>--verbose</c> is given -- see <see cref="RunAsync"/>. The two APDU cases rely on the fixed
+/// <c>--verbose</c> is given -- see <see cref="Run"/>. The two APDU cases rely on the fixed
 /// <c>"--&gt; "</c>/<c>"&lt;-- "</c> markers that <c>SecureMessagingAPDUSender.LogApduExchange</c>
 /// documents as part of its message format specifically so a listener like this one can tell them apart.
 /// </summary>
@@ -298,233 +328,3 @@ static void WriteLogEvent(LogEvent logEvent)
     }
 }
 
-
-/// <summary>Resolves which access key to authenticate with: either MRZ details (document number, date of
-/// birth, date of expiry -- usable for PACE, falling back to BAC) or a Card Access Number (usable for PACE
-/// only). <c>--can</c> and the <c>--doc</c>/<c>--dob</c>/<c>--doe</c> triple are mutually exclusive; if
-/// neither is given on the command line, the user is prompted to choose interactively.</summary>
-static AccessCredentials ResolveAccessCredentials(Dictionary<string, string> options)
-{
-    string? can = options.GetValueOrDefault("can");
-    string? documentNumber = options.GetValueOrDefault("doc");
-    string? dateOfBirth = options.GetValueOrDefault("dob");
-    string? dateOfExpiry = options.GetValueOrDefault("doe");
-
-    bool hasCanArg = can != null;
-    bool hasAnyMrzArg = documentNumber != null || dateOfBirth != null || dateOfExpiry != null;
-    if (hasCanArg && hasAnyMrzArg)
-    {
-        throw new ArgumentException("--can cannot be combined with --doc/--dob/--doe -- a Card Access Number is an alternative to the MRZ details, not a supplement to them.");
-    }
-
-    AccessKeyMode mode = hasCanArg ? AccessKeyMode.Can : hasAnyMrzArg ? AccessKeyMode.Mrz : PromptAccessKeyMode();
-
-    if (mode == AccessKeyMode.Can)
-    {
-        if (can == null)
-        {
-            Console.Write("Card Access Number (CAN): ");
-            can = Console.ReadLine()?.Trim();
-        }
-
-        if (string.IsNullOrWhiteSpace(can))
-        {
-            throw new ArgumentException("A Card Access Number is required (use --can or answer the prompt).");
-        }
-
-        return new AccessCredentials(AccessKeyMode.Can, BacKey: null, Can: can);
-    }
-
-    if (documentNumber == null)
-    {
-        Console.Write("Document number: ");
-        documentNumber = Console.ReadLine()?.Trim();
-    }
-    if (dateOfBirth == null)
-    {
-        Console.Write("Date of birth (yyMMdd): ");
-        dateOfBirth = Console.ReadLine()?.Trim();
-    }
-    if (dateOfExpiry == null)
-    {
-        Console.Write("Date of expiry (yyMMdd): ");
-        dateOfExpiry = Console.ReadLine()?.Trim();
-    }
-
-    if (string.IsNullOrWhiteSpace(documentNumber) || string.IsNullOrWhiteSpace(dateOfBirth) || string.IsNullOrWhiteSpace(dateOfExpiry))
-    {
-        throw new ArgumentException("Document number, date of birth, and date of expiry are all required (use --doc/--dob/--doe or answer the prompts).");
-    }
-
-    return new AccessCredentials(AccessKeyMode.Mrz, new BacKey(documentNumber, dateOfBirth, dateOfExpiry), Can: null);
-}
-
-/// <summary>Interactively asks the user whether to authenticate with MRZ details or a Card Access Number,
-/// used only when neither <c>--can</c> nor any of <c>--doc</c>/<c>--dob</c>/<c>--doe</c> were given.</summary>
-static AccessKeyMode PromptAccessKeyMode()
-{
-    Console.WriteLine("Choose the access key to authenticate with:");
-    Console.WriteLine("  1) MRZ (document number + date of birth + date of expiry) -- PACE, falling back to BAC");
-    Console.WriteLine("  2) CAN (Card Access Number) -- PACE only, no BAC fallback");
-    while (true)
-    {
-        Console.Write("Select [1/2]: ");
-        switch (Console.ReadLine()?.Trim())
-        {
-            case "1":
-                return AccessKeyMode.Mrz;
-            case "2":
-                return AccessKeyMode.Can;
-            default:
-                Console.WriteLine("Please enter 1 or 2.");
-                break;
-        }
-    }
-}
-
-static void PrintReaderList()
-{
-    string[] readers;
-    try
-    {
-        readers = PcscCardService.GetReaderNames();
-    }
-    catch (CardServiceException e)
-    {
-        Console.Error.WriteLine($"Could not enumerate readers: {e.Message}");
-        return;
-    }
-
-    if (readers.Length == 0)
-    {
-        Console.WriteLine("No PC/SC readers found.");
-        return;
-    }
-
-    Console.WriteLine("Available PC/SC readers:");
-    foreach (string reader in readers)
-    {
-        Console.WriteLine($"  {reader}");
-    }
-}
-
-static Dictionary<string, string> ParseArgs(string[] args)
-{
-    var options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-    for (int i = 0; i < args.Length; i++)
-    {
-        string arg = args[i];
-        switch (arg)
-        {
-            case "-h":
-            case "--help":
-                options["help"] = "true";
-                break;
-            case "--list-readers":
-                options["list-readers"] = "true";
-                break;
-            case "--verbose":
-                options["verbose"] = "true";
-                break;
-            case "--bac":
-                options["bac"] = "true";
-                break;
-            case "--json":
-                options["json"] = "true";
-                break;
-            case "--report-only":
-                options["report-only"] = "true";
-                break;
-            case "--json-data":
-                options["json-data"] = "true";
-                break;
-            case "--json-fields":
-                options["json-fields"] = "true";
-                break;
-            case "--reader":
-            case "--doc":
-            case "--dob":
-            case "--doe":
-            case "--can":
-            case "--out":
-            case "--csca":
-                if (i + 1 >= args.Length)
-                {
-                    throw new ArgumentException($"Missing value for {arg}");
-                }
-                options[arg.TrimStart('-')] = args[++i];
-                break;
-            default:
-                throw new ArgumentException($"Unrecognized argument: {arg}");
-        }
-    }
-    return options;
-}
-
-static void PrintUsage()
-{
-    Console.WriteLine("""
-        nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive, Chip and Active Authentication) via a PC/SC reader.
-
-        Usage:
-          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--csca <path>] [--json [--json-data] [--json-fields]] [--report-only]
-          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>] [--csca <path>] [--json [--json-data] [--json-fields]] [--report-only]
-          nMRTD.Cli --list-readers
-
-        Options:
-          --reader <name>   PC/SC reader name to use (default: first reader found)
-          --doc <value>     Document (passport) number, without check digit (MRZ access key)
-          --dob <yyMMdd>    Date of birth (MRZ access key)
-          --doe <yyMMdd>    Date of expiry (MRZ access key)
-          --can <value>     Card Access Number (CAN access key; PACE only, see note below)
-          --out <dir>       Directory to save extracted images (DG2/DG5/DG6/DG7) to (default: current directory)
-          --bac             Skip PACE and use BAC (needs --doc/--dob/--doe), even if the document supports PACE
-          --verbose         Print APDU exchanges and protocol steps (BAC/PACE/...) to stderr as they happen
-          --csca <path>     Trusted CSCA certificates (.cer/.crt/.der/.pem, or an ICAO master list .ml), or a
-                            folder of them: checks that the Document Signer certificate was issued by one
-          --json            Write the results as JSON to stdout (the text output goes to stderr)
-          --json-data       With --json, add each data group's contents to the JSON, in Base64
-          --json-fields     With --json, add each data group's parsed fields to the JSON
-          --report-only     Exit with 0 even when a security check fails (the results are still printed)
-          --list-readers    List available PC/SC readers and exit
-          -h, --help        Show this help
-
-        --can and --doc/--dob/--doe are alternatives to each other, not to be combined. If
-        neither is given, you will be prompted interactively to choose which one to use.
-
-        A Card Access Number can only be used to perform PACE (BSI TR-03110): unlike the MRZ,
-        it cannot derive a BAC key. If the document does not support PACE, --can authentication
-        fails outright instead of falling back to BAC.
-
-        After authentication, every standard Data Group is read and summarized, except DG3
-        (fingerprints) and DG4 (iris), which require Extended Access Control and are always
-        skipped. A DG the document does not have is reported as "not present"; each DG that is
-        read is printed both as a parsed summary (where this port has a parser for it) and as a
-        full raw hex dump. If DG14 offers it, Chip Authentication is then performed and checked by
-        reading EF.COM with the new session keys. Last, if DG15 is present, Active Authentication
-        signs a random challenge, and the signature is verified with the DG15 public key.
-
-        Exit codes: 0 read, no security check failed; 1 invalid arguments, or a CAN on a document
-        without PACE; 2 card communication error; 3 unexpected error; 4 read, but a security check
-        failed (a hash mismatch, an invalid EF.SOD signature, an untrusted Document Signer with
-        --csca, a failed Chip Authentication or Active Authentication). With --report-only a failed
-        check exits with 0.
-        """);
-}
-
-namespace nMRTD.Cli
-{
-    /// <summary>Which kind of access key was resolved by <c>ResolveAccessCredentials</c>.</summary>
-    public enum AccessKeyMode
-    {
-        /// <summary>MRZ details (document number, date of birth, date of expiry): usable for PACE, falling back to BAC.</summary>
-        Mrz,
-
-        /// <summary>Card Access Number: usable for PACE only, no BAC fallback.</summary>
-        Can,
-    }
-
-    /// <summary>The access key resolved from command-line options or interactive prompts, together with which
-    /// kind it is. Exactly one of <see cref="BacKey"/>/<see cref="Can"/> is non-null, matching <see cref="Mode"/>.</summary>
-    public sealed record AccessCredentials(AccessKeyMode Mode, IBacKeySpec? BacKey, string? Can);
-}
