@@ -56,6 +56,12 @@ public sealed class DocumentReaderTests
         Assert.Equal("not-checked", report.PassiveAuthentication.Csca);
         Assert.Equal("not-available", report.ChipAuthentication.Status);
         Assert.Equal("not-available", report.ActiveAuthentication.Status);
+        // Without Chip Authentication EF.COM is read on its own.
+        Assert.Equal("P", report.Document.DocumentCode);
+        Assert.Equal("UTO", report.Document.IssuingState);
+        Assert.NotNull(report.Document.LdsVersion);
+        Assert.NotNull(report.Document.UnicodeVersion);
+        Assert.Null(report.PaceProtocolName);
         Assert.Empty(report.FailedChecks());
         Assert.Equal(ExitCodes.Success, report.ExitCode());
         Assert.Contains("BAC completed.", log.ToString());
@@ -71,7 +77,12 @@ public sealed class DocumentReaderTests
 
         Assert.Equal("PACE", report.AccessProtocol);
         Assert.Equal(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, report.PaceProtocol);
+        Assert.Equal("id-PACE-ECDH-GM-AES-CBC-CMAC-128", report.PaceProtocolName);
+        Assert.Equal(13, report.PaceParameterId);
         Assert.Equal("succeeded", report.ChipAuthentication.Status);
+        Assert.Equal("id-CA-ECDH-AES-CBC-CMAC-128", report.ChipAuthentication.ProtocolName);
+        Assert.StartsWith("EC", report.ChipAuthentication.PublicKey);
+        Assert.NotNull(report.Document.LdsVersion); // EF.COM, read by Chip Authentication
         Assert.True(report.ChipAuthentication.KeyAuthenticated);
         Assert.Equal(ExitCodes.Success, report.ExitCode());
     }
@@ -163,6 +174,7 @@ public sealed class DocumentReaderTests
         Assert.Equal("succeeded", report.ActiveAuthentication.Status);
         Assert.True(report.ActiveAuthentication.KeyAuthenticated);
         Assert.Contains(algorithm, report.ActiveAuthentication.Protocol);
+        Assert.StartsWith(keyKind == "ECDSA" ? "EC" : "RSA", report.ActiveAuthentication.PublicKey);
         Assert.Equal(ExitCodes.Success, report.ExitCode());
     }
 

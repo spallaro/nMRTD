@@ -273,9 +273,20 @@ the JSON an object, the XML an element.
 The default. Example (a simulated test document read with a CAN):
 
 ```text
+Environment:
+  nMRTD version: 0.8.8-alpha
+  Operating system: Microsoft Windows 10.0.26200 (X64)
+  Reader: REINER SCT cyberJack RFID basis 0
 ATR: 3B80800101
+Document:
+  Document code: P
+  Issuing state: UTO
+  LDS version: 1.7
+  Unicode version: 4.0.0
 Access protocol: PACE
 PACE protocol: 0.4.0.127.0.7.2.2.4.2.2
+PACE protocol name: id-PACE-ECDH-GM-AES-CBC-CMAC-128
+PACE parameter ID: 13
 Explicit PACE parameters: false
 Data groups:
   DG1
@@ -304,10 +315,13 @@ Chip authentication:
   Status: succeeded
   Key authenticated: true
   Protocol: 0.4.0.127.0.7.2.2.3.2.2
+  Protocol name: id-CA-ECDH-AES-CBC-CMAC-128
+  Public key: EC [brainpoolP256r1]
 Active authentication:
   Status: succeeded
   Key authenticated: true
   Protocol: RSA ISO/IEC 9796-2, SHA-1
+  Public key: RSA [1024 bit]
 Failed checks: none
 Exit code: 0
 ```
@@ -326,9 +340,22 @@ The same document:
 
 ```json
 {
+  "environment": {
+    "nmrtdVersion": "0.8.8-alpha",
+    "operatingSystem": "Microsoft Windows 10.0.26200 (X64)",
+    "reader": "REINER SCT cyberJack RFID basis 0"
+  },
   "atr": "3B80800101",
+  "document": {
+    "documentCode": "P",
+    "issuingState": "UTO",
+    "ldsVersion": "1.7",
+    "unicodeVersion": "4.0.0"
+  },
   "accessProtocol": "PACE",
   "paceProtocol": "0.4.0.127.0.7.2.2.4.2.2",
+  "paceProtocolName": "id-PACE-ECDH-GM-AES-CBC-CMAC-128",
+  "paceParameterId": 13,
   "explicitPaceParameters": false,
   "dataGroups": [
     { "number": 1, "present": true, "length": 93, "hash": "match" },
@@ -353,12 +380,15 @@ The same document:
     "status": "succeeded",
     "keyAuthenticated": true,
     "protocol": "0.4.0.127.0.7.2.2.3.2.2",
+    "protocolName": "id-CA-ECDH-AES-CBC-CMAC-128",
+    "publicKey": "EC [brainpoolP256r1]",
     "error": null
   },
   "activeAuthentication": {
     "status": "succeeded",
     "keyAuthenticated": true,
     "protocol": "RSA ISO/IEC 9796-2, SHA-1",
+    "publicKey": "RSA [1024 bit]",
     "error": null
   },
   "failedChecks": [],
@@ -381,7 +411,12 @@ out:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <nmrtdReport>
+  <environment>
+    <nmrtdVersion>0.8.8-alpha</nmrtdVersion>
+    ...
+  </environment>
   <atr>3B80800101</atr>
+  ...
   <accessProtocol>PACE</accessProtocol>
   <paceProtocol>0.4.0.127.0.7.2.2.4.2.2</paceProtocol>
   <explicitPaceParameters>false</explicitPaceParameters>
@@ -404,9 +439,16 @@ out:
 
 | Field | Values |
 |---|---|
+| `environment.nmrtdVersion` | The nMRTD library version |
+| `environment.operatingSystem` | The operating system and the processor architecture |
+| `environment.reader` | The PC/SC reader used |
 | `atr` | The card's Answer To Reset in hexadecimal, or `null` if it could not be read |
+| `document.documentCode`, `.issuingState` | The kind of document and the issuing state, from the MRZ (DG1) |
+| `document.ldsVersion`, `.unicodeVersion` | The LDS and Unicode versions, from EF.COM (read by Chip Authentication, or on its own when the document has none) |
 | `accessProtocol` | `"PACE"`, `"BAC"`, or `null` if no access protocol succeeded |
 | `paceProtocol` | The PACE protocol object identifier, or `null` |
+| `paceProtocolName` | Its name, for example `id-PACE-DH-GM-3DES-CBC-CBC` |
+| `paceParameterId` | The PACE domain parameter id (0 to 31: standardized), or `null` |
 | `explicitPaceParameters` | `true` when PACE used explicit domain parameters from EF.CardAccess |
 | `dataGroups[].number`, `.present` | The data group, and whether the document has it |
 | `dataGroups[].length` | Its length in bytes (present data groups) |
@@ -426,6 +468,8 @@ out:
 | `activeAuthentication.status` | `"succeeded"`, `"failed"` (wrong signature), `"error"` (no usable answer), `"unverifiable"`, `"not-available"` |
 | `*.keyAuthenticated` | Whether the DG14 or DG15 key is covered by a valid EF.SOD signature |
 | `*.protocol` | The protocol object identifier (Chip Authentication) or the signature scheme (Active Authentication) |
+| `chipAuthentication.protocolName` | The Chip Authentication protocol name, for example `id-CA-DH-3DES-CBC-CBC` |
+| `*.publicKey` | The chip's public key algorithm and size (DG14 or DG15), for example `DH [2048 bit]` |
 | `*.error` | Why the protocol could not be completed |
 | `failedChecks[]` | The failed security checks, `code` and `description` (see [Failed checks](#7-failed-checks)); empty when none failed |
 | `exitCode` | The process exit code (see [Exit codes](#exit-codes)) |
@@ -484,9 +528,12 @@ image), which a program can parse itself or check against EF.SOD.
 ## Sharing a result (`--share`)
 
 `--share` leaves out everything that identifies the holder or the document, and keeps what is useful
-to understand how the document and the tool behaved: the ATR, the protocols and algorithms, which data
-groups are present with their lengths and hash checks, the outcome of every check, the failed checks
-and the exit code. With `--include-information`:
+to understand how the document and the tool behaved: the environment (nMRTD version, operating system,
+reader), the ATR, the kind of document (`document`: document code, issuing state, LDS version), the
+protocols, algorithms and key sizes, which data groups are present with their lengths and hash checks,
+the outcome of every check, the failed checks and the exit code. That is all a row of the README's
+*Tested documents* table needs: run the tool once with the CAN (PACE) and once with the MRZ access key
+and `--bac`, both with `--share`. With `--include-information`:
 
 | Data group | Kept |
 |---|---|

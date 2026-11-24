@@ -51,9 +51,25 @@ public static class ReportOutput
     {
         var tree = new JsonObject
         {
+            ["environment"] = new JsonObject
+            {
+                ["nmrtdVersion"] = report.Environment.NmrtdVersion,
+                ["operatingSystem"] = report.Environment.OperatingSystem,
+                ["reader"] = report.Environment.Reader,
+            },
             ["atr"] = report.Atr,
+            // The kind of document only: kept with --share.
+            ["document"] = new JsonObject
+            {
+                ["documentCode"] = report.Document.DocumentCode,
+                ["issuingState"] = report.Document.IssuingState,
+                ["ldsVersion"] = report.Document.LdsVersion,
+                ["unicodeVersion"] = report.Document.UnicodeVersion,
+            },
             ["accessProtocol"] = report.AccessProtocol,
             ["paceProtocol"] = report.PaceProtocol,
+            ["paceProtocolName"] = report.PaceProtocolName,
+            ["paceParameterId"] = report.PaceParameterId,
             ["explicitPaceParameters"] = report.ExplicitPaceParameters,
         };
 
@@ -126,6 +142,8 @@ public static class ReportOutput
         ["status"] = result.Status,
         ["keyAuthenticated"] = result.KeyAuthenticated,
         ["protocol"] = result.Protocol,
+        ["protocolName"] = result.ProtocolName,
+        ["publicKey"] = result.PublicKey,
         ["error"] = result.Error,
     };
 
@@ -290,6 +308,10 @@ public static class ReportOutput
             case null:
                 return;
             case JsonObject obj:
+                if (obj.All(field => field.Value == null))
+                {
+                    return; // nothing to show, as for a null field
+                }
                 text.Append(pad).Append(label).AppendLine(":");
                 WriteTextObject(text, obj, indent + 1);
                 return;
@@ -379,12 +401,13 @@ public static class ReportOutput
     private static readonly Dictionary<string, string> Acronyms = new(StringComparer.Ordinal)
     {
         ["atr"] = "ATR", ["pace"] = "PACE", ["csca"] = "CSCA", ["sod"] = "SOD", ["dg"] = "DG", ["mrz"] = "MRZ",
-        ["id"] = "ID", ["oid"] = "OID", ["mime"] = "MIME",
+        ["id"] = "ID", ["oid"] = "OID", ["mime"] = "MIME", ["nmrtd"] = "nMRTD", ["lds"] = "LDS",
     };
 
-    /// <summary>"accessProtocol" -> "Access protocol"; acronyms are kept upper case.</summary>
+    /// <summary>"accessProtocol" -> "Access protocol"; acronyms are written as in the table ("nMRTD version").</summary>
     private static string Label(string key)
     {
+        bool startsWithAcronym = false;
         var words = new List<string>();
         var word = new StringBuilder();
         foreach (char c in key)
@@ -399,9 +422,13 @@ public static class ReportOutput
         words.Add(word.ToString());
         for (int i = 0; i < words.Count; i++)
         {
-            words[i] = Acronyms.TryGetValue(words[i], out string? acronym) ? acronym : words[i];
+            if (Acronyms.TryGetValue(words[i], out string? acronym))
+            {
+                words[i] = acronym;
+                startsWithAcronym |= i == 0;
+            }
         }
         string label = string.Join(" ", words);
-        return char.ToUpperInvariant(label[0]) + label[1..];
+        return startsWithAcronym ? label : char.ToUpperInvariant(label[0]) + label[1..];
     }
 }

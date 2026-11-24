@@ -121,6 +121,14 @@ public class ReportOutputTests
         Assert.Contains("profession", DataGroup(json, 11).GetProperty("information").GetProperty("presentFields").EnumerateArray().Select(f => f.GetString()));
         Assert.True(DataGroup(json, 14).GetProperty("information").TryGetProperty("securityInfos", out _));
         Assert.Equal("3B80800101", json.RootElement.GetProperty("atr").GetString());
+        // What is needed to report the document is kept.
+        JsonElement document = json.RootElement.GetProperty("document");
+        Assert.Equal("P", document.GetProperty("documentCode").GetString());
+        Assert.Equal("UTO", document.GetProperty("issuingState").GetString());
+        Assert.False(string.IsNullOrEmpty(document.GetProperty("ldsVersion").GetString()));
+        Assert.False(string.IsNullOrEmpty(json.RootElement.GetProperty("environment").GetProperty("nmrtdVersion").GetString()));
+        Assert.Equal("RSA [1024 bit]", json.RootElement.GetProperty("activeAuthentication").GetProperty("publicKey").GetString());
+        Assert.Equal("id-CA-ECDH-AES-CBC-CMAC-128", json.RootElement.GetProperty("chipAuthentication").GetProperty("protocolName").GetString());
         Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("passiveAuthentication").GetProperty("signer").ValueKind);
     }
 
@@ -148,6 +156,9 @@ public class ReportOutputTests
         string text = Render(OutputFormat.Text, new OutputOptions(IncludeInformation: true));
 
         Assert.Contains("ATR: 3B80800101", text);
+        Assert.Contains("  nMRTD version: ", text);
+        Assert.Contains("  LDS version: ", text);
+        Assert.Contains("  Issuing state: UTO", text);
         Assert.Contains("Access protocol: BAC", text);
         Assert.Contains("  DG1" + Environment.NewLine + "    Length: 93", text);
         Assert.Contains("  DG5: not present", text);
@@ -193,6 +204,10 @@ public class ReportOutputTests
     {
         var report = new ReadReport { FailureExitCode = ExitCodes.ReaderNotFound, Error = "No PC/SC reader found." };
         var buffer = new MemoryStream();
+
+        var text = new MemoryStream();
+        ReportOutput.Write(report, new OutputOptions(), OutputFormat.Text, text);
+        Assert.DoesNotContain("Document:", Encoding.UTF8.GetString(text.ToArray())); // no empty sections
 
         ReportOutput.Write(report, new OutputOptions(), OutputFormat.Json, buffer);
 

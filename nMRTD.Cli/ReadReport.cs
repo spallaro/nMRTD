@@ -17,14 +17,26 @@ namespace nMRTD.Cli;
 /// text, JSON or XML by <see cref="ReportOutput"/>.</summary>
 public sealed class ReadReport
 {
+    /// <summary>Where the document was read: the nMRTD version, the operating system and the reader.</summary>
+    public EnvironmentInfo Environment { get; } = new();
+
     /// <summary>The card's answer to reset, in hexadecimal, if available.</summary>
     public string? Atr { get; set; }
+
+    /// <summary>What kind of document it is (DG1) and its LDS version (EF.COM).</summary>
+    public DocumentInfo Document { get; } = new();
 
     /// <summary>"PACE" or "BAC", or <c>null</c> if no access protocol succeeded.</summary>
     public string? AccessProtocol { get; set; }
 
     /// <summary>The PACE protocol object identifier, if PACE was used.</summary>
     public string? PaceProtocol { get; set; }
+
+    /// <summary>The PACE protocol name, for example "id-PACE-DH-GM-3DES-CBC-CBC".</summary>
+    public string? PaceProtocolName { get; set; }
+
+    /// <summary>The PACE standardized domain parameter id (0-31), or a proprietary one, if given.</summary>
+    public int? PaceParameterId { get; set; }
 
     /// <summary>Whether PACE used explicit domain parameters from EF.CardAccess.</summary>
     public bool ExplicitPaceParameters { get; set; }
@@ -157,7 +169,54 @@ public sealed class ProtocolResult
     /// "succeeded" status shows that the chip is genuine only when this is true.</summary>
     public bool KeyAuthenticated { get; set; }
 
+    /// <summary>The protocol object identifier (Chip Authentication) or the signature scheme (Active
+    /// Authentication).</summary>
     public string? Protocol { get; set; }
 
+    /// <summary>The Chip Authentication protocol name, for example "id-CA-DH-3DES-CBC-CBC".</summary>
+    public string? ProtocolName { get; set; }
+
+    /// <summary>The chip's public key algorithm and size (DG14 or DG15), for example "DH [2048 bit]".</summary>
+    public string? PublicKey { get; set; }
+
     public string? Error { get; set; }
+}
+
+/// <summary>Where the document was read, to report a result.</summary>
+public sealed class EnvironmentInfo
+{
+    /// <summary>The nMRTD library version.</summary>
+    public string? NmrtdVersion { get; set; } = LibraryVersion();
+
+    /// <summary>The operating system and the processor architecture.</summary>
+    public string? OperatingSystem { get; set; } =
+        $"{System.Runtime.InteropServices.RuntimeInformation.OSDescription} ({System.Runtime.InteropServices.RuntimeInformation.OSArchitecture})";
+
+    /// <summary>The PC/SC reader name.</summary>
+    public string? Reader { get; set; }
+
+    /// <summary>The informational version of the library (for example "0.8.8-alpha"), without build metadata.</summary>
+    private static string? LibraryVersion()
+    {
+        // Reading an attribute of a known type is safe with Native AOT and trimming.
+        string? version = System.Reflection.CustomAttributeExtensions
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(PassportService).Assembly)?.InformationalVersion;
+        return version?.Split('+')[0];
+    }
+}
+
+/// <summary>What kind of document it is: nothing here identifies the holder or the document.</summary>
+public sealed class DocumentInfo
+{
+    /// <summary>The document code from the MRZ (DG1), for example "P" or "ID".</summary>
+    public string? DocumentCode { get; set; }
+
+    /// <summary>The issuing state from the MRZ (DG1), for example "ITA".</summary>
+    public string? IssuingState { get; set; }
+
+    /// <summary>The LDS version from EF.COM, for example "1.7".</summary>
+    public string? LdsVersion { get; set; }
+
+    /// <summary>The Unicode version from EF.COM, for example "4.0.0".</summary>
+    public string? UnicodeVersion { get; set; }
 }

@@ -10,15 +10,20 @@ as to test the library. **The options are not compatible with 0.8.8-alpha.**
 - **Output:** the result goes to stdout as human readable text (default), JSON (**`--output-json`**) or
   XML (**`--output-xml`**), with the same content in the three formats, also when reading stops early.
   Nothing else is printed unless **`--verbose`** is given, which writes the progress and the APDU trace
-  to stderr. The result now includes the card's **ATR**.
+  to stderr.
+- The result includes what is needed to report a document: the nMRTD version, the operating system and
+  the reader; the card's **ATR**; the document code and issuing state (DG1) and the LDS and Unicode
+  versions (EF.COM); the PACE and Chip Authentication protocol names next to their object identifiers,
+  the PACE parameter id, and the Chip and Active Authentication key algorithms and sizes.
 - **`--include-information`** adds the parsed information of each data group: the MRZ (DG1), the
   face records (DG2, ISO/IEC 19794-5 or 39794-5), the displayed images (DG5 to DG7), the additional
   personal and document details (DG11, DG12), the security infos (DG14) and the Active Authentication
   key (DG15). Images are in Base64 with their MIME type.
 - **`--include-raw`** adds each data group's bytes in Base64.
 - **`--share`** leaves out everything that identifies the holder or the document (names, numbers,
-  dates, images, certificate names) and keeps what is useful to understand the result (protocols,
-  algorithms, data group presence and hash checks, the outcome of every check).
+  dates, images, certificate names) and keeps what is useful to understand the result (environment,
+  document type, protocols, algorithms, data group presence and hash checks, the outcome of every
+  check): two runs with `--share`, one with PACE and one with BAC, are enough to report a document.
 - **`--pace`** uses PACE only; **`--bac`** uses BAC only; without them the tool uses PACE and falls
   back to BAC as before.
 - **`--skip-passive-authentication`** does not read EF.SOD.

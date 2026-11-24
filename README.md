@@ -185,11 +185,15 @@ country's CSCA.
 
 > ***Please help extend this table.*** *If you read another document with `nMRTD.Cli` (another country,
 > another document type, or the same document with a different access method), please
-> [open an issue](https://github.com/spallaro/nMRTD/issues) with the document type and issuing
-> country, the reader and operating system, and the BAC, PACE, Passive, Chip and Active
-> Authentication lines of the output, including any error. The output of `--share` (with
-> `--include-information`) has all that is needed and leaves out names, document numbers, dates and
-> photos.*
+> [open an issue](https://github.com/spallaro/nMRTD/issues) with the output of these two runs, which
+> has all that is needed (document type and issuing state, LDS version, reader, operating system,
+> protocols and key sizes, the outcome of every check) and leaves out names, document numbers, dates
+> and photos:*
+>
+> ```bash
+> nMRTD.Cli --can <CAN> --share
+> nMRTD.Cli --doc <number> --dob <yyMMdd> --doe <yyMMdd> --bac --share
+> ```
 
 ## Tests
 

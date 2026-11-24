@@ -98,6 +98,7 @@ static int Run(string[] args)
     }
 
     var reader = new DocumentReader(passportService, log) { TrustStore = trustStore };
+    reader.Report.Environment.Reader = options.Reader ?? readers[0];
     try
     {
         log.WriteLine($"Opening the card on {options.Reader ?? readers[0]}...");

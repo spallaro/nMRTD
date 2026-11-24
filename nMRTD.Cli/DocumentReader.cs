@@ -127,6 +127,20 @@ public sealed class DocumentReader
             _out.WriteLine($"Chip Authentication could not be attempted: {e.Message}");
         }
 
+        // Chip Authentication reads EF.COM as its proof; without it, EF.COM is read here for the LDS version.
+        // Not after a failed Chip Authentication: the secure channel is then lost.
+        if (report.ChipAuthentication.Status is "not-available" or "error")
+        {
+            try
+            {
+                DescribeCom(ReadFileBytes(passportService, PassportService.EF_COM));
+            }
+            catch (CardServiceException e)
+            {
+                _out.WriteLine($"EF.COM could not be read ({e.Message}).");
+            }
+        }
+
         // Last: under secure messaging a chip ends the session on an error status, so a failing Active
         // Authentication must not come before anything else.
         try
@@ -253,6 +267,8 @@ public sealed class DocumentReader
         }
         report.AccessProtocol = "PACE";
         report.PaceProtocol = paceInfo.GetObjectIdentifier();
+        report.PaceProtocolName = paceInfo.GetProtocolOIDString();
+        report.PaceParameterId = parameterId?.IntValue;
         _out.WriteLine("PACE completed; secure messaging established.");
         return true;
     }
@@ -315,6 +331,11 @@ public sealed class DocumentReader
             try
             {
                 result.Information = DataGroupFields.For(number, bytes);
+                if (number == 1 && result.Information != null)
+                {
+                    report.Document.DocumentCode = (string?)result.Information["documentCode"];
+                    report.Document.IssuingState = (string?)result.Information["issuingState"];
+                }
             }
             catch (Exception e)
             {
@@ -521,6 +542,8 @@ public sealed class DocumentReader
 
         string protocol = chipAuthenticationInfo?.GetProtocolOIDString() ?? "inferred from the public key";
         report.ChipAuthentication.Protocol = chipAuthenticationInfo?.GetObjectIdentifier() ?? publicKeyInfo.GetObjectIdentifier();
+        report.ChipAuthentication.ProtocolName = chipAuthenticationInfo?.GetProtocolOIDString() ?? publicKeyInfo.GetProtocolOIDString();
+        report.ChipAuthentication.PublicKey = Util.GetDetailedPublicKeyAlgorithm(publicKeyInfo.GetSubjectPublicKey());
         _out.WriteLine(
             $"Performing Chip Authentication (protocol {protocol}, chip key {Util.GetDetailedPublicKeyAlgorithm(publicKeyInfo.GetSubjectPublicKey())}"
             + $"{(publicKeyInfo.GetKeyId() is { } keyId ? $", key ID {keyId}" : "")})...");
@@ -534,11 +557,11 @@ public sealed class DocumentReader
                 publicKeyInfo.GetSubjectPublicKey());
 
             byte[] comBytes = ReadFileBytes(passportService, PassportService.EF_COM);
-            var com = new nMRTD.Lds.Icao.COMFile(new MemoryStream(comBytes));
             report.ChipAuthentication.Status = "succeeded";
             _out.WriteLine(
-                $"Chip Authentication succeeded: EF.COM ({comBytes.Length} bytes, LDS {com.GetLDSVersion()}) was read with the new "
+                $"Chip Authentication succeeded: EF.COM ({comBytes.Length} bytes) was read with the new "
                 + "session keys, so the chip holds the private key for the DG14 public key.");
+            DescribeCom(comBytes);
         }
         catch (Exception e)
         {
@@ -575,7 +598,8 @@ public sealed class DocumentReader
             : new DG14File(new MemoryStream(dg14Bytes)).GetSecurityInfos().OfType<ActiveAuthenticationInfo>().FirstOrDefault()?.GetSignatureAlgorithmOID();
         byte[] challenge = new byte[8];
         System.Security.Cryptography.RandomNumberGenerator.Fill(challenge);
-        _out.WriteLine($"Performing Active Authentication (key {Util.GetDetailedPublicKeyAlgorithm(publicKey)})...");
+        report.ActiveAuthentication.PublicKey = Util.GetDetailedPublicKeyAlgorithm(publicKey);
+        _out.WriteLine($"Performing Active Authentication (key {report.ActiveAuthentication.PublicKey})...");
 
         byte[] response;
         try
@@ -609,6 +633,22 @@ public sealed class DocumentReader
                 report.ActiveAuthentication.Status = "unverifiable";
                 _out.WriteLine($"Active Authentication response received but cannot be verified: {result.Algorithm}.");
                 break;
+        }
+    }
+
+    /// <summary>The LDS and Unicode versions from EF.COM; a malformed EF.COM is only logged.</summary>
+    private void DescribeCom(byte[] comBytes)
+    {
+        try
+        {
+            var com = new COMFile(new MemoryStream(comBytes));
+            report.Document.LdsVersion = com.GetLDSVersion();
+            report.Document.UnicodeVersion = com.GetUnicodeVersion();
+            _out.WriteLine($"EF.COM: LDS {report.Document.LdsVersion}, Unicode {report.Document.UnicodeVersion}.");
+        }
+        catch (Exception e)
+        {
+            _out.WriteLine($"EF.COM could not be parsed ({e.Message}).");
         }
     }
 
