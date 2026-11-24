@@ -225,10 +225,15 @@ outcome of the checks is in the output and in the JSON.
 With `--json`, stdout contains only a JSON object; the text output, prompts and progress go to stderr.
 The JSON is also written when reading fails (with `error` set), including for invalid arguments once
 they have been parsed. It never contains the access key. By default it does not contain the data group
-contents either (only their length and hash check, and the paths of the saved images): add
-`--json-data` to get each data group's bytes, as read from the chip, in Base64 in `dataGroups[].data`.
-These are the raw data group files (for DG2, the whole biometric record including the face image),
-which a program can parse itself or check against EF.SOD.
+contents either (only their length, hash check and the format of their images): add `--json-data` to
+get each data group's bytes, as read from the chip, in Base64 in `dataGroups[].data`. These are the
+raw data group files (for DG2, the whole biometric record including the face image), which a program
+can parse itself or check against EF.SOD.
+
+For the data groups that hold images (DG2 faces, DG5 to DG7 displayed images), `images` gives each
+image's format and where it is in the data group's bytes: with `--json-data`, the image is the
+`length` bytes of the decoded `data` starting at `offset`, ready to save with the extension of its
+`mimeType` (`image/jpeg`: `.jpg`, `image/jp2`: `.jp2`).
 
 Example (a simulated test document):
 
@@ -250,13 +255,13 @@ Example (a simulated test document):
   },
   "dataGroups": [
     { "number": 1, "present": true, "length": 93, "hash": "match" },
-    { "number": 2, "present": true, "length": 40094, "hash": "match" },
+    {
+      "number": 2, "present": true, "length": 40094, "hash": "match",
+      "images": [ { "mimeType": "image/jpeg", "offset": 94, "length": 40000 } ]
+    },
     { "number": 5, "present": false },
     { "number": 14, "present": true, "length": 357, "hash": "match" },
     { "number": 15, "present": true, "length": 165, "hash": "match" }
-  ],
-  "savedFiles": [
-    { "path": "./out/dg2_face_0.jpg", "mimeType": "image/jpeg", "length": 40000 }
   ],
   "passiveAuthentication": {
     "signature": "valid",
@@ -297,8 +302,8 @@ Example (a simulated test document):
 | `explicitPaceParameters` | `true` when PACE used explicit domain parameters from EF.CardAccess |
 | `mrz` | The DG1 fields, or `null` if DG1 was not read |
 | `dataGroups[].hash` | `"match"`, `"mismatch"`, `"not-in-sod"`, or `null` if not checked (present data groups only) |
+| `dataGroups[].images` | For data groups with images: each image's `mimeType` (for example `image/jpeg`, `image/jp2`), `offset` in the data group's bytes (`-1` if not found) and `length` |
 | `dataGroups[].data` | The data group's bytes in Base64 (present data groups, only with `--json-data`) |
-| `savedFiles` | The images written to `--out` |
 | `passiveAuthentication.signature` | `"valid"`, `"invalid"`, `"error"` (for example an unsupported algorithm), `"not-checked"` |
 | `passiveAuthentication.csca` | `"trusted"`, `"untrusted"`, `"no-certificate"`, `"error"`, `"not-checked"` (no `--csca`) |
 | `passiveAuthentication.cscaSubject` | The trusted CSCA that issued the Document Signer certificate |

@@ -49,8 +49,10 @@ public sealed class DocumentReaderTests : IDisposable
         Assert.Contains("CN=Document Signer", report.PassiveAuthentication.Signer);
         Assert.Equal("not-checked", report.PassiveAuthentication.Csca);
         Assert.Equal("not-available", report.ChipAuthentication.Status);
-        Assert.Single(report.SavedFiles); // the DG2 face image
-        Assert.True(File.Exists(report.SavedFiles[0].Path));
+        ImageSummary face = Assert.Single(report.DataGroups.Single(d => d.Number == 2).Images);
+        Assert.Equal("image/jpeg", face.MimeType);
+        Assert.Equal(SimulatedDocument.FaceImage, report.DataGroups.Single(d => d.Number == 2).Content!.AsSpan(face.Offset, face.Length).ToArray());
+        Assert.True(File.Exists(Path.Combine(outDir, "dg2_face_0.jpg")));
         Assert.Contains("EF.SOD signature is VALID", text.ToString());
         Assert.Contains("BAC completed.", text.ToString());
     }
@@ -134,7 +136,11 @@ public sealed class DocumentReaderTests : IDisposable
         Assert.Equal("not-available", root.GetProperty("chipAuthentication").GetProperty("status").GetString());
         Assert.False(root.GetProperty("activeAuthentication").GetProperty("keyAuthenticated").GetBoolean());
         Assert.Equal(System.Text.Json.JsonValueKind.Null, root.GetProperty("error").ValueKind);
-        Assert.Single(root.GetProperty("savedFiles").EnumerateArray());
+        Assert.False(root.TryGetProperty("savedFiles", out _));
+        System.Text.Json.JsonElement dg2 = root.GetProperty("dataGroups").EnumerateArray().First(d => d.GetProperty("number").GetInt32() == 2);
+        System.Text.Json.JsonElement image = Assert.Single(dg2.GetProperty("images").EnumerateArray());
+        Assert.Equal("image/jpeg", image.GetProperty("mimeType").GetString());
+        Assert.Equal(SimulatedDocument.FaceImage.Length, image.GetProperty("length").GetInt32());
         Assert.DoesNotContain("\"can\"", System.Text.Encoding.UTF8.GetString(buffer.ToArray()), StringComparison.OrdinalIgnoreCase); // no access key in the output
     }
 

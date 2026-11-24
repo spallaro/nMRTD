@@ -29,9 +29,6 @@ public sealed class ReadReport
 
     public List<DataGroupResult> DataGroups { get; } = [];
 
-    /// <summary>Files written to the output folder (images).</summary>
-    public List<SavedFile> SavedFiles { get; } = [];
-
     public PassiveAuthenticationResult PassiveAuthentication { get; } = new();
 
     public ProtocolResult ChipAuthentication { get; } = new();
@@ -102,10 +99,16 @@ public sealed class DataGroupResult(int number)
 
     /// <summary>The data group's bytes as read, or <c>null</c> if not present.</summary>
     public byte[]? Content { get; set; }
+
+    /// <summary>The images in the data group (DG2 faces, DG5-DG7 displayed images).</summary>
+    public List<ImageSummary> Images { get; } = [];
 }
 
-/// <summary>A file written to the output folder.</summary>
-public sealed record SavedFile(string Path, string? MimeType, int Length);
+/// <summary>An image in a data group: its format, and where its bytes are in the data group's bytes.</summary>
+/// <param name="MimeType">the image format, for example "image/jpeg" or "image/jp2"</param>
+/// <param name="Offset">where the image starts in the data group's bytes, or -1 if it could not be found</param>
+/// <param name="Length">the image's length in bytes</param>
+public sealed record ImageSummary(string? MimeType, int Offset, int Length);
 
 /// <summary>The EF.SOD signature check and the Document Signer certificate check against trusted CSCAs.</summary>
 public sealed class PassiveAuthenticationResult

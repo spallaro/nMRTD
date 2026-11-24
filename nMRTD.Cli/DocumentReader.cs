@@ -45,6 +45,27 @@ public sealed class DocumentReader
 
     public ReadReport Report => report;
 
+    /// <summary>The data group being printed, for the images found in it.</summary>
+    private DataGroupResult? currentDataGroup;
+
+    /// <summary>Records an image of the current data group: its format, and where its bytes are in the data
+    /// group's bytes, so that a program reading <c>--json-data</c> can cut it out directly. The image bytes are
+    /// stored as they are in the data group, so they are found by searching for them.</summary>
+    private void AddImage(Lds.ImageInfo image)
+    {
+        if (currentDataGroup?.Content is not { } content)
+        {
+            return;
+        }
+
+        using Stream stream = image.GetImageInputStream();
+        using var imageBytes = new MemoryStream();
+        stream.CopyTo(imageBytes);
+        byte[] bytes = imageBytes.ToArray();
+        int offset = bytes.Length == 0 ? -1 : content.AsSpan().IndexOf(bytes);
+        currentDataGroup.Images.Add(new ImageSummary(image.GetMimeType(), offset, bytes.Length));
+    }
+
     /// <summary>Trusted CSCA certificates (<c>--csca</c>); without them the Document Signer certificate is not
     /// checked against a trust anchor.</summary>
     public CscaTrustStore? TrustStore { get; init; }
@@ -293,6 +314,7 @@ public sealed class DocumentReader
     /// </summary>
     private void PrintDataGroupContent(int number, byte[] bytes, string outDir)
     {
+        currentDataGroup = report.DataGroups.Single(d => d.Number == number);
         switch (number)
         {
             case 1:
@@ -382,7 +404,7 @@ public sealed class DocumentReader
                 imageStream.CopyTo(fileStream);
             }
 
-            report.SavedFiles.Add(new SavedFile(path, image.GetMimeType(), image.GetImageLength()));
+            AddImage(image);
             _out.WriteLine($"{label}: saved image {index} ({image.GetMimeType()}, {image.GetImageLength()} bytes) to {path}");
             index++;
         }
@@ -533,7 +555,7 @@ public sealed class DocumentReader
             {
                 imageStream.CopyTo(fileStream);
             }
-            report.SavedFiles.Add(new SavedFile(path, image.GetMimeType(), image.GetImageLength()));
+            AddImage(image);
             _out.WriteLine($"Saved face image {index} ({image.GetMimeType()}, {image.GetImageLength()} bytes) to {path}");
             index++;
         }

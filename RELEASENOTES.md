@@ -15,6 +15,10 @@
   signature, not as an error.
 - **`--json-data`** adds each data group's contents, in Base64, to the JSON (`dataGroups[].data`). It
   needs `--json`; without it the JSON has no data group contents, as before.
+- **JSON: `savedFiles` is replaced by `dataGroups[].images`:** for DG2 and DG5 to DG7, each image's
+  format (`mimeType`), its `offset` in the data group's bytes and its `length`, so that with
+  `--json-data` a program can cut the image out of the data group. The images are still saved to
+  `--out`.
 
 ### Documentation
 

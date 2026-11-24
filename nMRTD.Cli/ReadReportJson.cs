@@ -60,22 +60,24 @@ public static class ReadReportJson
             {
                 json.WriteNumber("length", dataGroup.Length);
                 json.WriteString("hash", dataGroup.Hash);
+                if (dataGroup.Images.Count > 0)
+                {
+                    json.WriteStartArray("images");
+                    foreach (ImageSummary image in dataGroup.Images)
+                    {
+                        json.WriteStartObject();
+                        json.WriteString("mimeType", image.MimeType);
+                        json.WriteNumber("offset", image.Offset);
+                        json.WriteNumber("length", image.Length);
+                        json.WriteEndObject();
+                    }
+                    json.WriteEndArray();
+                }
                 if (includeDataGroupContent && dataGroup.Content != null)
                 {
                     json.WriteBase64String("data", dataGroup.Content);
                 }
             }
-            json.WriteEndObject();
-        }
-        json.WriteEndArray();
-
-        json.WriteStartArray("savedFiles");
-        foreach (SavedFile file in report.SavedFiles)
-        {
-            json.WriteStartObject();
-            json.WriteString("path", file.Path);
-            json.WriteString("mimeType", file.MimeType);
-            json.WriteNumber("length", file.Length);
             json.WriteEndObject();
         }
         json.WriteEndArray();
