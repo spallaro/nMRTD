@@ -165,11 +165,12 @@ Native AOT publishing and troubleshooting.
 ## Tested documents
 
 Results of reading real documents with `nMRTD.Cli` (nMRTD 0.8.0-alpha, Windows, REINER SCT
-cyberJack RFID basis reader), as a JIT build and as a Native AOT executable.
+cyberJack RFID basis reader), as a JIT build and as a Native AOT executable. The CIE 3.0 was read again
+with PACE and nMRTD 0.8.8-alpha (Windows 11), with the same results.
 
 | Document | BAC | PACE | Passive Authentication | Chip Authentication | Active Authentication | LDS |
 |---|---|---|---|---|---|---|
-| Italian identity card (CIE 3.0) | ✅ MRZ | ✅ CAN; DH, Generic Mapping, 3DES (`id-PACE-DH-GM-3DES-CBC-CBC`) | ✅ SHA-512 hashes; RSASSA-PSS SHA-512 signature | ✅ DH 2048-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | n.a. | 1.8 |
+| Italian identity card (CIE 3.0) | ✅ MRZ | ✅ CAN; DH 2048-bit (parameter id 2), Generic Mapping, 3DES (`id-PACE-DH-GM-3DES-CBC-CBC`) | ✅ SHA-512 hashes; RSASSA-PSS SHA-512 signature | ✅ DH 2048-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | n.a. | 1.8 |
 | Italian passport | ✅ MRZ | n.a. | ✅ SHA-1 hashes; SHA1withRSA signature | ✅ DH 1024-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | n.a. | 1.7 |
 
 These two documents do not cover:
