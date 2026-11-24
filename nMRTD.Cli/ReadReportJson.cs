@@ -19,7 +19,11 @@ namespace nMRTD.Cli;
 /// </summary>
 public static class ReadReportJson
 {
-    public static void Write(ReadReport report, Stream output)
+    /// <param name="report">the results</param>
+    /// <param name="output">where to write the JSON</param>
+    /// <param name="includeDataGroupContent">whether to add each data group's bytes, in Base64, as <c>data</c>
+    /// (<c>--json-data</c>)</param>
+    public static void Write(ReadReport report, Stream output, bool includeDataGroupContent = false)
     {
         using var json = new Utf8JsonWriter(output, new JsonWriterOptions { Indented = true });
         json.WriteStartObject();
@@ -56,6 +60,10 @@ public static class ReadReportJson
             {
                 json.WriteNumber("length", dataGroup.Length);
                 json.WriteString("hash", dataGroup.Hash);
+                if (includeDataGroupContent && dataGroup.Content != null)
+                {
+                    json.WriteBase64String("data", dataGroup.Content);
+                }
             }
             json.WriteEndObject();
         }

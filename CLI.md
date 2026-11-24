@@ -68,6 +68,7 @@ Without `--can` or the MRZ options, the tool asks which access key to use and pr
 | `--out <dir>` | Folder for the extracted images (default: the current folder). |
 | `--csca <path>` | Trusted CSCA certificates: a `.cer`, `.crt`, `.der` or `.pem` file (DER or PEM, one or more certificates), an ICAO master list (`.ml`), or a folder of them. |
 | `--json` | Write the results as JSON to stdout; all other output goes to stderr. |
+| `--json-data` | With `--json`, add each data group's contents, in Base64, to the JSON (`dataGroups[].data`). Needs `--json`. |
 | `--report-only` | Exit with 0 even when a security check fails (the results are still reported). |
 | `--verbose` | Print the APDU exchanges and the protocol steps to stderr. |
 | `--list-readers` | List the PC/SC readers and exit. |
@@ -223,8 +224,11 @@ outcome of the checks is in the output and in the JSON.
 
 With `--json`, stdout contains only a JSON object; the text output, prompts and progress go to stderr.
 The JSON is also written when reading fails (with `error` set), including for invalid arguments once
-they have been parsed. It does not contain the access key, the images (only their paths) or the hex
-dumps.
+they have been parsed. It never contains the access key. By default it does not contain the data group
+contents either (only their length and hash check, and the paths of the saved images): add
+`--json-data` to get each data group's bytes, as read from the chip, in Base64 in `dataGroups[].data`.
+These are the raw data group files (for DG2, the whole biometric record including the face image),
+which a program can parse itself or check against EF.SOD.
 
 Example (a simulated test document):
 
@@ -293,6 +297,7 @@ Example (a simulated test document):
 | `explicitPaceParameters` | `true` when PACE used explicit domain parameters from EF.CardAccess |
 | `mrz` | The DG1 fields, or `null` if DG1 was not read |
 | `dataGroups[].hash` | `"match"`, `"mismatch"`, `"not-in-sod"`, or `null` if not checked (present data groups only) |
+| `dataGroups[].data` | The data group's bytes in Base64 (present data groups, only with `--json-data`) |
 | `savedFiles` | The images written to `--out` |
 | `passiveAuthentication.signature` | `"valid"`, `"invalid"`, `"error"` (for example an unsupported algorithm), `"not-checked"` |
 | `passiveAuthentication.csca` | `"trusted"`, `"untrusted"`, `"no-certificate"`, `"error"`, `"not-checked"` (no `--csca`) |
@@ -315,7 +320,7 @@ warnings and errors.
 ## Personal data
 
 The text output, the JSON, the `--verbose` trace and the images saved to `--out` contain the holder's
-personal data and photo. Use `--out` to write the images outside the repository, and do not share the
+personal data and photo; with `--json-data` the JSON contains all of it, the face image included. Use `--out` to write the images outside the repository, and do not share the
 output, the JSON or the traces unredacted. When reporting a result (see the README's *Tested
 documents*), the protocol and algorithm lines are all that is needed.
 

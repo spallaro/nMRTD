@@ -13,6 +13,8 @@
   read. The text output ends with the list of failed checks, and the JSON has a `failedChecks` array.
 - An EF.SOD whose content does not match its signed message digest is now reported as an invalid
   signature, not as an error.
+- **`--json-data`** adds each data group's contents, in Base64, to the JSON (`dataGroups[].data`). It
+  needs `--json`; without it the JSON has no data group contents, as before.
 
 ### Documentation
 

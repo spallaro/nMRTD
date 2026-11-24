@@ -317,4 +317,34 @@ public sealed class DocumentReaderTests : IDisposable
 
         Assert.Empty(report.FailedChecks());
     }
+
+    [Fact]
+    public void DataGroupContentsAreInTheJsonOnlyWhenAsked()
+    {
+        var document = new SimulatedDocument();
+        SimulatedChip chip = document.Build();
+        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), new StringWriter());
+        reader.Read(Mrz, forceBac: false, outDir);
+        var without = new MemoryStream();
+        var with = new MemoryStream();
+
+        ReadReportJson.Write(reader.Report, without);
+        ReadReportJson.Write(reader.Report, with, includeDataGroupContent: true);
+
+        using var plain = System.Text.Json.JsonDocument.Parse(without.ToArray());
+        using var full = System.Text.Json.JsonDocument.Parse(with.ToArray());
+        Assert.All(plain.RootElement.GetProperty("dataGroups").EnumerateArray(), d => Assert.False(d.TryGetProperty("data", out _)));
+        foreach (System.Text.Json.JsonElement dataGroup in full.RootElement.GetProperty("dataGroups").EnumerateArray())
+        {
+            int number = dataGroup.GetProperty("number").GetInt32();
+            if (dataGroup.GetProperty("present").GetBoolean())
+            {
+                Assert.Equal(chip.ApplicationFiles[(short)(0x0100 + number)], dataGroup.GetProperty("data").GetBytesFromBase64());
+            }
+            else
+            {
+                Assert.False(dataGroup.TryGetProperty("data", out _));
+            }
+        }
+    }
 }

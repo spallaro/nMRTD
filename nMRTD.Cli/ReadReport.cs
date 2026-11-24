@@ -99,6 +99,9 @@ public sealed class DataGroupResult(int number)
 
     /// <summary>"match", "mismatch", "not-in-sod", or <c>null</c> if not checked.</summary>
     public string? Hash { get; set; }
+
+    /// <summary>The data group's bytes as read, or <c>null</c> if not present.</summary>
+    public byte[]? Content { get; set; }
 }
 
 /// <summary>A file written to the output folder.</summary>

@@ -266,6 +266,7 @@ public sealed class DocumentReader
             dataGroupBytes[number] = bytes;
             result.Present = true;
             result.Length = bytes.Length;
+            result.Content = bytes;
 
             _out.WriteLine();
             _out.WriteLine($"--- DG{number} ({bytes.Length} bytes) ---");
