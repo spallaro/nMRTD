@@ -14,6 +14,11 @@
 - An EF.SOD whose content does not match its signed message digest is now reported as an invalid
   signature, not as an error.
 
+### Documentation
+
+- **CLI.md:** complete documentation of the command-line tool (options, each step, the failed checks,
+  exit codes, every JSON field, Native AOT, troubleshooting). The README keeps a short introduction.
+
 ## 0.8.8-alpha (2026-11-23)
 
 ### Fixed

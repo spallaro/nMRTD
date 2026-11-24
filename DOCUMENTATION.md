@@ -1195,7 +1195,7 @@ store.
 
 `nMRTD.Cli` shows one way to do this in application code: its `--csca` option loads trusted CSCA
 certificates (files or an ICAO master list) and checks that the Document Signer certificate was
-signed by one of them (`nMRTD.Cli/CscaTrustStore.cs`).
+signed by one of them (`nMRTD.Cli/CscaTrustStore.cs`; see [CLI.md](CLI.md)).
 
 ---
 

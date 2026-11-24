@@ -143,79 +143,22 @@ model, Passive Authentication, and Native AOT and trimming.
 ## Command-line tool (nMRTD.Cli)
 
 The repository includes `nMRTD.Cli`, a console application that reads a document end to end with
-nMRTD. It is a sample and a test tool: it is not part of the NuGet package. It needs a
-**contactless (NFC) PC/SC reader**; contact-only smart card readers and phones are not supported.
-
-For each document it:
-
-1. opens the reader and authenticates with **PACE** (using EF.CardAccess), falling back to **BAC**
-   when the document does not support PACE (or uses BAC directly with `--bac`);
-2. reads every standard data group except DG3 and DG4 (fingerprints and iris need Terminal
-   Authentication), printing a summary and a hex dump of each, and saves the images (DG2, DG5–DG7);
-3. performs **Passive Authentication**: checks each data group hash against EF.SOD, verifies the
-   EF.SOD signature (RSA, RSASSA-PSS, ECDSA) with the document signer certificate it contains and, with
-   `--csca`, checks that this certificate was issued by a Country Signing CA you trust;
-4. performs **Chip Authentication** when DG14 offers it, and checks it by reading EF.COM with the new
-   session keys;
-5. performs **Active Authentication** when DG15 is present: the chip signs a random challenge, and the
-   signature (RSA ISO/IEC 9796-2 or ECDSA) is verified with the DG15 public key.
-
-Run it from the repository root:
+nMRTD, through a **contactless (NFC) PC/SC reader**. It is a sample and a test tool: it is not part of
+the NuGet package. It authenticates with PACE (falling back to BAC), reads the data groups and saves
+the images, and runs Passive Authentication (optionally checking the Document Signer against trusted
+CSCA certificates), Chip Authentication and Active Authentication. It exits with code 4 when a
+security check fails, and can write its results as JSON.
 
 ```bash
-# List the PC/SC readers
-dotnet run --project nMRTD.Cli -f net10.0 -- --list-readers
-
-# Card Access Number (PACE only)
 dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --out ./out
-
-# MRZ access key: document number (without check digit), date of birth and date of expiry (yyMMdd)
-dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --out ./out
-
-# Same, skipping PACE and using BAC
-dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --bac --out ./out
-
-# Check the document signer against trusted CSCA certificates, and write the results as JSON
-dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --csca ./csca --json > result.json
+dotnet run --project nMRTD.Cli -f net10.0 -- --doc L898902C3 --dob 740812 --doe 120415 --csca ./csca --json > result.json
 ```
 
-| Option | Meaning |
-|---|---|
-| `--can <CAN>` | Card Access Number (PACE only; cannot be used for BAC) |
-| `--doc <number>` `--dob <yyMMdd>` `--doe <yyMMdd>` | MRZ access key; `--can` and the MRZ options are alternatives |
-| `--bac` | Skip PACE and use BAC with the MRZ access key |
-| `--reader <name>` | PC/SC reader to use (default: the first one found) |
-| `--out <dir>` | Folder for the extracted images (default: the current folder) |
-| `--csca <path>` | Trusted CSCA certificates: a `.cer`/`.crt`/`.der`/`.pem` file, an ICAO master list (`.ml`), or a folder of them |
-| `--json` | Write the results as JSON to stdout; the text output goes to stderr |
-| `--verbose` | Print the APDU exchanges and protocol steps to stderr |
-| `--list-readers` | List the PC/SC readers and exit |
-| `-h`, `--help` | Show the help |
+**[CLI.md](CLI.md)** documents the options, each step, the exit codes, the JSON output, Native AOT
+publishing and troubleshooting.
 
-Without `--can` or the MRZ options, the tool asks which access key to use. The exit code is `0` on
-success, `1` for invalid arguments (or a CAN on a document without PACE), `2` for a card
-communication error and `3` for any other error. A failed check (a hash mismatch, an invalid
-signature, an untrusted CSCA, a failed Chip or Active Authentication) does not change the exit code:
-with `--json` the outcome of each check is in the JSON (for example
-`"passiveAuthentication": { "signature": "valid", "csca": "trusted" }`). For Chip and Active
-Authentication, `keyAuthenticated` tells whether the public key used (DG14 or DG15) is covered by a
-valid EF.SOD signature: only then does `"status": "succeeded"` show that the chip is genuine.
-
-With `--csca`, the document signer certificate is trusted when its signature verifies with one of the
-given CSCA certificates that is named as its issuer. Get the CSCA certificates from the issuing country
-(for example its ministry's CSCA page) or from a master list published by a document verification
-authority, and keep them outside the repository. The tool does not check the signature of a master
-list, nor revocation (CRLs).
-
-> **Personal data:** the output, the JSON, the `--verbose` trace and the images saved to `--out`
-> contain the holder's personal data and photo. Use `--out` to write the images outside the repository, and do not
-> share the output or traces unredacted.
-
-The tool also publishes as a Native AOT executable for `net8.0` and `net10.0`:
-
-```bash
-dotnet publish nMRTD.Cli -c Release -f net10.0 -r win-x64
-```
+> **Personal data:** the output, the JSON, the `--verbose` trace and the saved images contain the
+> holder's personal data and photo. Do not share them unredacted.
 
 ## Tested documents
 
