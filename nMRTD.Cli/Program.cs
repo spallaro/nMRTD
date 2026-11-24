@@ -141,7 +141,17 @@ static async Task<int> RunAsync(string[] args)
 
         if (reader.Read(credentials, options.ContainsKey("bac"), outDir!))
         {
-            exitCode = 0;
+            List<string> failedChecks = reader.Report.FailedChecks();
+            Console.WriteLine();
+            Console.WriteLine(failedChecks.Count == 0
+                ? "=== Result: no security check failed ==="
+                : $"=== Result: {failedChecks.Count} security check(s) FAILED ===");
+            foreach (string check in failedChecks)
+            {
+                Console.WriteLine($"  - {check}");
+            }
+            // With --report-only the exit code tells only whether the document could be read.
+            exitCode = failedChecks.Count > 0 && !options.ContainsKey("report-only") ? 4 : 0;
         }
         else
         {
@@ -416,6 +426,9 @@ static Dictionary<string, string> ParseArgs(string[] args)
             case "--json":
                 options["json"] = "true";
                 break;
+            case "--report-only":
+                options["report-only"] = "true";
+                break;
             case "--reader":
             case "--doc":
             case "--dob":
@@ -442,8 +455,8 @@ static void PrintUsage()
         nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive, Chip and Active Authentication) via a PC/SC reader.
 
         Usage:
-          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--csca <path>] [--json]
-          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>] [--csca <path>] [--json]
+          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--csca <path>] [--json] [--report-only]
+          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>] [--csca <path>] [--json] [--report-only]
           nMRTD.Cli --list-readers
 
         Options:
@@ -458,6 +471,7 @@ static void PrintUsage()
           --csca <path>     Trusted CSCA certificates (.cer/.crt/.der/.pem, or an ICAO master list .ml), or a
                             folder of them: checks that the Document Signer certificate was issued by one
           --json            Write the results as JSON to stdout (the text output goes to stderr)
+          --report-only     Exit with 0 even when a security check fails (the results are still printed)
           --list-readers    List available PC/SC readers and exit
           -h, --help        Show this help
 
@@ -475,6 +489,12 @@ static void PrintUsage()
         full raw hex dump. If DG14 offers it, Chip Authentication is then performed and checked by
         reading EF.COM with the new session keys. Last, if DG15 is present, Active Authentication
         signs a random challenge, and the signature is verified with the DG15 public key.
+
+        Exit codes: 0 read, no security check failed; 1 invalid arguments, or a CAN on a document
+        without PACE; 2 card communication error; 3 unexpected error; 4 read, but a security check
+        failed (a hash mismatch, an invalid EF.SOD signature, an untrusted Document Signer with
+        --csca, a failed Chip Authentication or Active Authentication). With --report-only a failed
+        check exits with 0.
         """);
 }
 

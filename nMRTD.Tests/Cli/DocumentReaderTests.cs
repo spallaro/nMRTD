@@ -239,4 +239,82 @@ public sealed class DocumentReaderTests : IDisposable
         Assert.False(reader.Report.ActiveAuthentication.KeyAuthenticated);
         Assert.Contains("not covered by a valid EF.SOD signature", text.ToString());
     }
+
+    [Fact]
+    public void GenuineDocumentFailsNoCheck()
+    {
+        var document = new SimulatedDocument { ActiveAuthenticationKey = SimulatedDocument.RsaKey1024 };
+        document.ChipAuthenticationKeys.Add(new SimulatedChip.CaKey(SecurityInfo.ID_CA_ECDH_AES_CBC_CMAC_128, SimulatedDocument.GenerateEc(13), 1));
+
+        (DocumentReader reader, _, _) = Run(document, Mrz);
+
+        Assert.Empty(reader.Report.FailedChecks());
+    }
+
+    [Fact]
+    public void ProtocolsTheDocumentDoesNotOfferAreNotFailures()
+    {
+        (DocumentReader reader, _, _) = Run(new SimulatedDocument(), Mrz); // no DG14, no DG15
+
+        Assert.Equal("not-available", reader.Report.ChipAuthentication.Status);
+        Assert.Equal("not-available", reader.Report.ActiveAuthentication.Status);
+        Assert.Empty(reader.Report.FailedChecks());
+    }
+
+    [Fact]
+    public void ChangedDataGroupIsAFailedCheck()
+    {
+        SimulatedChip chip = new SimulatedDocument().Build();
+        chip.ApplicationFiles[PassportService.EF_DG2][^1] ^= 0x01;
+        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), new StringWriter());
+
+        reader.Read(Mrz, forceBac: false, outDir);
+
+        Assert.Equal(["DG2 hash does not match EF.SOD"], reader.Report.FailedChecks());
+    }
+
+    [Fact]
+    public void WrongActiveAuthenticationSignatureIsAFailedCheck()
+    {
+        SimulatedChip chip = new SimulatedDocument { ActiveAuthenticationKey = SimulatedDocument.RsaKey1024 }.Build();
+        chip.Fault = SimulatedChip.ChipFault.ActiveAuthenticationSignature;
+        var reader = new DocumentReader(Open(chip, isSfiEnabled: true), new StringWriter());
+
+        reader.Read(Mrz, forceBac: false, outDir);
+
+        Assert.Equal(["Active Authentication failed"], reader.Report.FailedChecks());
+    }
+
+    [Fact]
+    public void ProtocolWithAKeyNotCoveredByTheSodIsAFailedCheck()
+    {
+        var report = new ReadReport();
+        report.PassiveAuthentication.Signature = "valid";
+        report.DataGroups.Add(new DataGroupResult(15) { Present = true, Hash = "not-in-sod" });
+        report.ActiveAuthentication.Status = "succeeded";
+
+        Assert.Equal(["Active Authentication used a key not covered by a valid EF.SOD signature"], report.FailedChecks());
+    }
+
+    [Theory]
+    [InlineData("error")]
+    [InlineData("unverifiable")]
+    [InlineData("not-available")]
+    public void InconclusiveActiveAuthenticationIsNotAFailure(string status)
+    {
+        var report = new ReadReport();
+        report.ActiveAuthentication.Status = status;
+
+        Assert.Empty(report.FailedChecks());
+    }
+
+    [Fact]
+    public void DataGroupWithoutAHashInTheSodIsNotAFailure()
+    {
+        var report = new ReadReport();
+        report.PassiveAuthentication.Signature = "valid";
+        report.DataGroups.Add(new DataGroupResult(11) { Present = true, Hash = "not-in-sod" });
+
+        Assert.Empty(report.FailedChecks());
+    }
 }

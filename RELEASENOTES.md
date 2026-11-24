@@ -1,5 +1,19 @@
 # Release Notes
 
+## Unreleased
+
+### Command-line tool
+
+- **Exit code 4 when a security check fails:** a data group hash that differs from EF.SOD, an invalid
+  EF.SOD signature, a Document Signer not issued by a trusted CSCA (with `--csca`), a failed Chip
+  Authentication, an Active Authentication signature that does not verify, or a Chip or Active
+  Authentication that succeeded with a key not covered by a valid EF.SOD signature. A protocol the
+  document does not offer, an unverifiable or interrupted Active Authentication and a data group without
+  a hash in EF.SOD do not count. **`--report-only`** restores exit code 0 for a document that could be
+  read. The text output ends with the list of failed checks, and the JSON has a `failedChecks` array.
+- An EF.SOD whose content does not match its signed message digest is now reported as an invalid
+  signature, not as an error.
+
 ## 0.8.8-alpha (2026-11-23)
 
 ### Fixed

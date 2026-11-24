@@ -198,6 +198,7 @@ public sealed class CscaTrustStoreTests : IDisposable
 
         Assert.Equal("valid", reader.Report.PassiveAuthentication.Signature);
         Assert.Equal(expected, reader.Report.PassiveAuthentication.Csca);
+        Assert.Equal(trustTheCsca ? [] : ["Document Signer certificate is not issued by a trusted CSCA"], reader.Report.FailedChecks());
         Assert.True(reader.Report.PassiveAuthentication.SignerCertificateValidNow);
         Assert.Contains("revocation (CRLs) is not checked", text.ToString());
         if (trustTheCsca)

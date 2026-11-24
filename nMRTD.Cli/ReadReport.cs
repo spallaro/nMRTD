@@ -40,6 +40,47 @@ public sealed class ReadReport
 
     /// <summary>Why reading stopped early, if it did.</summary>
     public string? Error { get; set; }
+
+    /// <summary>
+    /// The security checks the document failed, as short descriptions; empty when none failed. Counted: a data
+    /// group whose hash differs from EF.SOD, an invalid EF.SOD signature, a Document Signer certificate not
+    /// issued by a trusted CSCA (only when trusted CSCAs were given), a failed Chip Authentication, an Active
+    /// Authentication signature that does not verify, and a Chip or Active Authentication that succeeded with a
+    /// key not covered by a valid EF.SOD signature. Not counted, because they say nothing against the document:
+    /// a protocol the document does not offer, an unverifiable Active Authentication, an Active Authentication
+    /// that could not be completed, and a data group that EF.SOD has no hash for.
+    /// </summary>
+    public List<string> FailedChecks()
+    {
+        var failed = new List<string>();
+        foreach (DataGroupResult dataGroup in DataGroups.Where(d => d.Hash == "mismatch"))
+        {
+            failed.Add($"DG{dataGroup.Number} hash does not match EF.SOD");
+        }
+        if (PassiveAuthentication.Signature == "invalid")
+        {
+            failed.Add("EF.SOD signature is invalid");
+        }
+        if (PassiveAuthentication.Csca is "untrusted" or "no-certificate")
+        {
+            failed.Add("Document Signer certificate is not issued by a trusted CSCA");
+        }
+        AddProtocol(failed, "Chip Authentication", ChipAuthentication);
+        AddProtocol(failed, "Active Authentication", ActiveAuthentication);
+        return failed;
+    }
+
+    private static void AddProtocol(List<string> failed, string name, ProtocolResult result)
+    {
+        if (result.Status == "failed")
+        {
+            failed.Add($"{name} failed");
+        }
+        else if (result.Status == "succeeded" && !result.KeyAuthenticated)
+        {
+            failed.Add($"{name} used a key not covered by a valid EF.SOD signature");
+        }
+    }
 }
 
 /// <summary>The fields of the machine readable zone.</summary>

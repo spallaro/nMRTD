@@ -95,6 +95,12 @@ public static class ReadReportJson
         WriteProtocol(json, "chipAuthentication", report.ChipAuthentication);
         WriteProtocol(json, "activeAuthentication", report.ActiveAuthentication);
         json.WriteString("error", report.Error);
+        json.WriteStartArray("failedChecks");
+        foreach (string check in report.FailedChecks())
+        {
+            json.WriteStringValue(check);
+        }
+        json.WriteEndArray();
         json.WriteEndObject();
         json.Flush();
     }

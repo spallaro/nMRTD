@@ -579,7 +579,8 @@ public sealed class DocumentReader
         }
         catch (IOException e)
         {
-            report.PassiveAuthentication.Signature = "error";
+            // The content does not match the message digest signed in EF.SOD: the signed content was changed.
+            report.PassiveAuthentication.Signature = "invalid";
             report.PassiveAuthentication.Error = e.Message;
             _out.WriteLine($"EF.SOD content-digest check failed: {e.Message}");
             return;
