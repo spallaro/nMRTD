@@ -469,7 +469,7 @@ out:
 | `*.keyAuthenticated` | Whether the DG14 or DG15 key is covered by a valid EF.SOD signature |
 | `*.protocol` | The protocol object identifier (Chip Authentication) or the signature scheme (Active Authentication) |
 | `chipAuthentication.protocolName` | The Chip Authentication protocol name, for example `id-CA-DH-3DES-CBC-CBC` |
-| `*.publicKey` | The chip's public key algorithm and size (DG14 or DG15), for example `DH [2048 bit]` |
+| `*.publicKey` | The chip's public key algorithm and size (DG14 or DG15), for example `DH [2048 bit]` (with `q <n> bit` when the key gives the subgroup order), `RSA [1024 bit]`, `EC [brainpoolP256r1]` |
 | `*.error` | Why the protocol could not be completed |
 | `failedChecks[]` | The failed security checks, `code` and `description` (see [Failed checks](#7-failed-checks)); empty when none failed |
 | `exitCode` | The process exit code (see [Exit codes](#exit-codes)) |
@@ -631,6 +631,7 @@ without reflection).
 | `nMRTD.Cli/ReportOutput.cs` | Text, JSON and XML output, and `--share` |
 | `nMRTD.Cli/CscaTrustStore.cs` | Loading CSCA certificates and checking the Document Signer certificate (`--csca`) |
 | `nMRTD.Cli/ActiveAuthenticationVerifier.cs` | Verifying the Active Authentication signature |
+| `nMRTD.Cli/KeyDescription.cs` | Key algorithms and sizes in the result (`DH [2048 bit]`, `RSA [1024 bit]`, `EC [brainpoolP256r1]`) |
 
 The tests (`nMRTD.Tests/Cli`) run `DocumentReader` on a simulated chip, with Document Signer and CSCA
 certificates generated at run time, and check the options, the exit codes and the three outputs.

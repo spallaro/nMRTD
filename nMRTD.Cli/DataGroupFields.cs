@@ -233,7 +233,7 @@ public static class DataGroupFields
                     break;
                 case ChipAuthenticationPublicKeyInfo publicKey:
                     AddNumber(entry, "keyId", publicKey.GetKeyId());
-                    entry["publicKey"] = Util.GetDetailedPublicKeyAlgorithm(publicKey.GetSubjectPublicKey());
+                    entry["publicKey"] = KeyDescription.Of(publicKey.GetSubjectPublicKey());
                     break;
                 case PACEInfo pace:
                     entry["version"] = pace.GetVersion();
@@ -258,7 +258,7 @@ public static class DataGroupFields
     private static JsonObject Dg15(DG15File dg15)
     {
         AsymmetricKeyParameter? key = dg15.GetPublicKey();
-        return new JsonObject { ["publicKey"] = key == null ? null : Util.GetDetailedPublicKeyAlgorithm(key) };
+        return new JsonObject { ["publicKey"] = key == null ? null : KeyDescription.Of(key) };
     }
 
     private static JsonObject DisplayedImages(List<DisplayedImageInfo> images)

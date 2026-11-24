@@ -543,9 +543,9 @@ public sealed class DocumentReader
         string protocol = chipAuthenticationInfo?.GetProtocolOIDString() ?? "inferred from the public key";
         report.ChipAuthentication.Protocol = chipAuthenticationInfo?.GetObjectIdentifier() ?? publicKeyInfo.GetObjectIdentifier();
         report.ChipAuthentication.ProtocolName = chipAuthenticationInfo?.GetProtocolOIDString() ?? publicKeyInfo.GetProtocolOIDString();
-        report.ChipAuthentication.PublicKey = Util.GetDetailedPublicKeyAlgorithm(publicKeyInfo.GetSubjectPublicKey());
+        report.ChipAuthentication.PublicKey = KeyDescription.Of(publicKeyInfo.GetSubjectPublicKey());
         _out.WriteLine(
-            $"Performing Chip Authentication (protocol {protocol}, chip key {Util.GetDetailedPublicKeyAlgorithm(publicKeyInfo.GetSubjectPublicKey())}"
+            $"Performing Chip Authentication (protocol {protocol}, chip key {report.ChipAuthentication.PublicKey}"
             + $"{(publicKeyInfo.GetKeyId() is { } keyId ? $", key ID {keyId}" : "")})...");
 
         try
@@ -598,7 +598,7 @@ public sealed class DocumentReader
             : new DG14File(new MemoryStream(dg14Bytes)).GetSecurityInfos().OfType<ActiveAuthenticationInfo>().FirstOrDefault()?.GetSignatureAlgorithmOID();
         byte[] challenge = new byte[8];
         System.Security.Cryptography.RandomNumberGenerator.Fill(challenge);
-        report.ActiveAuthentication.PublicKey = Util.GetDetailedPublicKeyAlgorithm(publicKey);
+        report.ActiveAuthentication.PublicKey = KeyDescription.Of(publicKey);
         _out.WriteLine($"Performing Active Authentication (key {report.ActiveAuthentication.PublicKey})...");
 
         byte[] response;
