@@ -69,6 +69,7 @@ Without `--can` or the MRZ options, the tool asks which access key to use and pr
 | `--csca <path>` | Trusted CSCA certificates: a `.cer`, `.crt`, `.der` or `.pem` file (DER or PEM, one or more certificates), an ICAO master list (`.ml`), or a folder of them. |
 | `--json` | Write the results as JSON to stdout; all other output goes to stderr. |
 | `--json-data` | With `--json`, add each data group's contents, in Base64, to the JSON (`dataGroups[].data`). Needs `--json`. |
+| `--json-fields` | With `--json`, add each data group's parsed fields to the JSON (`dataGroups[].fields`). Needs `--json`. |
 | `--report-only` | Exit with 0 even when a security check fails (the results are still reported). |
 | `--verbose` | Print the APDU exchanges and the protocol steps to stderr. |
 | `--list-readers` | List the PC/SC readers and exit. |
@@ -230,8 +231,9 @@ get each data group's bytes, as read from the chip, in Base64 in `dataGroups[].d
 raw data group files (for DG2, the whole biometric record including the face image), which a program
 can parse itself or check against EF.SOD.
 
-For the data groups that hold images (DG2 faces, DG5 to DG7 displayed images), `images` gives each
-image's format and where it is in the data group's bytes: with `--json-data`, the image is the
+For the data groups that hold images (DG2 faces, DG5 to DG7 displayed images, DG12 images of the
+front and rear of the document), `images` gives each image's format and where it is in the data
+group's bytes: with `--json-data`, the image is the
 `length` bytes of the decoded `data` starting at `offset`, ready to save with the extension of its
 `mimeType` (`image/jpeg`: `.jpg`, `image/jp2`: `.jp2`).
 
@@ -303,6 +305,8 @@ Example (a simulated test document):
 | `mrz` | The DG1 fields, or `null` if DG1 was not read |
 | `dataGroups[].hash` | `"match"`, `"mismatch"`, `"not-in-sod"`, or `null` if not checked (present data groups only) |
 | `dataGroups[].images` | For data groups with images: each image's `mimeType` (for example `image/jpeg`, `image/jp2`), `offset` in the data group's bytes (`-1` if not found) and `length` |
+| `dataGroups[].fields` | The parsed fields of DG1, DG2, DG11, DG12, DG14 and DG15 (only with `--json-fields`, see below) |
+| `dataGroups[].fieldsError` | Why the data group could not be parsed (only with `--json-fields`) |
 | `dataGroups[].data` | The data group's bytes in Base64 (present data groups, only with `--json-data`) |
 | `passiveAuthentication.signature` | `"valid"`, `"invalid"`, `"error"` (for example an unsupported algorithm), `"not-checked"` |
 | `passiveAuthentication.csca` | `"trusted"`, `"untrusted"`, `"no-certificate"`, `"error"`, `"not-checked"` (no `--csca`) |
@@ -316,6 +320,34 @@ Example (a simulated test document):
 | `error` | Why reading stopped early, or `null` |
 | `failedChecks` | The failed security checks (see [Result](#7-result)); empty when none failed |
 
+### Parsed fields (`--json-fields`)
+
+With `--json-fields`, each data group the library can parse gets a `fields` object; fields that are
+absent from the document are left out. The other data groups (DG5 to DG10, DG13, DG16) have no
+`fields`: their images are in `images`, and their bytes in `data` with `--json-data`.
+
+| Data group | `fields` |
+|---|---|
+| DG1 | `documentCode`, `issuingState`, `documentNumber`, `primaryIdentifier`, `secondaryIdentifiers` (array), `nationality`, `dateOfBirth`, `gender`, `dateOfExpiry`, `optionalData1`, `optionalData2`, `personalNumber` |
+| DG2 | `faces`: one object per face image. ISO/IEC 19794-5: `format`, `mimeType`, `width`, `height`, `gender`, `eyeColor`, `hairColor`, `featureMask`, `expression`, `poseAngle` and `poseAngleUncertainty` (yaw, pitch, roll), `faceImageType`, `colorSpace`, `sourceType`, `deviceType`, `quality`, `featurePoints` (`type`, `majorCode`, `minorCode`, `x`, `y`); the numeric codes are those of the standard. ISO/IEC 39794-5: `format`, `mimeType`, `width`, `height`, and when present `faceImageKind`, `gender`, `eyeColour`, `hairColour`, `captureDateTime`, `landmarks` (count) |
+| DG11 | `nameOfHolder`, `otherNames`, `personalNumber`, `fullDateOfBirth`, `placeOfBirth`, `permanentAddress`, `telephone`, `profession`, `title`, `personalSummary`, `proofOfCitizenshipLength`, `otherValidTravelDocumentNumbers`, `custodyInformation` |
+| DG12 | `issuingAuthority`, `dateOfIssue`, `namesOfOtherPersons`, `endorsementsAndObservations`, `taxOrExitRequirements`, `imageOfFrontLength`, `imageOfRearLength`, `dateAndTimeOfPersonalization`, `personalizationSystemSerialNumber` |
+| DG14 | `securityInfos`: one object per security info, with `type`, `objectIdentifier`, `protocol`, and depending on the type `version`, `keyId`, `parameterId`, `publicKey` (algorithm and size), `signatureAlgorithm` |
+| DG15 | `publicKey`: the Active Authentication key algorithm and size, for example `RSA [1024 bit]` |
+
+Example (DG1 of the simulated document):
+
+```json
+{
+  "number": 1, "present": true, "length": 93, "hash": "match",
+  "fields": {
+    "documentCode": "P", "issuingState": "UTO", "documentNumber": "TST123456",
+    "primaryIdentifier": "SPECIMEN", "secondaryIdentifiers": [ "TEST" ], "nationality": "UTO",
+    "dateOfBirth": "800101", "gender": "Female", "dateOfExpiry": "351231"
+  }
+}
+```
+
 ## Verbose trace (`--verbose`)
 
 `--verbose` prints every APDU exchange (command and response, with the status word and its meaning)
@@ -325,7 +357,8 @@ warnings and errors.
 ## Personal data
 
 The text output, the JSON, the `--verbose` trace and the images saved to `--out` contain the holder's
-personal data and photo; with `--json-data` the JSON contains all of it, the face image included. Use `--out` to write the images outside the repository, and do not share the
+personal data and photo; with `--json-fields` the JSON contains the personal details too, and with
+`--json-data` all of it, the face image included. Use `--out` to write the images outside the repository, and do not share the
 output, the JSON or the traces unredacted. When reporting a result (see the README's *Tested
 documents*), the protocol and algorithm lines are all that is needed.
 

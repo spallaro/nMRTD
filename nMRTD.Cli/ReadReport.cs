@@ -100,8 +100,14 @@ public sealed class DataGroupResult(int number)
     /// <summary>The data group's bytes as read, or <c>null</c> if not present.</summary>
     public byte[]? Content { get; set; }
 
-    /// <summary>The images in the data group (DG2 faces, DG5-DG7 displayed images).</summary>
+    /// <summary>The images in the data group (DG2 faces, DG5-DG7 displayed images, DG12 document images).</summary>
     public List<ImageSummary> Images { get; } = [];
+
+    /// <summary>The parsed fields (<see cref="DataGroupFields"/>), or <c>null</c> without a parser.</summary>
+    public System.Text.Json.Nodes.JsonObject? Fields { get; set; }
+
+    /// <summary>Why the data group could not be parsed, if it could not.</summary>
+    public string? FieldsError { get; set; }
 }
 
 /// <summary>An image in a data group: its format, and where its bytes are in the data group's bytes.</summary>

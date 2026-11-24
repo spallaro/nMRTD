@@ -56,9 +56,9 @@ static async Task<int> RunAsync(string[] args)
     // With --json, stdout carries only the JSON report; everything else (progress, the text summary,
     // prompts) goes to stderr.
     bool json = options.ContainsKey("json");
-    if (options.ContainsKey("json-data") && !json)
+    if ((options.ContainsKey("json-data") || options.ContainsKey("json-fields")) && !json)
     {
-        await Console.Error.WriteLineAsync("Argument error: --json-data adds the data group contents to the JSON output, so it needs --json.");
+        await Console.Error.WriteLineAsync("Argument error: --json-data and --json-fields add to the JSON output, so they need --json.");
         PrintUsage();
         return 1;
     }
@@ -191,7 +191,7 @@ static async Task<int> RunAsync(string[] args)
     if (json)
     {
         using Stream stdout = Console.OpenStandardOutput();
-        ReadReportJson.Write(reader.Report, stdout, options.ContainsKey("json-data"));
+        ReadReportJson.Write(reader.Report, stdout, options.ContainsKey("json-data"), options.ContainsKey("json-fields"));
     }
 
     return exitCode;
@@ -438,6 +438,9 @@ static Dictionary<string, string> ParseArgs(string[] args)
             case "--json-data":
                 options["json-data"] = "true";
                 break;
+            case "--json-fields":
+                options["json-fields"] = "true";
+                break;
             case "--reader":
             case "--doc":
             case "--dob":
@@ -464,8 +467,8 @@ static void PrintUsage()
         nMRTD.Cli -- reads an eMRTD (BAC/PACE, all readable Data Groups, Passive, Chip and Active Authentication) via a PC/SC reader.
 
         Usage:
-          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--csca <path>] [--json [--json-data]] [--report-only]
-          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>] [--csca <path>] [--json [--json-data]] [--report-only]
+          nMRTD.Cli [--reader <name>] --doc <documentNumber> --dob <yyMMdd> --doe <yyMMdd> [--bac] [--out <dir>] [--csca <path>] [--json [--json-data] [--json-fields]] [--report-only]
+          nMRTD.Cli [--reader <name>] --can <CAN> [--out <dir>] [--csca <path>] [--json [--json-data] [--json-fields]] [--report-only]
           nMRTD.Cli --list-readers
 
         Options:
@@ -481,6 +484,7 @@ static void PrintUsage()
                             folder of them: checks that the Document Signer certificate was issued by one
           --json            Write the results as JSON to stdout (the text output goes to stderr)
           --json-data       With --json, add each data group's contents to the JSON, in Base64
+          --json-fields     With --json, add each data group's parsed fields to the JSON
           --report-only     Exit with 0 even when a security check fails (the results are still printed)
           --list-readers    List available PC/SC readers and exit
           -h, --help        Show this help

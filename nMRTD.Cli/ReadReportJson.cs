@@ -23,7 +23,9 @@ public static class ReadReportJson
     /// <param name="output">where to write the JSON</param>
     /// <param name="includeDataGroupContent">whether to add each data group's bytes, in Base64, as <c>data</c>
     /// (<c>--json-data</c>)</param>
-    public static void Write(ReadReport report, Stream output, bool includeDataGroupContent = false)
+    /// <param name="includeDataGroupFields">whether to add each data group's parsed fields as <c>fields</c>
+    /// (<c>--json-fields</c>)</param>
+    public static void Write(ReadReport report, Stream output, bool includeDataGroupContent = false, bool includeDataGroupFields = false)
     {
         using var json = new Utf8JsonWriter(output, new JsonWriterOptions { Indented = true });
         json.WriteStartObject();
@@ -72,6 +74,15 @@ public static class ReadReportJson
                         json.WriteEndObject();
                     }
                     json.WriteEndArray();
+                }
+                if (includeDataGroupFields && dataGroup.Fields != null)
+                {
+                    json.WritePropertyName("fields");
+                    dataGroup.Fields.WriteTo(json);
+                }
+                if (includeDataGroupFields && dataGroup.FieldsError != null)
+                {
+                    json.WriteString("fieldsError", dataGroup.FieldsError);
                 }
                 if (includeDataGroupContent && dataGroup.Content != null)
                 {

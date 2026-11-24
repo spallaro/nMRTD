@@ -48,6 +48,24 @@ public sealed class DocumentReader
     /// <summary>The data group being printed, for the images found in it.</summary>
     private DataGroupResult? currentDataGroup;
 
+    /// <summary>Records an image stored as bare bytes (DG12), with the format recognized from its first
+    /// bytes: JPEG, JPEG 2000 (file or codestream), or <c>null</c>.</summary>
+    private void AddImageBytes(byte[] image)
+    {
+        if (currentDataGroup?.Content is not { } content)
+        {
+            return;
+        }
+
+        string? mimeType = image switch
+        {
+            [0xFF, 0xD8, ..] => "image/jpeg",
+            [0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20, ..] or [0xFF, 0x4F, 0xFF, 0x51, ..] => "image/jp2",
+            _ => null,
+        };
+        currentDataGroup.Images.Add(new ImageSummary(mimeType, image.Length == 0 ? -1 : content.AsSpan().IndexOf(image), image.Length));
+    }
+
     /// <summary>Records an image of the current data group: its format, and where its bytes are in the data
     /// group's bytes, so that a program reading <c>--json-data</c> can cut it out directly. The image bytes are
     /// stored as they are in the data group, so they are found by searching for them.</summary>
@@ -288,6 +306,14 @@ public sealed class DocumentReader
             result.Present = true;
             result.Length = bytes.Length;
             result.Content = bytes;
+            try
+            {
+                result.Fields = DataGroupFields.For(number, bytes);
+            }
+            catch (Exception e)
+            {
+                result.FieldsError = e.Message;
+            }
 
             _out.WriteLine();
             _out.WriteLine($"--- DG{number} ({bytes.Length} bytes) ---");
@@ -448,12 +474,14 @@ public sealed class DocumentReader
         byte[]? imageOfFront = dg12.GetImageOfFront();
         if (imageOfFront != null)
         {
+            AddImageBytes(imageOfFront);
             _out.WriteLine($"Image of front: image ({imageOfFront.Length} bytes)");
         }
 
         byte[]? imageOfRear = dg12.GetImageOfRear();
         if (imageOfRear != null)
         {
+            AddImageBytes(imageOfRear);
             _out.WriteLine($"Image of rear: image ({imageOfRear.Length} bytes)");
         }
 
