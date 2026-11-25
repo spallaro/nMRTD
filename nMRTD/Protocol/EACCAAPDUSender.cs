@@ -127,6 +127,30 @@ public class EACCAAPDUSender : IApduLevelEacCACapable
     }
 
     /// <summary>
+    /// Sends the General Authenticate command of Chip Authentication as a single command, with extended length if the
+    /// data needs it (Doc 9303-11, 9.3.1), without retry or command chaining: under secure messaging a retry could
+    /// not work, and Doc 9303-11 (9.3.2) does not provide for command chaining here. As in JMRTD 0.8.11 (8711eb58).
+    /// </summary>
+    /// <param name="wrapper">secure messaging wrapper</param>
+    /// <param name="data">data to be sent, without the <c>0x7C</c> prefix (this method will add it)</param>
+    /// <returns>dynamic authentication data without the <c>0x7C</c> prefix (this method will remove it)</returns>
+    /// <exception cref="CardServiceException">on error</exception>
+    public byte[] SendGeneralAuthenticate(IApduWrapper? wrapper, byte[] data)
+    {
+        lock (_lock)
+        {
+            var commandApdu = new CommandApdu(Iso7816.ClaIso7816, InsBsiGeneralAuthenticate, 0x00, 0x00, TlvUtil.WrapDO(0x7C, data), 256);
+            ResponseApdu rapdu = _secureMessagingSender.Transmit(wrapper, commandApdu);
+            int sw = rapdu.Sw;
+            if (sw != Iso7816.SwNoError)
+            {
+                throw new CardServiceException("Sending general authenticate failed", sw);
+            }
+            return UnwrapDynamicAuthenticationData(rapdu.Data);
+        }
+    }
+
+    /// <summary>
     /// Sends a General Authenticate command. This command is the second command that is sent in the
     /// "AES" case. This uses 256 for the expected length.
     /// </summary>
@@ -135,6 +159,7 @@ public class EACCAAPDUSender : IApduLevelEacCACapable
     /// <param name="isLast">indicates whether this is the last command in the chain</param>
     /// <returns>dynamic authentication data without the <c>0x7C</c> prefix (this method will remove it)</returns>
     /// <exception cref="CardServiceException">on error</exception>
+    [Obsolete("Chip Authentication sends GENERAL AUTHENTICATE as a single command (Doc 9303-11, 9.3.1): use SendGeneralAuthenticate(wrapper, data).")]
     public byte[] SendGeneralAuthenticate(IApduWrapper? wrapper, byte[] data, bool isLast) =>
         SendGeneralAuthenticate(wrapper, data, 256, isLast);
 
@@ -148,6 +173,7 @@ public class EACCAAPDUSender : IApduLevelEacCACapable
     /// <param name="isLast">indicates whether this is the last command in the chain</param>
     /// <returns>dynamic authentication data without the <c>0x7C</c> prefix (this method will remove it)</returns>
     /// <exception cref="CardServiceException">on error</exception>
+    [Obsolete("Chip Authentication sends GENERAL AUTHENTICATE as a single command (Doc 9303-11, 9.3.1): use SendGeneralAuthenticate(wrapper, data).")]
     public byte[] SendGeneralAuthenticate(IApduWrapper? wrapper, byte[] data, int le, bool isLast)
     {
         lock (_lock)
@@ -177,17 +203,21 @@ public class EACCAAPDUSender : IApduLevelEacCACapable
                 throw new CardServiceException("Sending general authenticate failed", sw);
             }
 
-            byte[] responseData = rapdu.Data;
-            try
-            {
-                responseData = TlvUtil.UnwrapDO(0x7C, responseData);
-            }
-            catch (Exception)
-            {
-                // NOTE: Java logs a warning ("Could not unwrap response to GENERAL AUTHENTICATE") here;
-                // omitted per the non-essential-warning-omission precedent used elsewhere in this port.
-            }
+            return UnwrapDynamicAuthenticationData(rapdu.Data);
+        }
+    }
 
+    /// <summary>The response data without the <c>0x7C</c> prefix, or as it is if it cannot be unwrapped.</summary>
+    private static byte[] UnwrapDynamicAuthenticationData(byte[] responseData)
+    {
+        try
+        {
+            return TlvUtil.UnwrapDO(0x7C, responseData);
+        }
+        catch (Exception)
+        {
+            // NOTE: Java logs a warning ("Could not unwrap response to GENERAL AUTHENTICATE") here; omitted per the
+            // non-essential-warning-omission precedent used elsewhere in this port.
             return responseData;
         }
     }

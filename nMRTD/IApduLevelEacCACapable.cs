@@ -43,5 +43,19 @@ public interface IApduLevelEacCACapable
     /// <param name="isLast">indicates whether this is the last command in the chain</param>
     /// <returns>dynamic authentication data without the 0x7C prefix (this method will remove it)</returns>
     /// <exception cref="CardServiceException">on error</exception>
+    [Obsolete("Chip Authentication sends GENERAL AUTHENTICATE as a single command (Doc 9303-11, 9.3.1): use SendGeneralAuthenticate(wrapper, data).")]
     byte[] SendGeneralAuthenticate(IApduWrapper? wrapper, byte[] data, bool isLast);
+
+    /// <summary>
+    /// Sends the General Authenticate command of Chip Authentication as a single command, with extended length if
+    /// the data needs it (Doc 9303-11, 9.3.1), as in JMRTD 0.8.11 (8711eb58). The default implementation sends it
+    /// as the last command of a chain.
+    /// </summary>
+    /// <param name="wrapper">secure messaging wrapper</param>
+    /// <param name="data">data to be sent, without the 0x7C prefix (this method will add it)</param>
+    /// <returns>dynamic authentication data without the 0x7C prefix (this method will remove it)</returns>
+    /// <exception cref="CardServiceException">on error</exception>
+#pragma warning disable CS0618
+    byte[] SendGeneralAuthenticate(IApduWrapper? wrapper, byte[] data) => SendGeneralAuthenticate(wrapper, data, true);
+#pragma warning restore CS0618
 }

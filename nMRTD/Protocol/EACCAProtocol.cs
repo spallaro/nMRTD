@@ -44,7 +44,6 @@ namespace nMRTD.Protocol;
 /// </summary>
 public class EACCAProtocol
 {
-    private const int CommandChainingChunkSize = 223;
     private const string LogCategory = "EAC-CA";
 
     private readonly IApduLevelEacCACapable _service;
@@ -194,7 +193,11 @@ public class EACCAProtocol
             try
             {
                 byte[] data = TlvUtil.WrapDO(0x80, keyData); /* FIXME: Constant for 0x80 (carried over from Java). */
-                SendGeneralAuthenticate(service, wrapper, data);
+                // A single command, with extended length if needed (Doc 9303-11, 9.3.1). No retry or fallback to command
+                // chaining: under secure messaging the send sequence counter would no longer match the chip's, and Doc
+                // 9303-11 (9.3.2) does not provide for command chaining here (JMRTD 0.8.11, 8711eb58; the fallback also
+                // wrapped each segment in its own 0x7C).
+                service.SendGeneralAuthenticate(wrapper, data);
             }
             catch (Exception e)
             {
@@ -303,32 +306,6 @@ public class EACCAProtocol
         }
 
         throw new ArgumentException($"Unsupported agreement algorithm {agreementAlg}");
-    }
-
-    /// <summary>Sends the General Authenticate APDU in the AES case, possibly falling back to Command Chaining.</summary>
-    /// <param name="service">the card service</param>
-    /// <param name="wrapper">the existing secure messaging wrapper</param>
-    /// <param name="data">the key data, already wrapped as a data-object</param>
-    /// <exception cref="CardServiceException">on low-level communication error</exception>
-    private static void SendGeneralAuthenticate(IApduLevelEacCACapable service, SecureMessagingWrapper wrapper, byte[] data)
-    {
-        try
-        {
-            service.SendGeneralAuthenticate(wrapper, data, true);
-        }
-        catch (CardServiceException)
-        {
-            // NOTE: Java logs a warning ("Failed to send GENERAL AUTHENTICATE, falling back to command
-            // chaining") here before retrying; omitted per the non-essential-warning-omission precedent
-            // used elsewhere in this port.
-            List<byte[]> segments = Util.Partition(CommandChainingChunkSize, data);
-
-            int index = 0;
-            foreach (byte[] segment in segments)
-            {
-                service.SendGeneralAuthenticate(wrapper, segment, ++index >= segments.Count);
-            }
-        }
     }
 
     /// <summary>Returns the public key data to be sent.</summary>

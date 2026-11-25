@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Changed
+
+- **EAC Chip Authentication sends GENERAL AUTHENTICATE as a single command**, with extended length
+  when the key data needs it (Doc 9303-11, 9.3.1), without retry or fallback to command chaining.
+  The fallback wrapped each segment in its own `7C` data object, and under secure messaging neither
+  the retry nor the fallback could work. New `IApduLevelEacCACapable.SendGeneralAuthenticate(wrapper,
+  data)` (a default interface method) and `EACCAAPDUSender.SendGeneralAuthenticate(wrapper, data)`;
+  the variants with `isLast` (and `le`) are `[Obsolete]`. A reader without extended length support
+  cannot perform Chip Authentication with keys whose GENERAL AUTHENTICATE data exceeds 255 bytes
+  (such as DH 2048). From JMRTD 0.8.11.
+
 ### Fixed
 
 - **Security: PACE succeeded without checking the chip's authentication token when the last
