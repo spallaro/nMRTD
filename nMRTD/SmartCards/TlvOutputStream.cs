@@ -36,6 +36,12 @@ public sealed class TlvOutputStream : IDisposable
         public int Tag { get; }
 
         public MemoryStream Buffer { get; } = new();
+
+        /// <summary>The length given with <see cref="WriteLength"/>, or -1.</summary>
+        public int DeclaredLength { get; set; } = -1;
+
+        /// <summary>Whether the value has its declared length: the object is complete.</summary>
+        public bool IsComplete => DeclaredLength >= 0 && Buffer.Length >= DeclaredLength;
     }
 
     private readonly Stream _stream;
@@ -50,21 +56,26 @@ public sealed class TlvOutputStream : IDisposable
 
     public void WriteTag(int tag)
     {
+        CloseCompleteFrames();
         _stack.Push(new Frame(tag));
     }
 
     /// <summary>
-    /// Rarely used directly by JMRTD (WriteValue normally computes/writes the length itself). This
-    /// implementation always derives the BER-TLV length from the buffered value on frame close, so an
-    /// explicit WriteLength is only a range check here, not an eager emission -- the buffered/backpatch
-    /// design (see class remarks) produces correct output regardless of whether the caller pre-declares
-    /// a length, and doing so avoids a second, non-buffered "known length" write mode.
+    /// Declares the length of the value of the open tag. The length written is always derived from the buffered
+    /// value (see class remarks); a declared length completes the object as soon as its value reaches that length,
+    /// as in SCUBA: an object with an explicit length needs no <see cref="WriteValueEnd"/>, and an object of length 0
+    /// is completed by the next tag or <see cref="WriteValueEnd"/>, so siblings do not end up inside it (SCUBA 0.1.0,
+    /// ebe3825).
     /// </summary>
     public void WriteLength(int length)
     {
         if (length < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(length));
+        }
+        if (_stack.Count > 0)
+        {
+            _stack.Peek().DeclaredLength = length;
         }
     }
 
@@ -78,16 +89,21 @@ public sealed class TlvOutputStream : IDisposable
         Frame frame = _stack.Peek();
         frame.Buffer.Write(value, 0, value.Length);
         CloseFrame();
+        CloseCompleteFrames();
     }
 
     /// <summary>Finalizes a TLV whose value was streamed incrementally via <see cref="Write(byte[])"/>.</summary>
     public void WriteValueEnd()
     {
+        // An object that has its declared length (such as one of length 0) is complete; the value end is that of the
+        // enclosing object.
+        CloseCompleteFrames();
         if (_stack.Count == 0)
         {
             throw new InvalidOperationException("No open TLV to end.");
         }
         CloseFrame();
+        CloseCompleteFrames();
     }
 
     /// <summary>
@@ -106,9 +122,22 @@ public sealed class TlvOutputStream : IDisposable
             return;
         }
         _stack.Peek().Buffer.Write(bytes, offset, count);
+        if (_stack.Peek().IsComplete && count > 0)
+        {
+            CloseCompleteFrames();
+        }
     }
 
     public void Flush() => _stream.Flush();
+
+    /// <summary>Closes the open objects that have their declared length, innermost first.</summary>
+    private void CloseCompleteFrames()
+    {
+        while (_stack.Count > 0 && _stack.Peek().IsComplete)
+        {
+            CloseFrame();
+        }
+    }
 
     private void CloseFrame()
     {

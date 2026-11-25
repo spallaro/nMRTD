@@ -49,6 +49,10 @@
   are encoded correctly. `SkipToTag` descends into constructed objects, as in SCUBA, so it finds a tag
   nested in a constructed sibling, and the end of the stream before the tag is an
   `EndOfStreamException`. From SCUBA 0.1.0.
+- **`TlvOutputStream.WriteLength` declares the length of the open object**, as in SCUBA: an object
+  completes when its value reaches that length, and an object of length 0 at the next tag or
+  `WriteValueEnd`, so its siblings no longer end up inside it. It used to be ignored. From SCUBA
+  0.1.0.
 - **An APDU listener that throws no longer changes the outcome of a command.** Listeners are notified
   from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
   for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.
