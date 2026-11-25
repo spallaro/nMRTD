@@ -135,4 +135,19 @@ public class PaceTests
         Assert.Equal(0x6982, new CardServiceException("wrapped", new CardServiceException("inner", 0x6982)).Sw);
         Assert.Equal(CardServiceException.SwNotSet, new CardServiceException("wrapped", new IOException()).Sw);
     }
+
+    /// <summary>A truncated or malformed dynamic authentication data object from the chip is a
+    /// <see cref="nMRTD.SmartCards.CardServiceException"/>, not an unchecked exception (JMRTD 0.8.10, 3e47695e).</summary>
+    [Theory]
+    [InlineData("7C05010290 00")]
+    [InlineData("7D0080 9000")]
+    public void MalformedGeneralAuthenticateResponseIsACardServiceException(string response)
+    {
+        var sender = new nMRTD.Protocol.PACEAPDUSender(
+            new nMRTD.Tests.Helpers.ScriptedCardService(new nMRTD.SmartCards.ResponseApdu(Convert.FromHexString(response.Replace(" ", "")))));
+
+        var e = Assert.Throws<nMRTD.SmartCards.CardServiceException>(() => sender.SendGeneralAuthenticate(null, [], 256, false));
+
+        Assert.Equal(0x9000, e.Sw & 0xFFFF);
+    }
 }

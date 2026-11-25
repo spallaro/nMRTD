@@ -353,15 +353,25 @@ public sealed class CardVerifiableCertificate : IEquatable<CardVerifiableCertifi
     public static CardVerifiableCertificate Parse(Stream inputStream)
     {
         ArgumentNullException.ThrowIfNull(inputStream);
-        using var tlvIn = new TlvInputStream(inputStream, leaveOpen: true);
-        int tag = tlvIn.ReadTag();
-        if (tag != CvCertificateTag)
+        try
         {
-            throw new IOException($"Expected CV certificate tag 0x{CvCertificateTag:X}, found 0x{tag:X}.");
+            using var tlvIn = new TlvInputStream(inputStream, leaveOpen: true);
+            int tag = tlvIn.ReadTag();
+            if (tag != CvCertificateTag)
+            {
+                throw new IOException($"Expected CV certificate tag 0x{CvCertificateTag:X}, found 0x{tag:X}.");
+            }
+            tlvIn.ReadLength();
+            byte[] value = tlvIn.ReadValue();
+            return ParseValue(value);
         }
-        tlvIn.ReadLength();
-        byte[] value = tlvIn.ReadValue();
-        return ParseValue(value);
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException or FormatException
+            or InvalidCastException or OverflowException or IndexOutOfRangeException)
+        {
+            // A malformed certificate (for instance a malformed holder reference) is an IOException, the
+            // CertificateException of JMRTD 0.8.10 (3e47695e).
+            throw new IOException("Malformed card verifiable certificate", e);
+        }
     }
 
     /// <summary>Parses a single CV certificate (<c>0x7F21</c>) from the given bytes. Trailing bytes are ignored.</summary>

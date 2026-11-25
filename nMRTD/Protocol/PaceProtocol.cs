@@ -418,6 +418,12 @@ public class PaceProtocol
             _log.Error(LogCategory, "Step 1 (nonce exchange) failed (PICC side).", cse);
             throw new CardServiceProtocolException("PICC side exception in tranceiving nonce step", 1, cse);
         }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+        {
+            // A malformed or truncated encrypted nonce data object from the chip (JMRTD 0.8.10, 3e47695e).
+            _log.Error(LogCategory, "Step 1 (nonce exchange) failed (PICC side).", e);
+            throw new CardServiceProtocolException("PICC side exception in tranceiving nonce step", 1, e);
+        }
         catch (Exception e)
         {
             _log.Error(LogCategory, "Step 1 (nonce exchange) failed (PCD side).", e);

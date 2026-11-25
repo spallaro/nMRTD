@@ -24,6 +24,9 @@
   from the input no longer recomputes its length by encoding itself. From JMRTD 0.8.10.
 - **A TD1 MRZ whose optional data starts with a filler no longer throws** when the document number
   check digit is a filler (extended document number); the fields stay as read. From JMRTD 0.8.10.
+- **A malformed card verifiable certificate throws an `IOException`** (`CardVerifiableCertificate.Parse`,
+  `CVCertificateFactorySpi`), not an `ArgumentException` or `InvalidOperationException`; a malformed
+  or truncated PACE response from the chip is a `CardServiceException`. From JMRTD 0.8.10.
 - **A protected 6700 under secure messaging put the terminal out of step with the chip.** When a chip
   processed a long READ BINARY under secure messaging and answered with a protected 6700 (both send
   sequence counters move on, ICAO Doc 9303-11, 9.8.3), the response was not unwrapped and the file

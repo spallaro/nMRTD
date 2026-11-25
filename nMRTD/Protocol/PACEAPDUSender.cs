@@ -173,7 +173,15 @@ public class PACEAPDUSender : IApduLevelPaceCapable
             }
 
             byte[] responseData = responseApdu.Data;
-            return TlvUtil.UnwrapDO(0x7C, responseData);
+            try
+            {
+                return TlvUtil.UnwrapDO(0x7C, responseData);
+            }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException or IOException)
+            {
+                // A malformed or truncated data object from the chip (JMRTD 0.8.10, 3e47695e).
+                throw new CardServiceException("Malformed response to general authenticate", e, sw);
+            }
         }
     }
 }
