@@ -27,6 +27,8 @@
   `ChipAuthenticationPublicKeyInfo` threw and `Util.ToPublicKey` returned `null`. A statically
   protected biometric information template without a plain value throws an `IOException`. From
   JMRTD 0.8.10.
+- **An EF.CVCA that ends before the length of a CA reference throws an `EndOfStreamException`** (an
+  `IOException`), not an `OverflowException`. From JMRTD 0.8.11.
 - **An APDU listener that throws no longer changes the outcome of a command.** Listeners are notified
   from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
   for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.

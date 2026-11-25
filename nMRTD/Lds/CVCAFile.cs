@@ -93,6 +93,22 @@ public class CVCAFile : AbstractLDSFile
     /// <summary>Returns the file identifier of this CVCA file.</summary>
     public short GetFID() => _fid;
 
+    /// <summary>Reads the length byte of a CA reference, at most 16. The end of the stream is an
+    /// <see cref="EndOfStreamException"/>; it overflowed, as -1 (JMRTD 0.8.11, 251980fb).</summary>
+    private static int ReadCaReferenceLength(Stream inputStream)
+    {
+        int length = inputStream.ReadByte();
+        if (length < 0)
+        {
+            throw new EndOfStreamException("No length for CA reference");
+        }
+        if (length > 16)
+        {
+            throw new ArgumentException("Wrong length");
+        }
+        return length;
+    }
+
     protected override void ReadObject(Stream inputStream)
     {
         int tag = inputStream.ReadByte();
@@ -100,11 +116,7 @@ public class CVCAFile : AbstractLDSFile
         {
             throw new ArgumentException($"Wrong tag, expected {CarTag:X}, found {tag:X}");
         }
-        int length = inputStream.ReadByte();
-        if (length > 16)
-        {
-            throw new ArgumentException("Wrong length");
-        }
+        int length = ReadCaReferenceLength(inputStream);
         byte[] data = ReadFully(inputStream, length);
         _caReference = Encoding.ASCII.GetString(data);
         tag = inputStream.ReadByte();
@@ -114,11 +126,7 @@ public class CVCAFile : AbstractLDSFile
             {
                 throw new ArgumentException("Wrong tag");
             }
-            length = inputStream.ReadByte();
-            if (length > 16)
-            {
-                throw new ArgumentException("Wrong length");
-            }
+            length = ReadCaReferenceLength(inputStream);
             data = ReadFully(inputStream, length);
             _altCaReference = Encoding.ASCII.GetString(data);
             tag = inputStream.ReadByte();
