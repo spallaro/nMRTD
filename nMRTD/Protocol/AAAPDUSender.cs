@@ -116,13 +116,11 @@ public class AAAPDUSender : IApduLevelAACapable
                 return normalLengthResponse!.Length > extendedLengthResponse!.Length ? normalLengthResponse : extendedLengthResponse;
             }
 
-            if (responseApdu != null)
+            if (responseApdu != null && responseApdu.Data.Length > 0)
             {
-                // If we got some data, return it, independent of what the status is.
-                // NOTE: Java also checks responseAPDU.getData() != null and logs a warning here; the null
-                // check is dropped since ResponseApdu.Data never returns null in this port (see
-                // ResponseApdu.cs), and the warning is omitted per the non-essential-warning-omission
-                // precedent used elsewhere in this port.
+                // If we got some data (e.g. a signature with a warning status word), return it, independent of what
+                // the status is. An error status word without data used to be returned as an empty signature: JMRTD
+                // bug #90, fixed in JMRTD 0.8.10 (ddbbc826).
                 return responseApdu.Data;
             }
 

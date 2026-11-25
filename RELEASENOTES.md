@@ -10,6 +10,9 @@
   token comparison never ran. PACE now fails with a `CardServiceProtocolException` (step 4), as for a
   wrong token. PACE-CAM without encrypted Chip Authentication data no longer throws. JMRTD bug #91,
   fixed in JMRTD 0.8.10.
+- **INTERNAL AUTHENTICATE answered with an error status word and no data throws a
+  `CardServiceException`;** it returned an empty response, which callers took for a signature. A
+  signature with a warning status word is still returned. JMRTD bug #90, fixed in JMRTD 0.8.10.
 - **Files of more than 64 KB were read wrongly from 64 KB on.** READ BINARY with an offset data
   object (odd INS, used from offset 32768) encoded the offset in 2 bytes, so from 65536 it wrapped
   around to the start of the file. It now uses 3 bytes from 65536 on (ISO/IEC 7816-4). A file whose

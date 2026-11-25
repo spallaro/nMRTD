@@ -68,7 +68,7 @@ public class AAAPDUSenderTest
         }
         catch (CardServiceException)
         {
-            /* Expected under secure messaging. Without, the (empty) response data is returned. */
+            /* Expected. */
         }
 
         CommandApdu command = service.GetCommands()[0];
@@ -117,5 +117,61 @@ public class AAAPDUSenderTest
     private static ResponseApdu response(int sw)
     {
         return new ResponseApdu(new byte[] { (byte)(sw >> 8), (byte)sw });
+    }
+
+    /// <summary>The error status words from JMRTD bug #90.</summary>
+    private static readonly int[] ErrorSws =
+    [
+        0x6300, 0x6700, 0x6800, 0x6900, 0x6982, 0x6A00, 0x6A80, 0x6A88, 0x6B00, 0x6C00, 0x6E00, 0x6F00, 0x6FFF,
+    ];
+
+    /// <summary>A protected error response without data is an error, not an (empty) signature (JMRTD 0.8.10, bug
+    /// #90, ddbbc826).</summary>
+    [Fact]
+    public void throwsOnProtectedErrorResponse()
+    {
+        var macKey = new KeyParameter(TestData.Hex("1032547698BADCFE0123456789ABCDEF1032547698BADCFE"));
+        var encKey = new KeyParameter(TestData.Hex("00112233445566778899AABBCCDDEEFF0011223344556677"));
+        foreach (int sw in ErrorSws)
+        {
+            var service = new ScriptedCardService(nMRTD.Tests.Helpers.ProtectedResponses.Create(false, encKey, macKey, 2L, [], [], 8, sw));
+            AssertThrowsCardServiceException(new AAAPDUSender(new SecureMessagingAPDUSender(service)), CreateDESedeWrapper(), sw);
+        }
+    }
+
+    /// <summary>A plain error response without data is an error, with and without secure messaging (JMRTD 0.8.10,
+    /// bug #90).</summary>
+    [Fact]
+    public void throwsOnPlainErrorResponse()
+    {
+        foreach (int sw in ErrorSws)
+        {
+            AssertThrowsCardServiceException(new AAAPDUSender(new SecureMessagingAPDUSender(new ScriptedCardService(response(sw)))), CreateDESedeWrapper(), sw);
+            AssertThrowsCardServiceException(new AAAPDUSender(new SecureMessagingAPDUSender(new ScriptedCardService(response(sw)))), null, sw);
+        }
+    }
+
+    /// <summary>A signature with a warning status word is still returned.</summary>
+    [Fact]
+    public void returnsDataWithWarningStatusWord()
+    {
+        byte[] signature = [1, 2, 3, 4];
+        var answer = new ResponseApdu([1, 2, 3, 4, 0x62, 0x82]);
+        var sender = new AAAPDUSender(new SecureMessagingAPDUSender(new ScriptedCardService(answer)));
+        Assert.Equal(signature, sender.SendInternalAuthenticate(null, 1024, RND_IFD));
+    }
+
+    private static void AssertThrowsCardServiceException(AAAPDUSender sender, IApduWrapper? wrapper, int sw)
+    {
+        string message = $"SW = {sw:x4}{(wrapper == null ? ", plain" : ", secure messaging")}";
+        try
+        {
+            byte[] answer = sender.SendInternalAuthenticate(wrapper, 1024, RND_IFD);
+            Assert.Fail($"{message}, response = {Hex.BytesToHexString(answer)}");
+        }
+        catch (CardServiceException)
+        {
+            // Expected.
+        }
     }
 }
