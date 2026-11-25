@@ -42,6 +42,13 @@
   `IOException`), not an `OverflowException`. From JMRTD 0.8.11.
 - **An EF.SOD whose LDS security object is malformed throws an `IOException` when it is read**; the
   getters (`GetDataGroupHashes`, `GetDigestAlgorithm`, ...) threw later. From JMRTD 0.8.11.
+- **TLV decoding of malformed and multi byte tag data** (`TlvInputStream`, `TlvUtil`): a length of more
+  than 4 significant bytes, or more than `int.MaxValue`, and a tag of more than 4 bytes throw an
+  `IOException` (they overflowed, giving a negative length or a wrong tag); a value is not allocated
+  from its declared length up front; 4 byte context specific and private tags (such as `9F818101`)
+  are encoded correctly. `SkipToTag` descends into constructed objects, as in SCUBA, so it finds a tag
+  nested in a constructed sibling, and the end of the stream before the tag is an
+  `EndOfStreamException`. From SCUBA 0.1.0.
 - **An APDU listener that throws no longer changes the outcome of a command.** Listeners are notified
   from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
   for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.

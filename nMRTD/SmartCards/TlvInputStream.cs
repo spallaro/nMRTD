@@ -43,10 +43,16 @@ public sealed class TlvInputStream : IDisposable
         int tag = firstByte;
         if ((firstByte & 0x1F) == 0x1F)
         {
+            int tagLength = 1;
             int b;
             do
             {
                 b = ReadByteChecked();
+                if (++tagLength > 4)
+                {
+                    // The leading bytes used to be shifted out, giving a wrong tag (SCUBA 0.1.0, 6d2c9f2).
+                    throw new IOException("Tags of more than 4 bytes are not supported");
+                }
                 tag = (tag << 8) | b;
             } while ((b & 0x80) != 0);
         }
@@ -70,11 +76,18 @@ public sealed class TlvInputStream : IDisposable
             {
                 throw new IOException("Indefinite-length BER-TLV encoding is not supported.");
             }
-            length = 0;
+            // At most 4 significant length bytes, and not more than int.MaxValue: longer or negative lengths used to
+            // overflow (SCUBA 0.1.0, 03bc03f). Leading zero bytes are accepted.
+            long value = 0;
             for (int i = 0; i < numLengthBytes; i++)
             {
-                length = (length << 8) | ReadByteChecked();
+                value = (value << 8) | (uint)ReadByteChecked();
+                if (value > int.MaxValue)
+                {
+                    throw new IOException($"Length of more than {int.MaxValue} bytes is not supported");
+                }
             }
+            length = (int)value;
         }
         _pendingLength = length;
         return length;
@@ -87,7 +100,8 @@ public sealed class TlvInputStream : IDisposable
         {
             throw new InvalidOperationException("ReadLength() must be called before ReadValue().");
         }
-        byte[] value = ReadFully(_pendingLength);
+        // The length comes from the input, so the value is not allocated up front (SCUBA 0.1.0, 03bc03f).
+        byte[] value = Io.InputStreams.ReadFully(_stream, _pendingLength);
         _pendingLength = -1;
         return value;
     }
@@ -114,7 +128,12 @@ public sealed class TlvInputStream : IDisposable
         return skipped;
     }
 
-    /// <summary>Scans forward, skipping values of non-matching tags, until positioned just after the given tag.</summary>
+    /// <summary>
+    /// Scans forward until positioned just after the given tag. As in SCUBA, it descends into constructed objects and
+    /// skips only the values of primitive ones, so a tag nested in a constructed sibling is found; it used to skip the
+    /// value of constructed objects too. The end of the stream before the tag is an <see cref="EndOfStreamException"/>
+    /// (SCUBA 0.1.0, a04c2b1).
+    /// </summary>
     public void SkipToTag(int tag)
     {
         while (true)
@@ -125,8 +144,28 @@ public sealed class TlvInputStream : IDisposable
                 return;
             }
             int len = ReadLength();
-            Skip(len);
+            if (IsConstructed(t))
+            {
+                continue;
+            }
+            long skipped = Skip(len);
+            if (skipped < len)
+            {
+                throw new EndOfStreamException(
+                    $"End of stream while skipping to tag {tag:X} (skipped {skipped} of {len} value bytes of tag {t:X})");
+            }
         }
+    }
+
+    /// <summary>Whether the tag is constructed: bit 6 of its first byte.</summary>
+    private static bool IsConstructed(int tag)
+    {
+        uint first = (uint)tag;
+        while (first > 0xFF)
+        {
+            first >>= 8;
+        }
+        return (first & 0x20) != 0;
     }
 
     private int ReadByteChecked()
@@ -137,22 +176,6 @@ public sealed class TlvInputStream : IDisposable
             throw new EndOfStreamException("Unexpected end of TLV stream.");
         }
         return b;
-    }
-
-    private byte[] ReadFully(int count)
-    {
-        byte[] buffer = new byte[count];
-        int totalRead = 0;
-        while (totalRead < count)
-        {
-            int read = _stream.Read(buffer, totalRead, count - totalRead);
-            if (read <= 0)
-            {
-                throw new EndOfStreamException("Unexpected end of TLV stream while reading value.");
-            }
-            totalRead += read;
-        }
-        return buffer;
     }
 
     public void Dispose()

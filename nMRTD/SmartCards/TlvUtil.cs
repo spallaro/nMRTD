@@ -21,15 +21,18 @@ public static class TlvUtil
     /// <summary>How many bytes the given BER-TLV tag value occupies when encoded.</summary>
     public static int GetTagLength(int tag)
     {
-        if (tag <= 0xFF)
+        // Unsigned: a 4 byte tag whose first byte has its high bit set (context specific or private class, such
+        // as 9F818101 or DFFFFF7F) is a negative int (SCUBA 0.1.0, 6d2c9f2).
+        uint unsignedTag = (uint)tag;
+        if (unsignedTag <= 0xFF)
         {
             return 1;
         }
-        if (tag <= 0xFFFF)
+        if (unsignedTag <= 0xFFFF)
         {
             return 2;
         }
-        if (tag <= 0xFFFFFF)
+        if (unsignedTag <= 0xFFFFFF)
         {
             return 3;
         }
