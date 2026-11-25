@@ -70,6 +70,28 @@ public class NegativeEndToEndTests
         Assert.Null(service.GetWrapper());
     }
 
+    /// <summary>
+    /// A step 4 response without the chip's authentication token, or with a truncated one, must fail PACE: without
+    /// the token the chip is not authenticated. The response used to be skipped as unparsable and PACE succeeded
+    /// (JMRTD bug #91, fixed in JMRTD 0.8.10, 42744048).
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceNoToken), SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceNoToken), SecurityInfo.ID_PACE_DH_GM_3DES_CBC_CBC, 0)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceTruncatedToken), SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13)]
+    [InlineData(nameof(SimulatedChip.ChipFault.PaceTruncatedToken), SecurityInfo.ID_PACE_ECDH_IM_AES_CBC_CMAC_256, 17)]
+    public void PaceRejectsAChipWithoutAnAuthenticationToken(string fault, string oid, int parameterId)
+    {
+        SimulatedChip chip = PaceChip(oid, parameterId);
+        chip.Fault = Enum.Parse<SimulatedChip.ChipFault>(fault);
+        PassportService service = Open(chip);
+
+        var e = Assert.ThrowsAny<CardServiceException>(() => DoPace(service, PaceKeySpec.CreateCanKey(SimulatedDocument.Can)));
+
+        Assert.Null(service.GetWrapper());
+        Assert.Contains("malformed PICC token", e.ToString());
+    }
+
     [Theory]
     [InlineData(nameof(SimulatedChip.ChipFault.PaceInvalidMappingKey), SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13, 2)]
     [InlineData(nameof(SimulatedChip.ChipFault.PaceInvalidMappingKey), SecurityInfo.ID_PACE_DH_GM_3DES_CBC_CBC, 0, 2)]

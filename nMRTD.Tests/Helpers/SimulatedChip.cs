@@ -86,6 +86,12 @@ internal sealed class SimulatedChip : CardService
         /// <summary>The PACE authentication token T_PICC is wrong.</summary>
         PaceToken,
 
+        /// <summary>The PACE step 4 response has no authentication token T_PICC (an empty 0x7C object).</summary>
+        PaceNoToken,
+
+        /// <summary>The PACE step 4 response has a truncated authentication token T_PICC.</summary>
+        PaceTruncatedToken,
+
         /// <summary>The checksum M_IC of the BAC cryptogram is wrong.</summary>
         BacChecksum,
 
@@ -681,7 +687,15 @@ internal sealed class SimulatedChip : CardService
             piccToken[0] ^= 0x01;
         }
         byte[] response = Tlv.Encode(0x86, piccToken);
-        if (pace.Mapping == 6)
+        if (Fault == ChipFault.PaceNoToken)
+        {
+            response = [];
+        }
+        else if (Fault == ChipFault.PaceTruncatedToken)
+        {
+            response = response[..4];
+        }
+        if (pace.Mapping == 6 && Fault is not (ChipFault.PaceNoToken or ChipFault.PaceTruncatedToken))
         {
             var ec = (ECDomainParameters)pace.StaticParameters;
             var staticKey = (ECPrivateKeyParameters)ChipAuthenticationKeys

@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **Security: PACE succeeded without checking the chip's authentication token when the last
+  response could not be parsed.** A chip (or a man in the middle) answering the last GENERAL
+  AUTHENTICATE with no token, or a truncated one, was accepted: the parse error was skipped and the
+  token comparison never ran. PACE now fails with a `CardServiceProtocolException` (step 4), as for a
+  wrong token. PACE-CAM without encrypted Chip Authentication data no longer throws. JMRTD bug #91,
+  fixed in JMRTD 0.8.10.
 - **An APDU listener that throws no longer changes the outcome of a command.** Listeners are notified
   from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
   for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.

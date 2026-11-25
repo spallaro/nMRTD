@@ -344,23 +344,22 @@ public class PaceProtocol
         {
             if (encryptedChipAuthenticationData == null)
             {
-                // NOTE: Java logs a warning here; omitted per precedent.
+                // Without encrypted Chip Authentication data there is nothing to decrypt; the result has no Chip
+                // Authentication data (JMRTD 0.8.10, 42744048; before, this threw).
+                _log.Warn(LogCategory, "PACE-CAM: no encrypted Chip Authentication data.");
             }
-
-            /* Decrypt A_PICC to recover CA_PICC. */
-            try
+            else
             {
-                // NOTE: preserved Java quirk -- Java's decryptCipher.doFinal(encryptedChipAuthenticationData)
-                // throws an (uncaught-here, propagating) NullPointerException if the data is null (only
-                // GeneralSecurityException is caught locally); the null-forgiving operator below reproduces
-                // that (a NullReferenceException here likewise isn't a CryptoException, so it propagates out
-                // of this try, matching Java exactly). Not "fixed" per this port's quirk-preservation policy.
-                chipAuthenticationData = DecryptChipAuthenticationData(encKey, encryptedChipAuthenticationData!);
-                _log.Debug(LogCategory, "PACE-CAM chip authentication data decrypted.");
-            }
-            catch (Org.BouncyCastle.Crypto.CryptoException ce)
-            {
-                _log.Warn(LogCategory, $"PACE-CAM chip authentication data could not be decrypted: {ce.Message}");
+                /* Decrypt A_PICC to recover CA_PICC. */
+                try
+                {
+                    chipAuthenticationData = DecryptChipAuthenticationData(encKey, encryptedChipAuthenticationData);
+                    _log.Debug(LogCategory, "PACE-CAM chip authentication data decrypted.");
+                }
+                catch (Org.BouncyCastle.Crypto.CryptoException ce)
+                {
+                    _log.Warn(LogCategory, $"PACE-CAM chip authentication data could not be decrypted: {ce.Message}");
+                }
             }
 
             /* CAM result. Include Chip Authentication data. */
@@ -686,47 +685,58 @@ public class PaceProtocol
             using (var step4Stream = new MemoryStream(step4Response, writable: false))
             using (var step4ResponseInputStream = new TlvInputStream(step4Stream))
             {
+                byte[] piccToken;
                 try
                 {
                     int tag86 = step4ResponseInputStream.ReadTag();
                     if (tag86 != 0x86)
                     {
-                        // NOTE: Java logs a warning here; omitted per precedent.
+                        _log.Warn(LogCategory, $"Was expecting tag 0x86, found: {tag86:x}");
                     }
 
                     step4ResponseInputStream.ReadLength();
-                    byte[] piccToken = step4ResponseInputStream.ReadValue();
+                    piccToken = step4ResponseInputStream.ReadValue();
+                }
+                catch (Exception e) when (e is IOException or InvalidOperationException or ArgumentException)
+                {
+                    // Without the PICC's token, the PICC is not authenticated. A step 4 response that could not be
+                    // parsed used to be skipped, and PACE succeeded without checking the token: JMRTD bug #91, fixed
+                    // in JMRTD 0.8.10 (42744048).
+                    throw new CardServiceProtocolException("PICC side exception in authentication token step, malformed PICC token", 4, e);
+                }
 
-                    byte[] expectedPiccToken = GenerateAuthenticationToken(oid, macKey, pcdKeyPair.Public);
-                    if (!expectedPiccToken.AsSpan().SequenceEqual(piccToken))
-                    {
-                        throw new CryptographicException(
-                            $"PICC authentication token mismatch, expectedPICCToken = {Hex.BytesToHexString(expectedPiccToken)}, piccToken = {Hex.BytesToHexString(piccToken)}");
-                    }
+                byte[] expectedPiccToken = GenerateAuthenticationToken(oid, macKey, pcdKeyPair.Public);
+                if (!expectedPiccToken.AsSpan().SequenceEqual(piccToken))
+                {
+                    throw new CryptographicException(
+                        $"PICC authentication token mismatch, expectedPICCToken = {Hex.BytesToHexString(expectedPiccToken)}, piccToken = {Hex.BytesToHexString(piccToken)}");
+                }
 
-                    if (mappingType == PACEInfo.MappingType.CAM)
+                if (mappingType == PACEInfo.MappingType.CAM)
+                {
+                    try
                     {
                         int tag8A = step4ResponseInputStream.ReadTag();
                         if (tag8A != 0x8A)
                         {
-                            // NOTE: Java logs a warning here; omitted per precedent.
+                            _log.Warn(LogCategory, $"Was expecting tag 0x8A, found: {tag8A:x}");
                         }
 
                         step4ResponseInputStream.ReadLength();
                         encryptedChipAuthenticationData = step4ResponseInputStream.ReadValue();
                     }
-                }
-                catch (IOException)
-                {
-                    // NOTE: Java logs a warning ("Could not parse step 4 response") here; omitted per
-                    // precedent. This intentionally only swallows TLV-parse errors (EndOfStreamException
-                    // derives from IOException in .NET) -- the CryptographicException thrown above for a
-                    // token mismatch is not an IOException and propagates to the outer catch below, matching
-                    // Java's own catch(IOException)-does-not-catch-GeneralSecurityException behavior.
+                    catch (Exception e) when (e is IOException or InvalidOperationException or ArgumentException)
+                    {
+                        _log.Warn(LogCategory, $"Could not parse encrypted Chip Authentication data in step 4 response: {e.Message}");
+                    }
                 }
             }
 
             return encryptedChipAuthenticationData;
+        }
+        catch (CardServiceProtocolException)
+        {
+            throw;
         }
         catch (Exception e)
         {
