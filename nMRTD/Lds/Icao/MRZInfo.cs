@@ -280,12 +280,35 @@ public class MRZInfo : AbstractLDSInfo
     }
 
     /// <summary>
-    /// Creates a new MRZ based on the text input. The text input may contain newlines, which will be ignored.
+    /// Creates a new MRZ based on the text input. Whitespace in the text input (such as line breaks between the lines
+    /// of the MRZ) is ignored. Apart from that, the text must consist of exactly 90 (TD1), 72 (TD2, MRV-B), or 88
+    /// (TD3, MRV-A) MRZ characters (<c>A-Z</c>, <c>0-9</c>, and <c>&lt;</c>), as in JMRTD 0.8.10 (5ae69fae).
     /// </summary>
+    /// <exception cref="ArgumentException">if the text is not a well-formed MRZ</exception>
     public MRZInfo(string str)
     {
         ArgumentNullException.ThrowIfNull(str);
-        str = str.Trim().Replace("\n", "");
+        var stripped = new StringBuilder(str.Length);
+        foreach (char c in str)
+        {
+            if (!char.IsWhiteSpace(c))
+            {
+                stripped.Append(c);
+            }
+        }
+        str = stripped.ToString();
+        int length = str.Length;
+        if (length != 90 && length != 72 && length != 88)
+        {
+            throw new ArgumentException($"Was expecting 90, 72, or 88 MRZ characters, got {length}", nameof(str));
+        }
+        for (int i = 0; i < length; i++)
+        {
+            if (!MRZ_CHARS.Contains(str[i]))
+            {
+                throw new ArgumentException($"Illegal MRZ character at position {i}: 0x{(int)str[i]:x}", nameof(str));
+            }
+        }
         try
         {
             ReadObject(new MemoryStream(Encoding.UTF8.GetBytes(str), writable: false), str.Length);
@@ -518,24 +541,7 @@ public class MRZInfo : AbstractLDSInfo
         string rawOptionalData1 = ReadString(inputStream, 15);
         optionalData1 = TrimTrailingFillerChars(rawOptionalData1);
 
-        // Optional data starting with a filler is malformed as an extended document number (it would be empty, without
-        // a check digit): then document number, check digit and optional data stay as read (JMRTD 0.8.10, cf340d7d).
-        if (documentNumberCheckDigit == '<' && optionalData1.Length > 0 && optionalData1[0] != '<')
-        {
-            /* Interpret personal number as part of document number, see note j. */
-            int extendedDocumentNumberEnd = optionalData1.IndexOf('<');
-            if (extendedDocumentNumberEnd < 0)
-            {
-                extendedDocumentNumberEnd = optionalData1.Length;
-            }
-
-            string documentNumberRemainder = optionalData1.Substring(0, extendedDocumentNumberEnd - 1);
-            documentNumber += documentNumberRemainder;
-            documentNumberCheckDigit = optionalData1[extendedDocumentNumberEnd - 1];
-
-            optionalData1 = optionalData1.Substring(Math.Min(extendedDocumentNumberEnd + 1, optionalData1.Length));
-        }
-        documentNumber = TrimTrailingFillerChars(documentNumber);
+        ReadDocumentNumberExtension();
 
         /* line 2, pos 1 to 6, Date of birth */
         dateOfBirth = ReadDate(inputStream);
@@ -565,6 +571,46 @@ public class MRZInfo : AbstractLDSInfo
         ReadNameIdentifiers(ReadString(inputStream, 30));
     }
 
+    /// <summary>
+    /// Interprets the start of optional data 1 as the remainder of the document number (TD1, TD2), if the document
+    /// number check digit is a filler, see Doc 9303 part 5, note j. The extension consists of the remainder of the
+    /// document number (at least one character) followed by the check digit, up to the first filler. Any optional
+    /// data after that filler remains in optional data 1. If there is no such extension (for instance, if the
+    /// optional data starts with a filler), the MRZ is malformed, and document number, check digit and optional data
+    /// are left as read. The document number (as read, untrimmed) and optional data 1 (trimmed) should have been set.
+    /// Trailing fillers of the resulting document number are removed. As in JMRTD 0.8.10 (5ae69fae).
+    /// </summary>
+    private void ReadDocumentNumberExtension()
+    {
+        int extendedDocumentNumberEnd = optionalData1!.IndexOf('<');
+        if (extendedDocumentNumberEnd < 0)
+        {
+            extendedDocumentNumberEnd = optionalData1.Length;
+        }
+        if (documentNumberCheckDigit == '<' && extendedDocumentNumberEnd >= 2)
+        {
+            documentNumber += optionalData1.Substring(0, extendedDocumentNumberEnd - 1);
+            documentNumberCheckDigit = optionalData1[extendedDocumentNumberEnd - 1];
+            optionalData1 = optionalData1.Substring(Math.Min(extendedDocumentNumberEnd + 1, optionalData1.Length));
+        }
+        documentNumber = TrimTrailingFillerChars(documentNumber);
+    }
+
+    /// <summary>
+    /// Returns the contents of the optional data field (TD1, TD2) for a document number of more than 9 characters,
+    /// see Doc 9303 part 5, note j: the remainder of the document number, its check digit, and (separated by a
+    /// filler) optional data 1, if any. Trailing fillers are not included. As in JMRTD 0.8.10 (5ae69fae).
+    /// </summary>
+    private string GetExtendedDocumentNumberOptionalData()
+    {
+        string extension = documentNumber.Substring(9) + documentNumberCheckDigit;
+        if (optionalData1 == null || EqualsModuloFillerChars(optionalData1, ""))
+        {
+            return extension;
+        }
+        return extension + "<" + optionalData1;
+    }
+
     private void ReadObjectTD2OrMRVB(Stream inputStream)
     {
         /* line 1, pos 3 to 5 */
@@ -573,8 +619,8 @@ public class MRZInfo : AbstractLDSInfo
         /* line 1, pos 6 to 36 */
         ReadNameIdentifiers(ReadString(inputStream, 31));
 
-        /* line 2 */
-        documentNumber = TrimTrailingFillerChars(ReadString(inputStream, 9));
+        /* line 2, document number is trimmed below, after a possible extension (keeping the 9 principal characters intact) */
+        documentNumber = ReadString(inputStream, 9);
         documentNumberCheckDigit = (char)ReadUnsignedByte(inputStream);
         nationality = ReadCountryCode(inputStream);
         dateOfBirth = ReadDate(inputStream);
@@ -589,14 +635,7 @@ public class MRZInfo : AbstractLDSInfo
         else if (documentType == DocumentType.Td2)
         {
             optionalData1 = TrimTrailingFillerChars(ReadString(inputStream, 7));
-
-            if (documentNumberCheckDigit == '<' && optionalData1.Length > 0)
-            {
-                /* Interpret optional data as part of document number, see note j. */
-                documentNumber += optionalData1.Substring(0, optionalData1.Length - 1);
-                documentNumberCheckDigit = optionalData1[optionalData1.Length - 1];
-                optionalData1 = "";
-            }
+            ReadDocumentNumberExtension();
         }
         documentNumber = TrimTrailingFillerChars(documentNumber);
 
@@ -695,7 +734,7 @@ public class MRZInfo : AbstractLDSInfo
              */
             WriteString(documentNumber.Substring(0, 9), outputStream, 9);
             outputStream.WriteByte((byte)'<'); /* NOTE: instead of check digit */
-            WriteString(documentNumber.Substring(9) + documentNumberCheckDigit + "<" + (optionalData1 ?? ""), outputStream, 15);
+            WriteString(GetExtendedDocumentNumberOptionalData(), outputStream, 15);
         }
         else
         {
@@ -727,7 +766,7 @@ public class MRZInfo : AbstractLDSInfo
 
         /* bottom line */
 
-        bool isExtendedDocumentNumber = documentType == DocumentType.Td2 && documentNumber.Length > 9 && EqualsModuloFillerChars(optionalData1, "");
+        bool isExtendedDocumentNumber = documentType == DocumentType.Td2 && documentNumber.Length > 9;
         if (isExtendedDocumentNumber)
         {
             WriteString(documentNumber.Substring(0, 9), outputStream, 9);
@@ -751,7 +790,7 @@ public class MRZInfo : AbstractLDSInfo
         }
         else if (isExtendedDocumentNumber)
         {
-            WriteString(documentNumber.Substring(9) + documentNumberCheckDigit + "<", outputStream, 7);
+            WriteString(GetExtendedDocumentNumberOptionalData(), outputStream, 7);
             outputStream.WriteByte((byte)compositeCheckDigit);
         }
         else
@@ -1024,15 +1063,8 @@ public class MRZInfo : AbstractLDSInfo
                     composite.Append(documentNumber.AsSpan(0, 9));
                     composite.Append('<'); /* Filler instead of check digit. */
 
-                    /* Remainder of document number. */
-                    string documentNumberRemainder = documentNumber.Substring(9);
-                    composite.Append(documentNumberRemainder);
-                    composite.Append(documentNumberCheckDigit);
-                    composite.Append('<');
-
-                    /* Remainder of optional data 1 (removing any prefix). */
-                    string optionalData1Remainder = MrzFormat(optionalData1, 15 - 2 - documentNumberRemainder.Length);
-                    composite.Append(optionalData1Remainder);
+                    /* Remainder of document number, its check digit, and optional data 1 (as printed). */
+                    composite.Append(MrzFormat(GetExtendedDocumentNumberOptionalData(), 15));
                 }
                 composite.Append(dateOfBirth);
                 composite.Append(dateOfBirthCheckDigit);
@@ -1066,8 +1098,8 @@ public class MRZInfo : AbstractLDSInfo
                 }
                 else
                 {
-                    /* Remainder of document number, its check digit, and a filler (in the optional data field). */
-                    composite.Append(MrzFormat(documentNumber.Substring(9) + documentNumberCheckDigit + "<", 7));
+                    /* Remainder of document number, its check digit, and optional data 1 (as printed). */
+                    composite.Append(MrzFormat(GetExtendedDocumentNumberOptionalData(), 7));
                 }
                 return composite.ToString();
             case DocumentType.Mrvb:

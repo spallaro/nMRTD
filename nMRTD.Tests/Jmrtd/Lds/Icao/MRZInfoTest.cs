@@ -1755,4 +1755,115 @@ public class MRZInfoTest
         Assert.Equal("<ABC", mrzInfo.GetOptionalData1());
         Assert.Equal(mrz, GetMRZString(mrzInfo.ToString()));
     }
+
+    // ---- JMRTD 0.8.10 (5ae69fae): MRZ text must be 90, 72 or 88 MRZ characters; extended document numbers ----
+
+    /// <summary>Whitespace (not only line breaks) is ignored by the string constructor.</summary>
+    [Fact]
+    public void testStringConstructorIgnoresWhitespace()
+    {
+        string mrz = MRZ_ANNA_ERIKSSON_2LINE_ID3;
+        string withWhitespace = "  " + mrz.Substring(0, 44) + "\r\n\t" + mrz.Substring(44, 16) + " " + mrz.Substring(60) + "\n";
+        Assert.Equal(new MRZInfo(mrz), new MRZInfo(withWhitespace));
+        Assert.Equal(mrz, GetMRZString(new MRZInfo(withWhitespace)));
+    }
+
+    /// <summary>Text that is not 90, 72, or 88 MRZ characters is rejected. Such text used to be accepted but could
+    /// not be written back (or not in a way that could be read again).</summary>
+    [Fact]
+    public void testStringConstructorRejectsMalformedText()
+    {
+        string mrz = MRZ_ANNA_ERIKSSON_2LINE_ID3;
+        Assert.Throws<ArgumentException>(() => new MRZInfo(mrz.Substring(1)));
+        Assert.Throws<ArgumentException>(() => new MRZInfo(mrz + "<"));
+        Assert.Throws<ArgumentException>(() => new MRZInfo(""));
+        Assert.Throws<ArgumentException>(() => new MRZInfo(mrz.Replace("ERIKSSON", "Eriksson")));
+        Assert.Throws<ArgumentException>(() => new MRZInfo(mrz.Replace("P<UTO", "P;UTO")));
+        Assert.Throws<ArgumentException>(() => new MRZInfo(mrz.Replace("ANNA", "AN\u0000A")));
+        Assert.Throws<ArgumentException>(() => new MRZInfo(mrz.Replace("ANNA", "AN\uFFFDA")));
+    }
+
+    /// <summary>TD1, the remainder of the document number and its check digit fill the optional data field, leaving
+    /// no room for a filler. Used to throw "Argument too wide" on writing.</summary>
+    [Fact]
+    public void testTD1ExtendedDocumentNumberFillingOptionalData()
+    {
+        string documentNumber = "D2314589012345678901234";
+        MRZInfo mrzInfo = MRZInfo.CreateTD1MRZInfo(
+            "I<", "UTO", documentNumber, "",
+            "740812", Gender.Female, "120415", "UTO", "",
+            "ERIKSSON", "ANNA MARIA");
+        string mrzString = GetMRZString(mrzInfo);
+        Assert.Equal("I<UTOD23145890<12345678901234", mrzString.Substring(0, 29));
+        AssertRoundTrip(mrzString);
+
+        var parsed = new MRZInfo(mrzString);
+        Assert.Equal(documentNumber, parsed.GetDocumentNumber());
+        Assert.Equal("", parsed.GetOptionalData1());
+        Assert.Equal(mrzInfo, parsed);
+    }
+
+    /// <summary>TD1, a single character in the optional data after a filler check digit is not an extended document
+    /// number (there would be no remainder of the document number, only a check digit).</summary>
+    [Fact]
+    public void testTD1SingleCharacterAfterFillerCheckDigit()
+    {
+        string mrz = "I<UTOD23145890<5<<<<<<<<<<<<<<"
+            + "7408122F1204159UTO<<<<<<<<<<<6"
+            + "ERIKSSON<<ANNA<MARIA<<<<<<<<<<";
+        var mrzInfo = new MRZInfo(mrz);
+        Assert.Equal("D23145890", mrzInfo.GetDocumentNumber());
+        Assert.Equal("5", mrzInfo.GetOptionalData1());
+        AssertRoundTrip(mrz);
+    }
+
+    /// <summary>TD2, the remainder of the document number and its check digit fill the optional data field, leaving
+    /// no room for a filler. Used to throw "Argument too wide" on writing.</summary>
+    [Fact]
+    public void testTD2ExtendedDocumentNumberFillingOptionalData()
+    {
+        string documentNumber = "D23145890123456";
+        MRZInfo mrzInfo = MRZInfo.CreateTD2MRZInfo("I<", "UTO", "ERIKSSON", "ANNA MARIA", documentNumber, "UTO", "740812", Gender.Female, "120415", null);
+        string mrzString = GetMRZString(mrzInfo);
+        Assert.Equal("D23145890<UTO7408122F12041591234562", mrzString.Substring(36, 35));
+        AssertRoundTrip(mrzString);
+
+        var parsed = new MRZInfo(mrzString);
+        Assert.Equal(documentNumber, parsed.GetDocumentNumber());
+        Assert.Equal("", parsed.GetOptionalData1());
+        Assert.Equal(mrzInfo, parsed);
+    }
+
+    /// <summary>TD2, as TD1, the extension of the document number in the optional data ends at the first filler.
+    /// Optional data after that filler is optional data 1.</summary>
+    [Fact]
+    public void testTD2ExtendedDocumentNumberAndOptionalData1()
+    {
+        string mrz = "I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<"
+            + "D23145890<UTO7408122F12041591234<AB8";
+        var mrzInfo = new MRZInfo(mrz);
+        Assert.Equal("D23145890123", mrzInfo.GetDocumentNumber());
+        Assert.Equal("AB", mrzInfo.GetOptionalData1());
+        AssertRoundTrip(mrz);
+    }
+
+    /// <summary>TD2, the 9 principal characters of an extended document number end with fillers (malformed). The
+    /// fillers used to be removed before appending the remainder, which changes the text when written.</summary>
+    [Fact]
+    public void testTD2ExtendedDocumentNumberWithFillersInPrincipalPart()
+    {
+        string mrz = "I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<"
+            + "6F080<<<<<UTO7408122F1204159TO6<8908";
+        var mrzInfo = new MRZInfo(mrz);
+        Assert.Equal("6F080<<<<TO", mrzInfo.GetDocumentNumber());
+        Assert.Equal("890", mrzInfo.GetOptionalData1());
+        AssertRoundTrip(mrz);
+    }
+
+    private static void AssertRoundTrip(string mrz)
+    {
+        string once = GetMRZString(new MRZInfo(mrz));
+        Assert.Equal(mrz, once);
+        Assert.Equal(once, GetMRZString(new MRZInfo(once)));
+    }
 }

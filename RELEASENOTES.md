@@ -27,6 +27,13 @@
 - **A malformed card verifiable certificate throws an `IOException`** (`CardVerifiableCertificate.Parse`,
   `CVCertificateFactorySpi`), not an `ArgumentException` or `InvalidOperationException`; a malformed
   or truncated PACE response from the chip is a `CardServiceException`. From JMRTD 0.8.10.
+- **`new MRZInfo(string)` checks the text.** Whitespace anywhere (not only line breaks) is ignored;
+  the rest must be exactly 90 (TD1), 72 (TD2, MRV-B) or 88 (TD3, MRV-A) MRZ characters (`A-Z`, `0-9`,
+  `<`), otherwise an `ArgumentException` is thrown. Such text used to be accepted but could not be
+  written back. **Extended document numbers (TD1, TD2) are read and written consistently:** a
+  remainder that fills the optional data field no longer throws "Argument too wide", optional data
+  after the extension is kept, a single character after a filler check digit is optional data, and
+  the 9 principal characters keep their fillers. From JMRTD 0.8.10.
 - **A protected 6700 under secure messaging put the terminal out of step with the chip.** When a chip
   processed a long READ BINARY under secure messaging and answered with a protected 6700 (both send
   sequence counters move on, ICAO Doc 9303-11, 9.8.3), the response was not unwrapped and the file
