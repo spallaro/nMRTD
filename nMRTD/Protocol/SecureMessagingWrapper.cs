@@ -59,6 +59,9 @@ public abstract class SecureMessagingWrapper : IApduWrapper
 
     private long _ssc;
 
+    /// <summary>Whether the last operation was <see cref="Wrap"/>, so that <see cref="UndoWrap"/> may take it back.</summary>
+    private bool _isCommandWrapped;
+
     /// <summary>The session key for encryption.</summary>
     public KeyParameter EncryptionKey { get; }
 
@@ -125,6 +128,7 @@ public abstract class SecureMessagingWrapper : IApduWrapper
     public CommandApdu Wrap(CommandApdu commandApdu)
     {
         _ssc++;
+        _isCommandWrapped = true;
         try
         {
             return WrapCommandAPDU(commandApdu);
@@ -135,12 +139,33 @@ public abstract class SecureMessagingWrapper : IApduWrapper
         }
     }
 
+    /// <summary>
+    /// Takes back the last wrapped command, which the ICC did not receive or did not count: a plain status word
+    /// (such as <c>6700</c> from the reader) came back instead of a protected response, and the response was not
+    /// unwrapped. Decreases the send sequence counter by 1 (Doc 9303-11, 9.8.2). The wrapper keeps no other
+    /// state between APDUs (the IV and MAC are computed from the send sequence counter for each APDU), so this
+    /// restores the state from before <see cref="Wrap"/>. As in JMRTD 0.8.11 (commit ab463f56).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">if the last operation was not <see cref="Wrap"/> (no command
+    /// wrapped yet, already unwrapped, or already taken back)</exception>
+    internal void UndoWrap()
+    {
+        if (!_isCommandWrapped)
+        {
+            throw new InvalidOperationException("No wrapped command to take back");
+        }
+
+        _ssc--;
+        _isCommandWrapped = false;
+    }
+
     /// <summary>Unwraps the given response APDU.</summary>
     /// <param name="responseApdu">the response APDU to unwrap</param>
     /// <returns>the unwrapped response APDU</returns>
     public ResponseApdu Unwrap(ResponseApdu responseApdu)
     {
         _ssc++;
+        _isCommandWrapped = false;
         try
         {
             byte[] data = responseApdu.Data;

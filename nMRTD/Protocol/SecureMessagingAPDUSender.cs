@@ -146,8 +146,16 @@ public class SecureMessagingAPDUSender
         ResponseApdu? plainTextResponseApdu = null;
         try
         {
-            if ((sw & Iso7816.SwWrongLength) == Iso7816.SwWrongLength)
+            // A plain 67xx (status word only, no secure messaging data objects) is returned as is, so callers can
+            // retry with a different length. The wrapped command is taken back: the chip did not count it (for
+            // instance, the reader answered 6700 itself), or it counted it and aborted the session (Doc 9303-11,
+            // 9.8.3), and then the send sequence counter no longer matters. A protected 67xx is unwrapped like any
+            // other protected response, so that its MAC is checked and the send sequence counter stays in step with
+            // the chip's. Upstream JMRTD returned every status word matching 67xx (by a mask that also matched
+            // 6Fxx) without unwrapping it, protected or not; fixed in JMRTD 0.8.11 (bug #92, commit ab463f56).
+            if ((sw & 0xFF00) == Iso7816.SwWrongLength && responseApdu.GetBytes().Length <= 2)
             {
+                (wrapper as SecureMessagingWrapper)?.UndoWrap();
                 return responseApdu;
             }
 

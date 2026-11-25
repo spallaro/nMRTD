@@ -63,6 +63,11 @@ internal sealed class SimulatedChip : CardService
     /// <summary>When false, extended length command APDUs are rejected with 6700 before any processing.</summary>
     public bool SupportsExtendedLength { get; init; } = true;
 
+    /// <summary>With <see cref="SupportsExtendedLength"/> false: a protected extended length command is processed
+    /// under secure messaging and answered with a protected 6700 (both send sequence counters move on), instead of
+    /// a plain 6700 before any processing (Doc 9303-11, 9.8.3).</summary>
+    public bool ProtectedWrongLength { get; init; }
+
     // ---- Fault injection ----
 
     /// <summary>Flips a bit in the MAC of the next protected response.</summary>
@@ -140,6 +145,11 @@ internal sealed class SimulatedChip : CardService
         Commands.Add(apdu);
         if (!SupportsExtendedLength && (apdu.Ne > 256 || apdu.Nc > 255))
         {
+            if (ProtectedWrongLength && (apdu.Cla & 0x0C) == 0x0C && _sm != null)
+            {
+                _sm.Unwrap(apdu, false);
+                return new ResponseApdu(_sm.Wrap([], 0x6700, false, false));
+            }
             return new ResponseApdu([0x67, 0x00]);
         }
 

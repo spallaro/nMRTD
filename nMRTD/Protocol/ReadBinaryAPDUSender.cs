@@ -272,8 +272,9 @@ public class ReadBinaryAPDUSender : IApduLevelReadBinaryCapable
         int sw = responseApdu.Sw;
         string commandResponseMessage = $"CAPDU = {Hex.BytesToHexString(commandApdu.GetBytes())}, RAPDU = {Hex.BytesToHexString(responseApdu.GetBytes())}";
 
-        // If wrong length (6700) and no data. We abort.
-        if ((sw & Iso7816.SwWrongLength) == Iso7816.SwWrongLength && data.Length == 0)
+        // If wrong length (67xx) and no data. We abort. Upstream JMRTD matched with the mask 6700, which also matched
+        // 6Fxx; JMRTD 0.8.11 compares the first byte.
+        if ((sw & 0xFF00) == Iso7816.SwWrongLength && data.Length == 0)
         {
             throw new CardServiceException($"Wrong length, {commandResponseMessage}", sw);
         }

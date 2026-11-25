@@ -7,9 +7,10 @@ namespace nMRTD.Tests.EndToEnd;
 /// <summary>READ BINARY block sizes: extended length APDUs, and the fallback when the chip refuses them.</summary>
 public class TransportEndToEndTests
 {
-    private static (SimulatedChip, PassportService) Prepare(bool supportsExtendedLength, bool isSfiEnabled, bool usePace)
+    private static (SimulatedChip, PassportService) Prepare(bool supportsExtendedLength, bool isSfiEnabled, bool usePace,
+        bool protectedWrongLength = false)
     {
-        var document = new SimulatedDocument { SupportsExtendedLength = supportsExtendedLength };
+        var document = new SimulatedDocument { SupportsExtendedLength = supportsExtendedLength, ProtectedWrongLength = protectedWrongLength };
         document.Pace.Add(new SimulatedChip.PaceSupport(SecurityInfo.ID_PACE_ECDH_GM_AES_CBC_CMAC_128, 13));
         SimulatedChip chip = document.Build();
         PassportService service = Open(chip, isSfiEnabled);
@@ -56,6 +57,27 @@ public class TransportEndToEndTests
         Assert.Equal(chip.ApplicationFiles[PassportService.EF_DG2], Read(service, PassportService.EF_DG2, 4096));
 
         Assert.Contains(chip.Commands, c => c.Ne > 256); // refused with 6700
+        Assert.All(chip.Reads, r => Assert.True(r.Length <= PassportService.DefaultMaxBlocksize));
+    }
+
+    /// <summary>
+    /// A chip that answers the long READ BINARY with a protected 6700: it processed the command under secure
+    /// messaging, so both send sequence counters moved on (Doc 9303-11, 9.8.3). The response must be unwrapped
+    /// and the wrapper kept; rolling it back, as for a plain 6700, puts the terminal out of step with the chip.
+    /// </summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void ProtectedWrongLengthKeepsTheSecureMessagingInStep(bool isSfiEnabled, bool usePace)
+    {
+        (SimulatedChip chip, PassportService service) = Prepare(false, isSfiEnabled, usePace, protectedWrongLength: true);
+
+        Assert.Equal(chip.ApplicationFiles[PassportService.EF_DG1], Read(service, PassportService.EF_DG1, 4096));
+        Assert.Equal(chip.ApplicationFiles[PassportService.EF_DG2], Read(service, PassportService.EF_DG2, 4096));
+
+        Assert.Contains(chip.Commands, c => c.Ne > 256); // answered with a protected 6700
         Assert.All(chip.Reads, r => Assert.True(r.Length <= PassportService.DefaultMaxBlocksize));
     }
 }

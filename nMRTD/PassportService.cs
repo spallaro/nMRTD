@@ -479,17 +479,9 @@ public class PassportService : AbstractMRTDCardService
     /// <returns>the wrapper</returns>
     public override SecureMessagingWrapper? GetWrapper()
     {
-        var ldsSecureMessagingWrapper = _appletFileSystem.GetWrapper() as SecureMessagingWrapper;
-
-        // NOTE: preserved Java quirk -- if this is called before any access control protocol has run but
-        // ldsSecureMessagingWrapper is somehow already non-null, _wrapper (null-forgiven below) would throw
-        // a NullReferenceException here, matching Java's own NullPointerException in the same situation.
-        // Not "fixed" per this port's quirk-preservation policy.
-        if (ldsSecureMessagingWrapper != null && ldsSecureMessagingWrapper.SendSequenceCounter > _wrapper!.SendSequenceCounter)
-        {
-            _wrapper = ldsSecureMessagingWrapper;
-        }
-
+        // The applet file system shares this wrapper (set in DoBAC, DoPACE and DoEACCA), it never replaces it. As in
+        // JMRTD 0.8.11 (commit ab463f56); before, the file system's wrapper was taken when its send sequence counter
+        // was higher, which right after a rollback was a stale copy.
         return _wrapper;
     }
 

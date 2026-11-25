@@ -42,6 +42,9 @@ internal sealed class SimulatedDocument
     public bool BacEnabled { get; set; } = true;
     public bool SupportsExtendedLength { get; set; } = true;
 
+    /// <summary>See <see cref="SimulatedChip.ProtectedWrongLength"/>.</summary>
+    public bool ProtectedWrongLength { get; set; }
+
     /// <summary>The Document Signer that signs EF.SOD: by default the self-signed <see cref="SigningFixtures"/>.</summary>
     public AsymmetricKeyParameter DocumentSignerKey { get; set; } = SigningFixtures.KeyPair.Private;
 
@@ -163,6 +166,7 @@ internal sealed class SimulatedDocument
             CvcaReference = CvcaKey == null ? null : CvcaReference,
             CvcaPublicKey = CvcaKey?.Public as ECPublicKeyParameters,
             SupportsExtendedLength = SupportsExtendedLength,
+            ProtectedWrongLength = ProtectedWrongLength,
         };
         chip.PaceProtocols.AddRange(Pace);
         chip.ChipAuthenticationKeys.AddRange(ChipAuthenticationKeys);

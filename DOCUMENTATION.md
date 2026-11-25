@@ -95,7 +95,10 @@ Two cooperating classes implement file access above the raw transport:
   SELECT command — `ReadBinary` sends it lazily only if needed. On a `SwWrongLength`
   (0x6700) response while using an extended block size, `DefaultFileSystem` transparently
   shrinks the read block size to `PassportService.DefaultMaxBlocksize` (223 bytes) and
-  retries, accommodating cards that reject large READ BINARY lengths.
+  retries, accommodating cards that reject large READ BINARY lengths. Under secure messaging the
+  wrapper stays in step with the chip: `SecureMessagingAPDUSender` takes back a command answered
+  with a plain 67xx (`SecureMessagingWrapper.UndoWrap`), and unwraps a protected 67xx, for which
+  the chip has already moved its send sequence counter on (Doc 9303-11, 9.8.3).
 
 `PassportService` keeps **two** `DefaultFileSystem` instances: `_rootFileSystem` (used
 before the MRTD applet is selected, e.g. to read `EF.CardAccess`; SFI is always disabled
@@ -219,9 +222,8 @@ on success):
   `[Obsolete] GetInputStream(short fid)` forwards to this using the service's configured
   `maxBlockSize`.
 - `int GetMaxReadBinaryLength()` / `int GetMaxTransceiveLength()`.
-- `SecureMessagingWrapper? GetWrapper()` — the currently active wrapper, if any (with a
-  documented Java-parity quirk: it reconciles against the applet file system's own wrapper
-  by SSC value, in case the two have drifted).
+- `SecureMessagingWrapper? GetWrapper()` — the secure messaging wrapper of the current session,
+  if any; the applet file system shares the same instance.
 
 **Diagnostics:**
 

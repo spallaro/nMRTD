@@ -80,6 +80,31 @@ public class DefaultFileSystemTest
         Assert.Equal(file[8..12], fileSystem.ReadBinary(8, 4));
     }
 
+    /// <summary>On a 6700 the file system only switches to short reads; it never replaces the wrapper, also right
+    /// after a new session (JMRTD 0.8.11, DefaultFileSystemTest.keepsWrapperAfterWrongLengthUnderSecureMessaging;
+    /// SecureMessagingAPDUSender keeps the wrapper in step with the chip).</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void keepsWrapperAfterWrongLengthUnderSecureMessaging(bool isSfiEnabled)
+    {
+        byte[] file = CreateTLVFile(0x61, 300);
+        var service = new RecordingReadBinaryService();
+        service.AddFile(PassportService.EF_DG1, PassportService.SFI_DG1, file);
+        var fileSystem = new DefaultFileSystem(service, isSfiEnabled);
+        fileSystem.SetWrapper(nMRTD.Tests.Helpers.SecureMessagingFixtures.NewWrapper(false));
+        fileSystem.SelectFile(PassportService.EF_DG1);
+        var sessionWrapper = nMRTD.Tests.Helpers.SecureMessagingFixtures.NewWrapper(true); // a new session (CA)
+        fileSystem.SetWrapper(sessionWrapper);
+
+        service.FailNextReadWithWrongLength = true;
+        Assert.Equal(Array.Empty<byte>(), fileSystem.ReadBinary(8, 292));
+        Assert.Same(sessionWrapper, fileSystem.GetWrapper());
+
+        Assert.Equal(file[8..(8 + PassportService.DefaultMaxBlocksize)], fileSystem.ReadBinary(8, 292));
+        Assert.Same(sessionWrapper, fileSystem.GetWrapper());
+    }
+
     [Fact]
     public void usesTLVEncodedReadForOffsetsAboveSignedShortRange()
     {

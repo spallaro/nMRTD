@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A protected 6700 under secure messaging put the terminal out of step with the chip.** When a chip
+  processed a long READ BINARY under secure messaging and answered with a protected 6700 (both send
+  sequence counters move on, ICAO Doc 9303-11, 9.8.3), the response was not unwrapped and the file
+  system then restored a copy of the wrapper from before the command: the next command had the wrong
+  send sequence counter and the chip ended the session. Now, as in JMRTD 0.8.11, the secure messaging
+  sender takes back only a command answered with a plain 67xx (`SecureMessagingWrapper.UndoWrap`), a
+  protected 67xx is unwrapped and its MAC checked, and the file system keeps its wrapper and only
+  switches to short reads. `PassportService.GetWrapper` returns the session's wrapper. This replaces the
+  fix of 0.8.1-alpha for JMRTD bug #92, which upstream has now fixed the same way. A plain 6Fxx is no
+  longer taken for a wrong length.
+
 ### Command-line tool
 
 The options and the output of the tool are reorganized, to make it a tool to verify documents as well

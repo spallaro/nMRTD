@@ -1,3 +1,4 @@
+using nMRTD.Tests.Helpers;
 using nMRTD.SmartCards;
 using static nMRTD.Tests.Helpers.SecureMessagingFixtures;
 using static nMRTD.Tests.Helpers.TestData;
@@ -137,5 +138,80 @@ public class SecureMessagingTests
         var w = NewWrapper(false);
         w.Wrap(new CommandApdu(0x00, 0xB0, 0x00, 0x00, 256));
         Assert.Equal(Hex("0102030405060708090A"), w.Unwrap(Protected(false, 2, Hex("0102030405060708090A"))).Data);
+    }
+
+    /// <summary>UndoWrap restores the state from before Wrap: wrapping the same command again gives the same bytes
+    /// (JMRTD 0.8.11, DESedeSecureMessagingWrapperTest.testUndoWrapRestoresState).</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UndoWrapRestoresTheState(bool aes)
+    {
+        var command = new CommandApdu(0x00, 0xB0, 0x00, 0x00, 256);
+        var wrapper = NewWrapper(aes);
+        byte[] first = wrapper.Wrap(command).GetBytes();
+
+        wrapper.UndoWrap();
+
+        Assert.Equal(0L, wrapper.SendSequenceCounter);
+        Assert.Equal(first, wrapper.Wrap(command).GetBytes());
+        Assert.Equal(1L, wrapper.SendSequenceCounter);
+    }
+
+    /// <summary>UndoWrap only right after Wrap: not on a fresh wrapper, not twice, not after Unwrap
+    /// (JMRTD 0.8.11, DESedeSecureMessagingWrapperTest.testUndoWrapOnlyRightAfterWrap).</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UndoWrapOnlyRightAfterWrap(bool aes)
+    {
+        var command = new CommandApdu(0x00, 0xB0, 0x00, 0x00, 256);
+
+        var fresh = NewWrapper(aes);
+        Assert.Throws<InvalidOperationException>(fresh.UndoWrap);
+        Assert.Equal(0L, fresh.SendSequenceCounter);
+
+        var twice = NewWrapper(aes);
+        twice.Wrap(command);
+        twice.UndoWrap();
+        Assert.Throws<InvalidOperationException>(twice.UndoWrap);
+        Assert.Equal(0L, twice.SendSequenceCounter);
+
+        var unwrapped = NewWrapper(aes);
+        unwrapped.Wrap(command);
+        unwrapped.Unwrap(Protected(aes, 2, [1]));
+        Assert.Throws<InvalidOperationException>(unwrapped.UndoWrap);
+        Assert.Equal(2L, unwrapped.SendSequenceCounter);
+    }
+
+    /// <summary>A plain 67xx under secure messaging is returned and the wrapped command taken back, so the next
+    /// command has the send sequence counter the chip expects (JMRTD 0.8.11,
+    /// SecureMessagingAPDUSenderTest.takesBackCommandAnsweredWithPlainWrongLength).</summary>
+    [Theory]
+    [InlineData(false, 0x6700)]
+    [InlineData(false, 0x6701)]
+    [InlineData(true, 0x6700)]
+    public void PlainWrongLengthTakesTheCommandBack(bool aes, int sw)
+    {
+        var wrapper = NewWrapper(aes);
+        var sender = new nMRTD.Protocol.SecureMessagingAPDUSender(
+            new ScriptedCardService(new ResponseApdu([(byte)(sw >> 8), (byte)sw])));
+
+        ResponseApdu response = sender.Transmit(wrapper, new CommandApdu(0x00, 0xB0, 0x00, 0x00, 65536));
+
+        Assert.Equal(sw, response.Sw & 0xFFFF);
+        Assert.Equal(0L, wrapper.SendSequenceCounter);
+    }
+
+    /// <summary>A plain status word that only matched the old 67xx mask (6Fxx) is an error, not a wrong length.</summary>
+    [Fact]
+    public void PlainUnknownErrorIsNotAWrongLength()
+    {
+        var wrapper = NewWrapper(false);
+        var sender = new nMRTD.Protocol.SecureMessagingAPDUSender(new ScriptedCardService(new ResponseApdu([0x6F, 0x00])));
+
+        var e = Assert.Throws<CardServiceException>(() => sender.Transmit(wrapper, new CommandApdu(0x00, 0xB0, 0x00, 0x00, 256)));
+
+        Assert.Equal(0x6F00, e.Sw & 0xFFFF);
     }
 }

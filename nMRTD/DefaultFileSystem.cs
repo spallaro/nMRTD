@@ -59,8 +59,6 @@ public class DefaultFileSystem : IFileSystemStructured
 
     private IApduWrapper? _wrapper;
 
-    private IApduWrapper? _oldWrapper;
-
     /// <summary>Creates a file system.</summary>
     /// <param name="service">the card service supporting low-level SELECT and/or READ BINARY commands</param>
     /// <param name="isSfiEnabled">whether the file system should use short file identifiers in READ BINARY commands</param>
@@ -88,7 +86,6 @@ public class DefaultFileSystem : IFileSystemStructured
     /// <param name="wrapper">an APDU wrapper</param>
     public void SetWrapper(IApduWrapper? wrapper)
     {
-        _oldWrapper = wrapper is null ? null : _wrapper;
         _wrapper = wrapper;
     }
 
@@ -221,9 +218,13 @@ public class DefaultFileSystem : IFileSystemStructured
             catch (CardServiceException cse)
             {
                 short sw = (short)cse.Sw;
-                if ((sw & Iso7816.SwWrongLength) == Iso7816.SwWrongLength && _maxReadBinaryLength > PassportService.DefaultMaxBlocksize)
+                if ((sw & 0xFF00) == Iso7816.SwWrongLength && _maxReadBinaryLength > PassportService.DefaultMaxBlocksize)
                 {
-                    _wrapper = _oldWrapper;
+                    // The wrapper stays in step with the chip: SecureMessagingAPDUSender takes back a command answered
+                    // with a plain 67xx, and a protected 67xx was unwrapped. Upstream JMRTD restored a copy of the
+                    // wrapper made before the command (none with short file identifiers, so the next command went
+                    // out unprotected; and a protected 6700 was rolled back too, out of step with the chip): JMRTD
+                    // bug #92 (https://sourceforge.net/p/jmrtd/bugs/92/), fixed in JMRTD 0.8.11 (commit ab463f56).
                     _maxReadBinaryLength = PassportService.DefaultMaxBlocksize;
                     return Array.Empty<byte>();
                 }
@@ -378,7 +379,6 @@ public class DefaultFileSystem : IFileSystemStructured
     {
         lock (_lock)
         {
-            SaveWrapperForFallback();
             return _service.SendReadBinary(_wrapper, NoSfi, offset, le, false, isTlvEncodedOffsetNeeded);
         }
     }
@@ -394,29 +394,8 @@ public class DefaultFileSystem : IFileSystemStructured
     {
         lock (_lock)
         {
-            SaveWrapperForFallback();
             return _service.SendReadBinary(_wrapper, sfi, offset, le, true, isTlvEncodedOffsetNeeded);
         }
-    }
-
-    /// <summary>
-    /// Keeps a copy of the current wrapper (with its send sequence counter) so that <see cref="ReadBinary"/>
-    /// can restore it when the card rejects a READ BINARY with a wrong length and the read is retried with a
-    /// shorter length.
-    /// </summary>
-    /// <remarks>
-    /// Upstream JMRTD bug fixed here: JMRTD saves this copy only in the file identifier variant of
-    /// <c>sendReadBinary</c> (DefaultFileSystem.java:403), not in the short file identifier one
-    /// (DefaultFileSystem.java:421). With short file identifiers the fallback (DefaultFileSystem.java:267)
-    /// then restored the wrapper from before authentication, which is <c>null</c> after the first BAC or
-    /// PACE, and the next READ BINARY was sent without secure messaging. Reported upstream as JMRTD bug #92
-    /// (https://sourceforge.net/p/jmrtd/bugs/92/).
-    /// </remarks>
-    private void SaveWrapperForFallback()
-    {
-        _oldWrapper = _wrapper is Protocol.SecureMessagingWrapper smWrapper
-            ? Protocol.SecureMessagingWrapper.GetInstance(smWrapper)
-            : _wrapper;
     }
 
     /// <summary>A file info for the ICAO MRTD file system.</summary>
