@@ -1738,4 +1738,21 @@ public class MRZInfoTest
             CultureInfo.CurrentCulture = defaultCulture;
         }
     }
+
+    /// <summary>Document number check digit indicates extension in optional data, but optional data starts with a
+    /// filler. Used to throw an ArgumentOutOfRangeException (JMRTD 0.8.10, cf340d7d).</summary>
+    [Fact]
+    public void testMRZWithExtendedDocumentNumberStartingWithFiller()
+    {
+        string mrz = GetMRZString("I<UTOD23145890<<ABC<<<<<<<<<<<" +
+            "7408122F1204159UTO<<<<<<<<<<<6" +
+            "ERIKSSON<<ANNA<MARIA<<<<<<<<<<");
+
+        Assert.Equal(90, mrz.Length);
+
+        var mrzInfo = new MRZInfo(mrz);
+        Assert.Equal("D23145890", mrzInfo.GetDocumentNumber());
+        Assert.Equal("<ABC", mrzInfo.GetOptionalData1());
+        Assert.Equal(mrz, GetMRZString(mrzInfo.ToString()));
+    }
 }

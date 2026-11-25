@@ -110,4 +110,28 @@ public class DG15FileTest
             Assert.Fail(ioe.Message);
         }
     }
+
+    /// <summary>A DG15 whose key cannot be decoded could be read, but not encoded again (JMRTD 0.8.10, cf340d7d).</summary>
+    [Fact]
+    public void testUndecodableKeyIsEncodedAsRead()
+    {
+        byte[] encoded = Convert.FromHexString("6F0430020500");
+        var dg15File = new DG15File(new MemoryStream(encoded));
+        Assert.Null(dg15File.GetPublicKey());
+        Assert.Equal(encoded, dg15File.GetEncoded());
+        Assert.Equal(dg15File, new DG15File(new MemoryStream(encoded)));
+        Assert.Equal(dg15File.GetHashCode(), new DG15File(new MemoryStream(encoded)).GetHashCode());
+        Assert.NotEqual(dg15File, new DG15File(new MemoryStream(Convert.FromHexString("6F0430020501"))));
+    }
+
+    /// <summary>An empty DG15 could not be read without trying to encode it first (JMRTD 0.8.10, cf340d7d).</summary>
+    [Fact]
+    public void testEmptyContent()
+    {
+        byte[] encoded = Convert.FromHexString("6F00");
+        var dg15File = new DG15File(new MemoryStream(encoded));
+        Assert.Null(dg15File.GetPublicKey());
+        Assert.Equal(0, dg15File.GetLength());
+        Assert.Equal(encoded, dg15File.GetEncoded());
+    }
 }

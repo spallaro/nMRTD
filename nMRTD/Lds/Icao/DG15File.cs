@@ -58,23 +58,11 @@ public class DG15File : DataGroup
 
     protected override void ReadContent(Stream inputStream)
     {
+        // Keep the bytes, so that this file can still be encoded if the key cannot be decoded (JMRTD 0.8.10, cf340d7d).
+        encodedPublicKey = Io.InputStreams.ReadFully(inputStream, GetLength());
         try
         {
-            byte[] value = new byte[GetLength()];
-            int totalRead = 0;
-            while (totalRead < value.Length)
-            {
-                int read = inputStream.Read(value, totalRead, value.Length - totalRead);
-                if (read == 0)
-                {
-                    throw new EndOfStreamException();
-                }
-
-                totalRead += read;
-            }
-
-            publicKey = GetPublicKey(value);
-            encodedPublicKey = value;
+            publicKey = GetPublicKey(encodedPublicKey);
         }
         catch (Exception)
         {
@@ -98,7 +86,9 @@ public class DG15File : DataGroup
         /* Java writes publicKey.getEncoded(), the key's X.509 encoding. Util.ToSubjectPublicKeyInfo is not
          * used here: it is meant for EAC and handles only EC (always with explicit parameters) and DH. */
         byte[] encoded = encodedPublicKey
-            ?? SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(publicKey!).GetEncoded(Asn1Encodable.Der);
+            ?? (publicKey == null
+                ? throw new IOException("Cannot encode public key " + Util.GetDetailedPublicKeyAlgorithm(publicKey))
+                : SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(publicKey).GetEncoded(Asn1Encodable.Der));
         outputStream.Write(encoded, 0, encoded.Length);
     }
 
@@ -119,10 +109,27 @@ public class DG15File : DataGroup
         }
 
         var other = (DG15File)obj;
-        return Equals(publicKey, other.publicKey);
+        if (publicKey == null || other.publicKey == null)
+        {
+            // At least one key could not be decoded: compare what was read (JMRTD 0.8.10, cf340d7d).
+            return publicKey == null && other.publicKey == null
+                && (encodedPublicKey ?? []).AsSpan().SequenceEqual(other.encodedPublicKey ?? []);
+        }
+
+        return publicKey.Equals(other.publicKey);
     }
 
-    public override int GetHashCode() => (5 * (publicKey?.GetHashCode() ?? 0)) + 61;
+    public override int GetHashCode()
+    {
+        if (publicKey != null)
+        {
+            return (5 * publicKey.GetHashCode()) + 61;
+        }
+
+        var hash = new HashCode();
+        hash.AddBytes(encodedPublicKey ?? []);
+        return (5 * hash.ToHashCode()) + 61;
+    }
 
     public override string ToString() => $"DG15File [{Util.GetDetailedPublicKeyAlgorithm(publicKey)}]";
 }

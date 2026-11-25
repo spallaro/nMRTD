@@ -19,7 +19,9 @@ namespace nMRTD.Lds;
 public abstract class AbstractTaggedLDSFile : AbstractLDSFile
 {
     private int tag;
-    private int length;
+    /// <summary>The length of the value, -1 while not yet known. A length of 0 read from the input is a valid
+    /// length (JMRTD 0.8.10, cf340d7d).</summary>
+    private int length = -1;
 
     /// <summary>Constructs a data group. This constructor is only visible to other classes in this
     /// namespace, mirroring the Java <c>protected</c> visibility.</summary>
@@ -115,7 +117,7 @@ public abstract class AbstractTaggedLDSFile : AbstractLDSFile
     /// <summary>The length of the value of the data group.</summary>
     public override int GetLength()
     {
-        if (length <= 0)
+        if (length < 0)
         {
             length = GetContent().Length;
         }

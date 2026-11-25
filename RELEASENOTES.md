@@ -19,6 +19,11 @@
   signed data is now parsed completely when read, so a malformed nested structure is found at once.
   `SignedDataUtil.GetContent` returns `null` when the content is not an octet string. From JMRTD
   0.8.10.
+- **A DG15 whose key cannot be decoded, or an empty DG15, can be encoded again.** The bytes read are
+  kept and written back; two such files are equal when their bytes are. A data group of length 0 read
+  from the input no longer recomputes its length by encoding itself. From JMRTD 0.8.10.
+- **A TD1 MRZ whose optional data starts with a filler no longer throws** when the document number
+  check digit is a filler (extended document number); the fields stay as read. From JMRTD 0.8.10.
 - **A protected 6700 under secure messaging put the terminal out of step with the chip.** When a chip
   processed a long READ BINARY under secure messaging and answered with a protected 6700 (both send
   sequence counters move on, ICAO Doc 9303-11, 9.8.3), the response was not unwrapped and the file

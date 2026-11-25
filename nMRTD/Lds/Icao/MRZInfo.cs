@@ -518,7 +518,9 @@ public class MRZInfo : AbstractLDSInfo
         string rawOptionalData1 = ReadString(inputStream, 15);
         optionalData1 = TrimTrailingFillerChars(rawOptionalData1);
 
-        if (documentNumberCheckDigit == '<' && optionalData1.Length > 0)
+        // Optional data starting with a filler is malformed as an extended document number (it would be empty, without
+        // a check digit): then document number, check digit and optional data stay as read (JMRTD 0.8.10, cf340d7d).
+        if (documentNumberCheckDigit == '<' && optionalData1.Length > 0 && optionalData1[0] != '<')
         {
             /* Interpret personal number as part of document number, see note j. */
             int extendedDocumentNumberEnd = optionalData1.IndexOf('<');
