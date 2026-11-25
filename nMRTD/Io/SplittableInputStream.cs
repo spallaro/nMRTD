@@ -48,11 +48,7 @@ public class SplittableInputStream : Stream
         try
         {
             InputStreamBuffer.SubInputStream inputStream = _inputStreamBuffer.GetInputStream();
-            long skippedBytes = 0L;
-            while (skippedBytes < position)
-            {
-                skippedBytes += inputStream.Skip(position - skippedBytes);
-            }
+            InputStreams.SkipFully(inputStream.Skip, position);
 
             return inputStream;
         }

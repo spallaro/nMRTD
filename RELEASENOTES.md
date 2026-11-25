@@ -8,6 +8,11 @@
   from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
   for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.
   From JMRTD 0.8.10.
+- **Truncated biometric data no longer makes a decoder loop forever or overflow.** Skipping the MAC
+  or signature data object of a biometric information template, and positioning a split stream, looped
+  forever when the stream ended early; an image length larger than the data threw an
+  `OverflowException`. They now end with an `EndOfStreamException` (an `IOException`), and the image
+  bytes are allocated as they arrive, not from the declared length. From JMRTD 0.8.10.
 - **A protected 6700 under secure messaging put the terminal out of step with the chip.** When a chip
   processed a long READ BINARY under secure messaging and answered with a protected 6700 (both send
   sequence counters move on, ICAO Doc 9303-11, 9.8.3), the response was not unwrapped and the file

@@ -164,8 +164,8 @@ public abstract class AbstractImageInfo : ImageInfo
     /// <summary>Clients should call this method after positioning the input stream to the image bytes.</summary>
     protected void ReadImage(Stream inputStream, long imageLength)
     {
-        _imageBytes = new byte[(int)imageLength];
-        ReadFully(inputStream, _imageBytes);
+        // The length comes from the input, so it is not allocated up front (JMRTD 0.8.10, a4b9e9e2).
+        _imageBytes = Io.InputStreams.ReadFully(inputStream, imageLength);
     }
 
     /// <summary>Writes this image to a stream.</summary>

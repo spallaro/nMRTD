@@ -343,11 +343,7 @@ public class InputStreamBuffer
             }
 
             _outer._carrier.Reset();
-            int bytesSkipped = 0;
-            while (bytesSkipped < position)
-            {
-                bytesSkipped += (int)_outer._carrier.Skip(position - bytesSkipped);
-            }
+            InputStreams.SkipFully(_outer._carrier.Skip, position);
         }
 
         private long SkipByReading(long n)

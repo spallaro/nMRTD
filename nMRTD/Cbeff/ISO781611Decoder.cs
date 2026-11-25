@@ -247,26 +247,15 @@ public class ISO781611Decoder<B> where B : BiometricDataBlock
             case ISO781611.SMT_DO_CC: /* 0x8E */
             {
                 /* NOTE: payload contains a MAC */
-                /* NOTE: preserved Java quirk -- Skip is called with the full doLength again on every
-                 * iteration rather than the remaining "doLength - skippedBytes"; harmless in practice
-                 * since a single Skip call already tries to consume up to doLength bytes internally, so
-                 * this loop runs once unless the stream can't supply that many bytes in one pass. */
-                long skippedBytes = 0;
-                while (skippedBytes < doLength)
-                {
-                    skippedBytes += tlvIn.Skip(doLength);
-                }
+                // Not a loop around Skip, which looped forever on a truncated stream (JMRTD 0.8.10, a4b9e9e2).
+                Io.InputStreams.SkipFully(tlvIn.Skip, doLength);
                 return null;
             }
 
             case ISO781611.SMT_DO_DS: /* 0x9E */
             {
                 /* NOTE: payload contains a signature */
-                long skippedBytes = 0;
-                while (skippedBytes < doLength)
-                {
-                    skippedBytes += tlvIn.Skip(doLength);
-                }
+                Io.InputStreams.SkipFully(tlvIn.Skip, doLength);
                 return null;
             }
 
