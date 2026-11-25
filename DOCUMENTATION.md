@@ -512,8 +512,8 @@ public class PaceProtocol
      resulting shared point/value is combined with the nonce to derive the *ephemeral*
      (mapped) domain parameters used for the real key agreement (`G~ = [s]G + H` for ECDH,
      `g~ = g^s · h mod p` for DH).
-   - **Integrated Mapping (IM):** the terminal generates its own nonce `t` instead of an
-     ephemeral key pair; both nonces feed a pseudo-random function (`R_p`, TR 9303-11
+   - **Integrated Mapping (IM):** the terminal generates its own nonce `t` (with the key
+     length of the cipher, 128 bits for 3DES) instead of an ephemeral key pair; both nonces feed a pseudo-random function (`R_p`, TR 9303-11
      §4.4.3.3.2) whose output is mapped onto the curve/group directly (Icart point
      encoding for ECDH, exponentiation for DH) — this variant needs only one round trip
      instead of two ephemeral-key exchanges.
@@ -574,7 +574,8 @@ public class EACCAProtocol
    and generate an ephemeral terminal key pair over the chip's DG14 public-key domain
    parameters.
 3. Send the terminal's public key to the chip: `MSE:KAT` for 3DES variants, or
-   `MSE:Set AT` + `GENERAL AUTHENTICATE` (with command-chaining fallback) for AES variants.
+   `MSE:Set AT` + a single `GENERAL AUTHENTICATE` for AES variants, with extended length when the
+   key data needs it (Doc 9303-11, 9.3.1; no retry or command chaining).
 4. Compute `KeyHash` — SHA-1 of the DH public value, or the field-sized affine X coordinate
    for ECDH — needed later as input to Terminal Authentication's signed challenge.
 5. Compute the shared secret via `EACCAProtocol.ComputeSharedSecret(agreementAlg,
