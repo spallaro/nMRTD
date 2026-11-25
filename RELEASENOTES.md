@@ -13,6 +13,12 @@
   forever when the stream ended early; an image length larger than the data threw an
   `OverflowException`. They now end with an `EndOfStreamException` (an `IOException`), and the image
   bytes are allocated as they arrive, not from the declared length. From JMRTD 0.8.10.
+- **A malformed EF.CardAccess, EF.CardSecurity or EF.SOD throws an `IOException`.** The
+  BouncyCastle exceptions for malformed ASN.1 (`Asn1ParsingException`, `InvalidCastException`, ...)
+  escaped from `CardAccessFile`, `CardSecurityFile`, `SODFile` and `SignedDataUtil.ReadSignedData`;
+  signed data is now parsed completely when read, so a malformed nested structure is found at once.
+  `SignedDataUtil.GetContent` returns `null` when the content is not an octet string. From JMRTD
+  0.8.10.
 - **A protected 6700 under secure messaging put the terminal out of step with the chip.** When a chip
   processed a long READ BINARY under secure messaging and answered with a protected 6700 (both send
   sequence counters move on, ICAO Doc 9303-11, 9.8.3), the response was not unwrapped and the file

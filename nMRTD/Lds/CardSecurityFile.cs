@@ -197,7 +197,7 @@ public class CardSecurityFile
 
         if (encapsulatedContent is not Asn1Set set)
         {
-            throw new IOException($"Was expecting an Asn1Set, found {encapsulatedContent?.GetType()}");
+            throw new IOException($"Was expecting an Asn1Set, found {(encapsulatedContent == null ? "no content" : encapsulatedContent.GetType().Name)}");
         }
 
         var securityInfos = new HashSet<SecurityInfo>();

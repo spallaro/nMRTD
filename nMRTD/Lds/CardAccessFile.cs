@@ -42,8 +42,23 @@ public class CardAccessFile
     protected void ReadContent(Stream inputStream)
     {
         _securityInfos = [];
-        var asn1In = new Asn1InputStream(inputStream);
-        var set = (Asn1Set)asn1In.ReadObject();
+        Asn1Set set;
+        try
+        {
+            var asn1In = new Asn1InputStream(inputStream);
+            Asn1Object? content = asn1In.ReadObject();
+            if (content is not Asn1Set contentSet)
+            {
+                throw new IOException($"Was expecting an Asn1Set, found {(content == null ? "no content" : content.GetType().Name)}");
+            }
+            set = contentSet;
+        }
+        catch (Exception e) when (e is InvalidOperationException or ArgumentException or InvalidCastException)
+        {
+            // BouncyCastle signals malformed input with unchecked exceptions (such as Asn1ParsingException). As in
+            // JMRTD 0.8.10 (cc295a50), a malformed EF.CardAccess is an IOException.
+            throw new IOException("Malformed EF.CardAccess", e);
+        }
         for (int i = 0; i < set.Count; i++)
         {
             Asn1Object obj = set[i].ToAsn1Object();

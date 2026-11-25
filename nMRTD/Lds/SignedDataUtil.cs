@@ -110,28 +110,51 @@ public static class SignedDataUtil
     /// <summary>Reads a signed data structure from a stream.</summary>
     public static SignedData ReadSignedData(Stream inputStream)
     {
-        var asn1InputStream = new Asn1InputStream(inputStream);
-        var sequence = Asn1Sequence.GetInstance(asn1InputStream.ReadObject());
-
-        if (sequence.Count != 2)
+        try
         {
-            throw new IOException($"Was expecting a DER sequence of length 2, found a DER sequence of length {sequence.Count}");
-        }
+            var asn1InputStream = new Asn1InputStream(inputStream);
+            Asn1Object? obj = asn1InputStream.ReadObject();
+            if (obj is not Asn1Sequence sequence)
+            {
+                throw new IOException($"Was expecting a DER sequence, found {(obj == null ? "no content" : obj.GetType().Name)}");
+            }
 
-        string contentTypeOid = ((DerObjectIdentifier)sequence[0]).Id;
-        if (contentTypeOid != Rfc3369SignedDataOid)
+            if (sequence.Count != 2)
+            {
+                throw new IOException($"Was expecting a DER sequence of length 2, found a DER sequence of length {sequence.Count}");
+            }
+
+            if (sequence[0] is not DerObjectIdentifier contentType)
+            {
+                throw new IOException($"Was expecting a content type OID, found {sequence[0].GetType().Name}");
+            }
+            string contentTypeOid = contentType.Id;
+            if (contentTypeOid != Rfc3369SignedDataOid)
+            {
+                throw new IOException($"Was expecting signed-data content type OID ({Rfc3369SignedDataOid}), found {contentTypeOid}");
+            }
+
+            Asn1Object asn1SequenceWithSignedData = GetObjectFromTaggedObject(sequence[1]);
+
+            if (asn1SequenceWithSignedData is not Asn1Sequence)
+            {
+                throw new IOException("Was expecting an ASN.1 sequence as content");
+            }
+
+            SignedData signedData = SignedData.GetInstance(asn1SequenceWithSignedData);
+
+            // The stream may be parsed lazily, so a malformed nested structure would only surface later, as an
+            // unchecked exception from BouncyCastle. Parse a copy completely to find out now.
+            Asn1Object.FromByteArray(signedData.GetEncoded());
+
+            return signedData;
+        }
+        catch (Exception e) when (e is InvalidOperationException or ArgumentException or InvalidCastException)
         {
-            throw new IOException($"Was expecting signed-data content type OID ({Rfc3369SignedDataOid}), found {contentTypeOid}");
+            // BouncyCastle signals malformed input with unchecked exceptions (such as Asn1ParsingException). As in
+            // JMRTD 0.8.10 (cc295a50), malformed signed data is an IOException.
+            throw new IOException("Malformed signed data", e);
         }
-
-        Asn1Object asn1SequenceWithSignedData = GetObjectFromTaggedObject(sequence[1]);
-
-        if (asn1SequenceWithSignedData is not Asn1Sequence)
-        {
-            throw new IOException("Was expecting an ASN.1 sequence as content");
-        }
-
-        return SignedData.GetInstance(asn1SequenceWithSignedData);
     }
 
     /// <summary>Writes a signed data structure to a stream.</summary>
@@ -151,7 +174,11 @@ public static class SignedDataUtil
     public static Asn1Object? GetContent(SignedData signedData)
     {
         ContentInfo encapContentInfo = signedData.EncapContentInfo;
-        var eContent = (Asn1OctetString)encapContentInfo.Content;
+        if (encapContentInfo.Content is not Asn1OctetString eContent)
+        {
+            // Not an octet string: malformed (JMRTD 0.8.10, cc295a50; it logs a warning).
+            return null;
+        }
 
         try
         {
@@ -507,7 +534,15 @@ public static class SignedDataUtil
             throw new ArgumentException("No signer info in signed data");
         }
 
-        return SignerInfo.GetInstance(signerInfos[0]);
+        try
+        {
+            return SignerInfo.GetInstance(signerInfos[0]);
+        }
+        catch (Exception e) when (e is InvalidOperationException or InvalidCastException)
+        {
+            // BouncyCastle signals a malformed structure with unchecked exceptions (JMRTD 0.8.10, cc295a50).
+            throw new ArgumentException("Malformed signer info in signed data", e);
+        }
     }
 
     /// <summary>Returns the common mnemonic string (such as "SHA1", "SHA256withRSA") given an OID.</summary>
