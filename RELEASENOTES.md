@@ -10,6 +10,11 @@
   token comparison never ran. PACE now fails with a `CardServiceProtocolException` (step 4), as for a
   wrong token. PACE-CAM without encrypted Chip Authentication data no longer throws. JMRTD bug #91,
   fixed in JMRTD 0.8.10.
+- **Files of more than 64 KB were read wrongly from 64 KB on.** READ BINARY with an offset data
+  object (odd INS, used from offset 32768) encoded the offset in 2 bytes, so from 65536 it wrapped
+  around to the start of the file. It now uses 3 bytes from 65536 on (ISO/IEC 7816-4). A file whose
+  declared length cannot be parsed, or is more than 16 MiB, is a `CardServiceException` instead of a
+  buffer of the declared length. From JMRTD 0.8.10.
 - **An APDU listener that throws no longer changes the outcome of a command.** Listeners are notified
   from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
   for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.

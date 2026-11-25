@@ -39,6 +39,13 @@ public class DefaultFileSystem : IFileSystemStructured
     /// <summary>Number of bytes to read at start of file to determine file length.</summary>
     private const int ReadAheadLength = 8;
 
+    /// <summary>
+    /// The maximum file length, 16 MiB. The offset data object in READ BINARY commands (with <c>INS = B1</c>) has at
+    /// most 3 bytes, a longer file could not be read. This also bounds the buffer allocated for the length the chip
+    /// declares (JMRTD 0.8.10, 3a29d320).
+    /// </summary>
+    private const int MaxFileLength = 0x1000000;
+
     private readonly object _lock = new();
 
     /// <summary>Indicates the file that is (or should be) selected.</summary>
@@ -296,7 +303,18 @@ public class DefaultFileSystem : IFileSystemStructured
                     return null;
                 }
 
-                int fileLength = GetFileLength(_selectedFid, ReadAheadLength, prefix);
+                long declaredFileLength = GetFileLength(_selectedFid, ReadAheadLength, prefix);
+                if (declaredFileLength < 0)
+                {
+                    throw new CardServiceException(
+                        $"Could not determine length of file {_selectedFid & 0xFFFF:x}, prefix = {Hex.BytesToHexString(prefix)}");
+                }
+                if (declaredFileLength > MaxFileLength)
+                {
+                    throw new CardServiceException(
+                        $"File {_selectedFid & 0xFFFF:x} too long, length {declaredFileLength} is more than {MaxFileLength}");
+                }
+                int fileLength = (int)declaredFileLength;
                 if (fileLength < prefix.Length)
                 {
                     // We got more than the file's length. Ignore trailing bytes.
@@ -325,8 +343,9 @@ public class DefaultFileSystem : IFileSystemStructured
     /// <param name="fid">the file identifier</param>
     /// <param name="le">the requested length while requesting the prefix</param>
     /// <param name="prefix">the prefix read from the file</param>
-    /// <returns>the file length</returns>
-    private static int GetFileLength(short fid, int le, byte[] prefix)
+    /// <returns>the file length (as declared in the prefix, can be more than <see cref="int.MaxValue"/>), or -1 if the
+    /// prefix is not the start of a TLV structure</returns>
+    private static long GetFileLength(short fid, int le, byte[] prefix)
     {
         if (prefix.Length < le)
         {
@@ -349,8 +368,7 @@ public class DefaultFileSystem : IFileSystemStructured
             // NOTE: we're using a specific property of MemoryStream's Length - Position here, mirroring
             // Java's use of ByteArrayInputStream.available().
             int tlLength = prefix.Length - (int)(byteArrayInputStream.Length - byteArrayInputStream.Position);
-            int fileLength = tlLength + valueLength;
-            return fileLength;
+            return (long)tlLength + valueLength;
         }
         catch (Exception)
         {

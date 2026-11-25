@@ -1,4 +1,5 @@
 using nMRTD.Lds;
+using nMRTD.SmartCards;
 using nMRTD.Tests.Helpers;
 using static nMRTD.Tests.EndToEnd.EndToEnd;
 
@@ -79,5 +80,49 @@ public class TransportEndToEndTests
 
         Assert.Contains(chip.Commands, c => c.Ne > 256); // answered with a protected 6700
         Assert.All(chip.Reads, r => Assert.True(r.Length <= PassportService.DefaultMaxBlocksize));
+    }
+
+    /// <summary>
+    /// A file of more than 64K: READ BINARY offsets from 65536 on need a 3 byte offset data object (ISO 7816-4); with
+    /// 2 bytes they wrapped around to the start of the file (JMRTD 0.8.10, 3a29d320).
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FileLargerThan64KIsReadCompletely(bool supportsExtendedLength)
+    {
+        var document = new SimulatedDocument { SupportsExtendedLength = supportsExtendedLength };
+        SimulatedChip chip = document.Build();
+        const int valueLength = 70000;
+        byte[] file = new byte[5 + valueLength];
+        file[0] = 0x75;
+        file[1] = 0x83;
+        file[2] = (byte)(valueLength >> 16);
+        file[3] = unchecked((byte)(valueLength >> 8));
+        file[4] = unchecked((byte)valueLength);
+        new Random(42).NextBytes(file.AsSpan(5)); // not periodic, so a wrapped offset shows
+        chip.ApplicationFiles[PassportService.EF_DG2] = file;
+        PassportService service = Open(chip, false);
+        DoBac(service);
+
+        Assert.Equal(file, Read(service, PassportService.EF_DG2, 4096));
+
+        Assert.Contains(chip.Reads, r => r.Fid == PassportService.EF_DG2 && r.Ins == 0xB1 && r.Offset > 0xFFFF);
+    }
+
+    /// <summary>A file that declares more than 16 MiB, which could not be read with a 3 byte offset, is an error, not
+    /// an allocation of the declared length (JMRTD 0.8.10, 3a29d320).</summary>
+    [Fact]
+    public void FileDeclaringMoreThan16MiBIsAnError()
+    {
+        SimulatedChip chip = new SimulatedDocument().Build();
+        chip.ApplicationFiles[PassportService.EF_DG2] = [0x75, 0x83, 0xFF, 0xFF, 0xFF, 0x01, 0x02, 0x03, 0x04];
+        PassportService service = Open(chip, false);
+        DoBac(service);
+
+        var e = Assert.ThrowsAny<Exception>(() => Read(service, PassportService.EF_DG2));
+
+        Assert.True(e is IOException or CardServiceException, e.ToString());
+        Assert.Contains("too long", e.ToString());
     }
 }

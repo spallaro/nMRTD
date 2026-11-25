@@ -142,7 +142,11 @@ public class ReadBinaryAPDUSender : IApduLevelReadBinaryCapable
                     le = 256;
                 }
 
-                byte[] data = [0x54, 0x02, offsetMsb, offsetLsb];
+                // The offset data object needs 3 bytes from 64K on (ISO 7816-4); with 2 the offset wrapped around to the
+                // start of the file (JMRTD 0.8.10, 3a29d320).
+                byte[] data = offset > 0xFFFF
+                    ? [0x54, 0x03, (byte)((offset >> 16) & 0xFF), offsetMsb, offsetLsb]
+                    : [0x54, 0x02, offsetMsb, offsetLsb];
                 commandApdu = new CommandApdu(Iso7816.ClaIso7816, Iso7816.InsReadBinary2, 0, 0, data, le);
             }
             else if (isSfiEnabled)
