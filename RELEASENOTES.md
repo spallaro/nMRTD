@@ -136,7 +136,8 @@ as to test the library. **The options are not compatible with 0.8.8-alpha.**
   `--include-information`), the interactive prompts for the access key, and the hex dumps of the data
   groups.
 - An EF.SOD whose content does not match its signed message digest is now reported as an invalid
-  signature, not as an error.
+  signature, not as an error, and so is an EF.SOD that cannot be parsed (exit code -41, with the
+  reason). A malformed EF.CardAccess counts as no PACE (BAC with the MRZ access key).
 
 ### Documentation
 

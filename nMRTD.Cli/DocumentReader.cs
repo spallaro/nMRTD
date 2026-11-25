@@ -112,7 +112,22 @@ public sealed class DocumentReader
             {
                 throw new ReadFailure(ExitCodes.CommunicationError, $"EF.SOD could not be read: {e.Message}", e);
             }
-            VerifyPassiveAuthentication(new SODFile(new MemoryStream(sodBytes)), dataGroupBytes);
+            SODFile? sodFile = null;
+            try
+            {
+                sodFile = new SODFile(new MemoryStream(sodBytes));
+            }
+            catch (IOException e)
+            {
+                // A malformed EF.SOD proves nothing about the document: Passive Authentication fails.
+                report.PassiveAuthentication.Signature = "invalid";
+                report.PassiveAuthentication.Error = $"EF.SOD is malformed: {e.Message}";
+                _out.WriteLine($"EF.SOD is malformed: {e.Message}");
+            }
+            if (sodFile != null)
+            {
+                VerifyPassiveAuthentication(sodFile, dataGroupBytes);
+            }
         }
 
         try
@@ -228,7 +243,17 @@ public sealed class DocumentReader
             return false;
         }
 
-        var cardAccessFile = new CardAccessFile(new MemoryStream(cardAccessBytes));
+        CardAccessFile cardAccessFile;
+        try
+        {
+            cardAccessFile = new CardAccessFile(new MemoryStream(cardAccessBytes));
+        }
+        catch (IOException e)
+        {
+            // A malformed EF.CardAccess offers no usable PACE.
+            _out.WriteLine($"EF.CardAccess is malformed ({e.Message}).");
+            return false;
+        }
         PACEInfo? paceInfo = cardAccessFile.GetSecurityInfos().OfType<PACEInfo>().FirstOrDefault();
         if (paceInfo == null)
         {

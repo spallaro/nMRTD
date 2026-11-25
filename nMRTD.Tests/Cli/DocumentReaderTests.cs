@@ -260,4 +260,35 @@ public sealed class DocumentReaderTests
         Assert.False(ActiveAuthenticationVerifier.Verify(SimulatedDocument.GenerateEc(12).Public,
             ActiveAuthenticationInfo.ECDSA_PLAIN_SHA256_OID, new byte[8], []).Valid);
     }
+
+    /// <summary>A malformed EF.CardAccess offers no PACE: with the MRZ the tool falls back to BAC, a CAN cannot be
+    /// used.</summary>
+    [Fact]
+    public void MalformedCardAccessFallsBackToBac()
+    {
+        SimulatedChip chip = WithPace().Build();
+        chip.MasterFiles[PassportService.EF_CARD_ACCESS] = [0x31, 0x03, 0x30, 0x01, 0x06];
+
+        (ReadReport report, StringWriter log) = Run(chip, Mrz);
+
+        Assert.Equal("BAC", report.AccessProtocol);
+        Assert.Contains("EF.CardAccess is malformed", log.ToString());
+        Assert.Equal(ExitCodes.PaceNotAvailable, Run(chip, Can).Report.ExitCode());
+    }
+
+    /// <summary>A malformed EF.SOD fails Passive Authentication; the other protocols still run.</summary>
+    [Fact]
+    public void MalformedSodFailsPassiveAuthentication()
+    {
+        SimulatedChip chip = new SimulatedDocument { ActiveAuthenticationKey = SimulatedDocument.RsaKey1024 }.Build();
+        chip.ApplicationFiles[PassportService.EF_SOD] = [0x77, 0x03, 0x30, 0x01, 0x05];
+
+        (ReadReport report, _) = Run(chip, Mrz);
+
+        Assert.Equal("invalid", report.PassiveAuthentication.Signature);
+        Assert.Contains("EF.SOD is malformed", report.PassiveAuthentication.Error);
+        Assert.Equal("succeeded", report.ActiveAuthentication.Status);
+        Assert.Equal(ExitCodes.SodSignatureInvalid, report.ExitCode());
+        Assert.Null(report.FailureExitCode);
+    }
 }

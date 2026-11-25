@@ -120,7 +120,7 @@ with the access key given (CAN or MRZ):
 
 | Mode | Behavior |
 |---|---|
-| default | PACE; when the document has no EF.CardAccess or no `PACEInfo`, or the parameters cannot be resolved, BAC with the MRZ access key. A CAN has no fallback (exit code `-20`). |
+| default | PACE; when the document has no EF.CardAccess (or a malformed one) or no `PACEInfo`, or the parameters cannot be resolved, BAC with the MRZ access key. A CAN has no fallback (exit code `-20`). |
 | `--pace` | PACE only: a document without PACE ends with exit code `-20`. |
 | `--bac` | BAC only, straight away. |
 
@@ -144,6 +144,9 @@ The tool reads EF.SOD and checks:
 3. **Signature:** the EF.SOD signature is verified with the Document Signer certificate stored in
    EF.SOD. RSA (PKCS #1 v1.5), RSASSA-PSS (hash, mask generation hash and salt length taken from the
    signature parameters) and ECDSA are supported.
+
+A malformed EF.SOD (one that cannot be parsed) fails Passive Authentication: the signature is
+`invalid` (exit code `-41`) with the reason in `error`, and the data group hashes are not checked.
 
 Without `--csca` this proves that the data is unchanged and consistent with EF.SOD, but not that EF.SOD
 was signed by the issuing country: anyone can produce a self-signed Document Signer certificate.
