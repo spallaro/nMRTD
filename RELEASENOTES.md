@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- **An APDU listener that throws no longer changes the outcome of a command.** Listeners are notified
+  from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
+  for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.
+  From JMRTD 0.8.10.
 - **A protected 6700 under secure messaging put the terminal out of step with the chip.** When a chip
   processed a long READ BINARY under secure messaging and answered with a protected 6700 (both send
   sequence counters move on, ICAO Doc 9303-11, 9.8.3), the response was not unwrapped and the file

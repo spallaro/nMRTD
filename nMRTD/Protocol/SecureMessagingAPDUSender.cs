@@ -249,7 +249,17 @@ public class SecureMessagingAPDUSender
 
         foreach (IApduListener listener in snapshot)
         {
-            listener.ExchangedApdu(apduEvent);
+            try
+            {
+                listener.ExchangedApdu(apduEvent);
+            }
+            catch (Exception e)
+            {
+                // A listener only observes the exchange, it must not change its outcome. This is called from a
+                // finally block, so an exception here would replace the response or exception of Transmit, and
+                // for instance prevent the fallback to short reads after a 6700. As in JMRTD 0.8.10 (6a0805b8).
+                Log.Log(Logging.LogLevel.Warning, "APDU", "APDU listener failed", e);
+            }
         }
     }
 
