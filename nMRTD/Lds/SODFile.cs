@@ -171,6 +171,19 @@ public class SODFile : AbstractTaggedLDSFile
     protected override void ReadContent(Stream inputStream)
     {
         _signedData = SignedDataUtil.ReadSignedData(inputStream);
+
+        // Parse the security object now, so that the getters do not throw on malformed chip data later (JMRTD 0.8.11,
+        // da548b20).
+        try
+        {
+            LdsSecurityObject ldsSecurityObject = GetLdsSecurityObject(_signedData);
+            _ = ldsSecurityObject.DigestAlgorithmIdentifier;
+            _ = ldsSecurityObject.GetDatagroupHash();
+        }
+        catch (Exception e) when (e is InvalidOperationException or ArgumentException or InvalidCastException or NullReferenceException)
+        {
+            throw new IOException("Could not read security object in signed data", e);
+        }
     }
 
     protected override void WriteContent(Stream outputStream)

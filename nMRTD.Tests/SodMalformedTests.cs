@@ -26,4 +26,14 @@ public class SodMalformedTests
 
         Assert.StartsWith(message, e.Message);
     }
+
+    /// <summary>An EF.SOD whose LDS security object is malformed is an <see cref="IOException"/> when read, not later
+    /// from the getters (JMRTD 0.8.11, da548b20).</summary>
+    [Fact]
+    public void MalformedLdsSecurityObjectIsAnIOExceptionWhenRead()
+    {
+        byte[] input = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures", "malformed", "lds-file", "sod-malformed-lds-security-object"));
+
+        Assert.Throws<IOException>(() => new SODFile(new MemoryStream(input, 1, input.Length - 1)));
+    }
 }
