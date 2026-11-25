@@ -5,6 +5,8 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  *
+ * This is a porting from jMRTD, Copyright (C) The jMRTD Team (https://jmrtd.org/).
+ *
  * Distributed under the terms of GNU LGPL v3.
  * See LICENSE for more information.
  */

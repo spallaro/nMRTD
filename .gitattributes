@@ -4,3 +4,4 @@
 *.dump binary
 *.jp2 binary
 *.wsq binary
+nMRTD.Tests/fixtures/malformed/** -text
