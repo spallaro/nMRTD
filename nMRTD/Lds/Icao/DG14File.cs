@@ -52,14 +52,29 @@ public class DG14File : DataGroup
 
     protected override void ReadContent(Stream inputStream)
     {
-        var asn1In = new Asn1InputStream(inputStream);
-        var set = (Asn1Set)asn1In.ReadObject();
+        Asn1Set set;
+        try
+        {
+            var asn1In = new Asn1InputStream(inputStream);
+            Asn1Object? content = asn1In.ReadObject();
+            if (content is not Asn1Set contentSet)
+            {
+                throw new IOException($"Was expecting an Asn1Set, found {(content == null ? "no content" : content.GetType().Name)}");
+            }
+            set = contentSet;
+        }
+        catch (Exception e) when (e is InvalidOperationException or ArgumentException or InvalidCastException)
+        {
+            // BouncyCastle signals malformed ASN.1 with unchecked exceptions; an empty DG14 used to throw a
+            // NullReferenceException (JMRTD 0.8.10, 737881b8).
+            throw new IOException("Malformed set of security infos", e);
+        }
         securityInfos = new HashSet<SecurityInfo>(set.Count);
         for (int i = 0; i < set.Count; i++)
         {
-            Asn1Object obj = set[i].ToAsn1Object();
             try
             {
+                Asn1Object obj = set[i].ToAsn1Object();
                 SecurityInfo? securityInfo = SecurityInfo.GetInstance(obj);
                 if (securityInfo == null)
                 {

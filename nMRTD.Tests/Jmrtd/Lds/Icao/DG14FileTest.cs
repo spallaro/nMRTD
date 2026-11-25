@@ -546,4 +546,12 @@ public class DG14FileTest
         ];
     }
 
+    /// <summary>DG14 without content (or with content that is not a set) is malformed. The empty one used to throw a
+    /// NullReferenceException (JMRTD 0.8.10, 737881b8).</summary>
+    [Fact]
+    public void testMalformedContent()
+    {
+        Assert.Throws<IOException>(() => new DG14File(new MemoryStream(new byte[] { 0x6E, 0x00 })));
+        Assert.Throws<IOException>(() => new DG14File(new MemoryStream(new byte[] { 0x6E, 0x02, 0x30, 0x00 })));
+    }
 }

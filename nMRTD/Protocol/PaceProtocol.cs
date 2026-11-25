@@ -534,6 +534,14 @@ public class PaceProtocol
     /// <exception cref="CardServiceProtocolException">on error</exception>
     public PACEIMMappingResult DoPaceStep2Im(string agreementAlg, object staticParameters, byte[] piccNonce, string cipherAlg)
     {
+        // The pseudo random function of the integrated mapping is only defined for nonces of 128, 192, or 256 bits
+        // (JMRTD 0.8.10, 737881b8).
+        if (piccNonce == null || (piccNonce.Length != 16 && piccNonce.Length != 24 && piccNonce.Length != 32))
+        {
+            throw new CardServiceProtocolException("PICC side error in mapping nonce step, unexpected nonce length "
+                + (piccNonce == null ? "(no nonce)" : (8 * piccNonce.Length).ToString(System.Globalization.CultureInfo.InvariantCulture)), 2);
+        }
+
         try
         {
             byte[] pcdNonce = new byte[piccNonce.Length];

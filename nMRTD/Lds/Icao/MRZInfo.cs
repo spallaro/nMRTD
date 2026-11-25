@@ -505,6 +505,13 @@ public class MRZInfo : AbstractLDSInfo
 
     private void ReadObject(Stream inputStream, int length)
     {
+        if (length != 90 && length != 72 && length != 88)
+        {
+            // JMRTD 0.8.10 (737881b8): any other length used to be read (as an MRZ of unknown type, reading beyond the
+            // declared length) but could not be encoded again.
+            throw new IOException($"Unsupported MRZ length {length}, was expecting 90, 72, or 88");
+        }
+
         /* line 1, pos 1 to 2, Document code, all types. */
         documentCode = TrimTrailingFillerChars(ReadString(inputStream, 2));
         documentType = GetDocumentType(documentCode, length);

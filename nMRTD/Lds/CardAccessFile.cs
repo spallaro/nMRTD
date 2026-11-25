@@ -61,9 +61,9 @@ public class CardAccessFile
         }
         for (int i = 0; i < set.Count; i++)
         {
-            Asn1Object obj = set[i].ToAsn1Object();
             try
             {
+                Asn1Object obj = set[i].ToAsn1Object();
                 SecurityInfo? securityInfo = SecurityInfo.GetInstance(obj);
                 if (securityInfo == null)
                 {

@@ -166,4 +166,21 @@ public class DG1FileTest
     {
         CheckReflexive(new DG1File(input));
     }
+
+    /// <summary>An MRZ that is not 90, 72, or 88 characters is malformed. A DG1 with a 1 byte MRZ used to be read (as an
+    /// MRZ of unknown document type) but could not be encoded again (JMRTD 0.8.10, 737881b8).</summary>
+    [Fact]
+    public void testUnsupportedMRZLength()
+    {
+        byte[] mrz = Encoding.ASCII.GetBytes("P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C<3UTO6908061F9406236ZE184226B<<<<<10");
+        byte[] dg1 = new byte[5 + mrz.Length];
+        dg1[0] = 0x61;
+        dg1[1] = (byte)(3 + mrz.Length);
+        dg1[2] = 0x5F;
+        dg1[3] = 0x1F;
+        dg1[4] = 0x01; // Declared length of the MRZ.
+        Array.Copy(mrz, 0, dg1, 5, mrz.Length);
+        Assert.Throws<IOException>(() => new DG1File(new MemoryStream(dg1)));
+        Assert.Throws<ArgumentException>(() => new MRZInfo(new MemoryStream(mrz), 87));
+    }
 }

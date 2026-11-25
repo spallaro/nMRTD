@@ -34,6 +34,10 @@
   remainder that fills the optional data field no longer throws "Argument too wide", optional data
   after the extension is kept, a single character after a filler check digit is optional data, and
   the 9 principal characters keep their fillers. From JMRTD 0.8.10.
+- **An empty or malformed DG14 and a DG1 whose MRZ is not 90, 72 or 88 characters throw an
+  `IOException`** (an empty DG14 threw a `NullReferenceException`; an MRZ of another length was read
+  beyond its declared length and could not be encoded again). PACE with integrated mapping fails with
+  a `CardServiceProtocolException` on a chip nonce that is not 128, 192 or 256 bits. From JMRTD 0.8.10.
 - **A protected 6700 under secure messaging put the terminal out of step with the chip.** When a chip
   processed a long READ BINARY under secure messaging and answered with a protected 6700 (both send
   sequence counters move on, ICAO Doc 9303-11, 9.8.3), the response was not unwrapped and the file

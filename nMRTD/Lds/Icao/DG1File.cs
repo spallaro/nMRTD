@@ -61,7 +61,15 @@ public class DG1File : DataGroup
         tlvIn.SkipToTag(MRZ_INFO_TAG);
         int length = tlvIn.ReadLength();
         byte[] value = tlvIn.ReadValue();
-        mrzInfo = new MRZInfo(new MemoryStream(value, writable: false), length);
+        try
+        {
+            mrzInfo = new MRZInfo(new MemoryStream(value, writable: false), length);
+        }
+        catch (ArgumentException e)
+        {
+            // An MRZ of an unsupported length is malformed (JMRTD 0.8.10, 737881b8).
+            throw new IOException("Malformed MRZ", e);
+        }
     }
 
     /// <summary>Returns the MRZ information stored in this file.</summary>
