@@ -128,19 +128,24 @@ public sealed class CardFileInputStream : Stream
                     {
                         _buffer = data;
                         _bufferOffset = _position;
-                        _bufferLength = data.Length;
+                        // Data beyond the requested length is ignored: it could go beyond the end of the file
+                        // (SCUBA 0.1.0, 83dc2c5).
+                        _bufferLength = Math.Min(data.Length, blockLength);
                         return;
                     }
                 }
             }
             catch (CardServiceException ex)
             {
-                throw new IOException("Error reading card file.", ex);
+                throw new IOException($"Error reading card file {FileName} at offset {_position}.", ex);
             }
         }
 
-        throw new IOException($"Error reading card file: no data returned at offset {_position} of {_fileLength}.");
+        throw new IOException($"Error reading card file {FileName}: no data returned at offset {_position} of {_fileLength}.");
     }
+
+    /// <summary>The file identifiers of this stream's path, in hexadecimal, for error messages.</summary>
+    private string FileName => string.Join("/", _path.Select(fid => (fid & 0xFFFF).ToString("x", System.Globalization.CultureInfo.InvariantCulture)));
 
     /// <summary>Re-selects this stream's file if the file system has another one selected. Caller holds the lock.</summary>
     private void SelectPathIfNeeded()

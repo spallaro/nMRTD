@@ -53,6 +53,8 @@
   completes when its value reaches that length, and an object of length 0 at the next tag or
   `WriteValueEnd`, so its siblings no longer end up inside it. It used to be ignored. From SCUBA
   0.1.0.
+- **`CardFileInputStream` ignores data beyond the requested length**, which a file system could
+  return past the end of the file; its error messages give the file and the offset. From SCUBA 0.1.0.
 - **An APDU listener that throws no longer changes the outcome of a command.** Listeners are notified
   from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
   for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.
