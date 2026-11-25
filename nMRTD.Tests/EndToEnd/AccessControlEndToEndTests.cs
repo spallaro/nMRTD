@@ -146,4 +146,28 @@ public class AccessControlEndToEndTests
 
         AssertDg1AndDg2(service, chip);
     }
+
+    /// <summary>
+    /// PACE with integrated mapping: the terminal's nonce t has the key length of the cipher (Doc 9303-11,
+    /// 4.4.3.3.2), 24 bytes for AES-192; it had the length of the chip's nonce s (JMRTD 0.8.10, d2b9471c).
+    /// </summary>
+    [Theory]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_IM_AES_CBC_CMAC_128, 13, 16)]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_IM_AES_CBC_CMAC_192, 13, 24)]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_IM_AES_CBC_CMAC_256, 17, 32)]
+    [InlineData(SecurityInfo.ID_PACE_ECDH_IM_3DES_CBC_CBC, 13, 16)]
+    public void IntegratedMappingTerminalNonceHasTheKeyLength(string oid, int parameterId, int nonceLength)
+    {
+        var document = new SimulatedDocument();
+        document.Pace.Add(new SimulatedChip.PaceSupport(oid, parameterId));
+        SimulatedChip chip = document.Build();
+        PassportService service = Open(chip);
+
+        DoPace(service, PaceKeySpec.CreateCanKey(SimulatedDocument.Can));
+
+        // GENERAL AUTHENTICATE of the mapping step: 7C L 81 L t
+        CommandApdu mapping = chip.Commands.First(c => c.Ins == 0x86 && c.Data.Length > 3 && c.Data[2] == 0x81);
+        Assert.Equal(nonceLength, mapping.Data[3]);
+        Assert.Equal(SimulatedDocument.DocumentNumber.Length > 0, Read(service, PassportService.EF_DG1).Length > 0);
+    }
 }

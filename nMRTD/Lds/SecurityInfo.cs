@@ -188,7 +188,9 @@ public abstract class SecurityInfo : AbstractLDSInfo
             if (ChipAuthenticationPublicKeyInfo.CheckRequiredIdentifier(oid))
             {
                 SubjectPublicKeyInfo subjectPublicKeyInfo = SubjectPublicKeyInfo.GetInstance(requiredData);
-                var publicKey = PublicKeyFactory.CreateKey(subjectPublicKeyInfo);
+                // Util.ToPublicKey also decodes keys with standardized domain parameters (Doc 9303-11, 9.5.1), as in
+                // JMRTD 0.8.10 (d2b9471c); a key it cannot decode still throws, from PublicKeyFactory.
+                var publicKey = Util.ToPublicKey(subjectPublicKeyInfo) ?? PublicKeyFactory.CreateKey(subjectPublicKeyInfo);
                 if (optionalData == null)
                 {
                     return new ChipAuthenticationPublicKeyInfo(oid, publicKey);

@@ -821,6 +821,10 @@ public static class Util
     {
         try
         {
+            if (subjectPublicKeyInfo.Algorithm.Algorithm.Id == StandardizedDomainParametersOid)
+            {
+                return ToPublicKeyWithStandardizedDomainParameters(subjectPublicKeyInfo);
+            }
             return PublicKeyFactory.CreateKey(subjectPublicKeyInfo);
         }
         catch (Exception)
@@ -828,6 +832,31 @@ public static class Util
             /* NOTE: Java logs a warning here; omitted per the non-essential-warning-omission precedent
              * (see AbstractLDSFile.cs). */
             return null;
+        }
+    }
+
+    /// <summary>Doc 9303-11, 9.5.1: <c>standardizedDomainParameters</c>, <c>bsi-de algorithms(1) 2</c>.</summary>
+    private const string StandardizedDomainParametersOid = "0.4.0.127.0.7.1.2";
+
+    /// <summary>
+    /// Decodes a public key whose algorithm identifier references standardized domain parameters (Doc 9303-11, 9.5.1:
+    /// <c>standardizedDomainParameters</c> with the parameter ID as <c>INTEGER</c>), as in a
+    /// <c>ChipAuthenticationPublicKeyInfo</c>. The public key is an uncompressed point (ECDH) or a DER encoded
+    /// <c>INTEGER</c> (DH). These keys used to be decoded as <c>null</c> (JMRTD 0.8.10, d2b9471c).
+    /// </summary>
+    private static AsymmetricKeyParameter ToPublicKeyWithStandardizedDomainParameters(SubjectPublicKeyInfo subjectPublicKeyInfo)
+    {
+        int parameterId = DerInteger.GetInstance(subjectPublicKeyInfo.Algorithm.Parameters).IntValueExact;
+        object parameters = PACEInfo.ToParameterSpec(parameterId);
+        byte[] keyBytes = subjectPublicKeyInfo.PublicKey.GetOctets();
+        switch (parameters)
+        {
+            case ECDomainParameters ec:
+                return new ECPublicKeyParameters(ec.Curve.DecodePoint(keyBytes), ec);
+            case DHParameters dh:
+                return new DHPublicKeyParameters(DerInteger.GetInstance(keyBytes).PositiveValue, dh);
+            default:
+                throw new ArgumentException($"Unsupported standardized domain parameters {parameterId}");
         }
     }
 

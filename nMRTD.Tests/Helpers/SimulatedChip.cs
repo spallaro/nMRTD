@@ -552,7 +552,8 @@ internal sealed class SimulatedChip : CardService
         switch (pace.Step++)
         {
             case 1:
-                pace.Nonce = RandomBytes(16);
+                // Doc 9303-11, 4.4.3.3.2: the nonce s has l = 128 bits for 3DES and AES-128, 256 for AES-192 and AES-256.
+                pace.Nonce = RandomBytes(pace.PasswordKey.Length <= 16 ? 16 : 32);
                 return Ok(Tlv.Encode(0x7C, Tlv.Encode(0x80, Cbc(true, pace.Aes, pace.PasswordKey, new byte[BlockSize(pace.Aes)], pace.Nonce))));
             case 2:
                 byte[] mapping = PaceMap(pace, Tlv.Find(data, 0x81)!);

@@ -500,4 +500,30 @@ public class UtilTest
         generator.Init(new ECKeyGenerationParameters(Util.GetECDomainParameters(curveName), Random));
         return generator.GenerateKeyPair();
     }
+
+    /// <summary>Doc 9303-11, 9.5.1: a DH public key with standardized domain parameters (ID 0, 1024 bit MODP group)
+    /// (JMRTD 0.8.10, d2b9471c).</summary>
+    [Fact]
+    public void testToPublicKeyWithStandardizedDHDomainParameters()
+    {
+        var parameters = (Org.BouncyCastle.Crypto.Parameters.DHParameters)nMRTD.Lds.PACEInfo.ToParameterSpec(nMRTD.Lds.PACEInfo.PARAM_ID_GFP_1024_160);
+        Org.BouncyCastle.Math.BigInteger y = parameters.G.ModPow(Org.BouncyCastle.Math.BigInteger.ValueOf(123456789L), parameters.P);
+        var subjectPublicKeyInfo = new Org.BouncyCastle.Asn1.X509.SubjectPublicKeyInfo(
+            new Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier(new Org.BouncyCastle.Asn1.DerObjectIdentifier("0.4.0.127.0.7.1.2"), new Org.BouncyCastle.Asn1.DerInteger(0)),
+            new Org.BouncyCastle.Asn1.DerInteger(y));
+        var publicKey = Assert.IsType<Org.BouncyCastle.Crypto.Parameters.DHPublicKeyParameters>(Util.ToPublicKey(subjectPublicKeyInfo));
+        Assert.Equal(y, publicKey.Y);
+        Assert.Equal(parameters.P, publicKey.Parameters.P);
+        Assert.Equal(parameters.G, publicKey.Parameters.G);
+    }
+
+    /// <summary>An unknown standardized domain parameter ID gives no key, as other undecodable keys.</summary>
+    [Fact]
+    public void testToPublicKeyWithUnknownStandardizedDomainParameters()
+    {
+        var subjectPublicKeyInfo = new Org.BouncyCastle.Asn1.X509.SubjectPublicKeyInfo(
+            new Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier(new Org.BouncyCastle.Asn1.DerObjectIdentifier("0.4.0.127.0.7.1.2"), new Org.BouncyCastle.Asn1.DerInteger(99)),
+            new byte[] { 0x04, 0x01, 0x02 });
+        Assert.Null(Util.ToPublicKey(subjectPublicKeyInfo));
+    }
 }

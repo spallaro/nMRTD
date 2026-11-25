@@ -264,7 +264,7 @@ public class PaceProtocol
          * nonce t. Compute ephemeral domain parameters D~ = Map(D_PICC, s).
          */
         _log.Debug(LogCategory, "Step 2: mapping nonce to ephemeral domain parameters.");
-        PACEMappingResult mappingResult = DoPaceStep2(mappingType, agreementAlg, staticParameters, piccNonce, cipherAlg);
+        PACEMappingResult mappingResult = DoPaceStep2(mappingType, agreementAlg, staticParameters, piccNonce, cipherAlg, keyLength);
         object ephemeralParams = mappingResult.EphemeralParameters!;
 
         /* Choose random ephemeral PCD side keys (SK_PCD~, PK_PCD~, D~). */
@@ -442,13 +442,41 @@ public class PaceProtocol
     /// <param name="cipherAlg">the cipher algorithm to use in IM, either <c>"AES"</c> or <c>"DESede"</c></param>
     /// <returns>the newly computed ephemeral domain parameters</returns>
     /// <exception cref="CardServiceProtocolException">on error</exception>
+    [Obsolete("For IM this cannot tell AES-192 from AES-256: use the overload with the key length.")]
     public PACEMappingResult DoPaceStep2(PACEInfo.MappingType mappingType, string agreementAlg, object staticParameters, byte[] piccNonce, string cipherAlg) =>
+        DoPaceStep2(mappingType, agreementAlg, staticParameters, piccNonce, cipherAlg, GetDefaultKeyLength(piccNonce, cipherAlg));
+
+    /// <summary>
+    /// The second step in the PACE protocol computes ephemeral domain parameters by mapping the PICC generated nonce
+    /// (and optionally the PCD generated nonce, which will be exchanged, in case of Integrated Mapping).
+    /// </summary>
+    /// <param name="mappingType">either CAM, GM, or IM</param>
+    /// <param name="agreementAlg">the agreement algorithm, either DH or ECDH</param>
+    /// <param name="staticParameters">the static domain parameters</param>
+    /// <param name="piccNonce">the nonce received from the PICC</param>
+    /// <param name="cipherAlg">the cipher algorithm to use in IM, either <c>"AES"</c> or <c>"DESede"</c></param>
+    /// <param name="keyLength">the key length (in bits) of the cipher, 128 for 3DES (as in
+    /// <see cref="PACEInfo.ToKeyLength(string)"/>); determines the length of the PCD nonce in IM</param>
+    /// <returns>the newly computed ephemeral domain parameters</returns>
+    /// <exception cref="CardServiceProtocolException">on error</exception>
+    public PACEMappingResult DoPaceStep2(PACEInfo.MappingType mappingType, string agreementAlg, object staticParameters, byte[] piccNonce, string cipherAlg, int keyLength) =>
         mappingType switch
         {
             PACEInfo.MappingType.CAM or PACEInfo.MappingType.GM => DoPaceStep2Gm(agreementAlg, staticParameters, piccNonce),
-            PACEInfo.MappingType.IM => DoPaceStep2Im(agreementAlg, staticParameters, piccNonce, cipherAlg),
+            PACEInfo.MappingType.IM => DoPaceStep2Im(agreementAlg, staticParameters, piccNonce, cipherAlg, keyLength),
             _ => throw new CardServiceProtocolException($"Unsupported mapping type {mappingType}", 2),
         };
+
+    /// <summary>The key length assumed by the obsolete step 2 methods without explicit key length: 128 for 3DES,
+    /// otherwise the length of the PICC nonce (as before, wrong for AES-192).</summary>
+    private static int GetDefaultKeyLength(byte[]? piccNonce, string? cipherAlg)
+    {
+        if (cipherAlg != null && cipherAlg.StartsWith("DESede", StringComparison.Ordinal))
+        {
+            return 128;
+        }
+        return piccNonce == null ? 128 : 8 * piccNonce.Length;
+    }
 
     /// <summary>
     /// The second step in the PACE protocol (GM case) computes ephemeral domain parameters by performing
@@ -531,7 +559,24 @@ public class PaceProtocol
     /// <param name="cipherAlg">the cipher algorithm to use, either <c>"AES"</c> or <c>"DESede"</c></param>
     /// <returns>the computed ephemeral domain parameters</returns>
     /// <exception cref="CardServiceProtocolException">on error</exception>
-    public PACEIMMappingResult DoPaceStep2Im(string agreementAlg, object staticParameters, byte[] piccNonce, string cipherAlg)
+    [Obsolete("This cannot tell AES-192 from AES-256: use the overload with the key length.")]
+    public PACEIMMappingResult DoPaceStep2Im(string agreementAlg, object staticParameters, byte[] piccNonce, string cipherAlg) =>
+        DoPaceStep2Im(agreementAlg, staticParameters, piccNonce, cipherAlg, GetDefaultKeyLength(piccNonce, cipherAlg));
+
+    /// <summary>
+    /// The second step in the PACE protocol (IM case) computes ephemeral domain parameters by mapping the PICC nonce
+    /// <c>s</c> and a PCD nonce <c>t</c>, which is sent to the PICC. As in Doc 9303-11, 4.4.3.3.2, <c>t</c> has the
+    /// key length of the cipher (128 bits for 3DES); it had the length of <c>s</c>, which differs for AES-192
+    /// (JMRTD 0.8.10, d2b9471c).
+    /// </summary>
+    /// <param name="agreementAlg">the agreement algorithm, either DH or ECDH</param>
+    /// <param name="staticParameters">the static domain parameters</param>
+    /// <param name="piccNonce">the received nonce from the PICC</param>
+    /// <param name="cipherAlg">the cipher algorithm to use, either <c>"AES"</c> or <c>"DESede"</c></param>
+    /// <param name="keyLength">the key length (in bits) of the cipher, 128 for 3DES</param>
+    /// <returns>the computed ephemeral domain parameters</returns>
+    /// <exception cref="CardServiceProtocolException">on error</exception>
+    public PACEIMMappingResult DoPaceStep2Im(string agreementAlg, object staticParameters, byte[] piccNonce, string cipherAlg, int keyLength)
     {
         // The pseudo random function of the integrated mapping is only defined for nonces of 128, 192, or 256 bits
         // (JMRTD 0.8.10, 737881b8).
@@ -540,10 +585,15 @@ public class PaceProtocol
             throw new CardServiceProtocolException("PICC side error in mapping nonce step, unexpected nonce length "
                 + (piccNonce == null ? "(no nonce)" : (8 * piccNonce.Length).ToString(System.Globalization.CultureInfo.InvariantCulture)), 2);
         }
+        if (keyLength != 128 && keyLength != 192 && keyLength != 256)
+        {
+            throw new CardServiceProtocolException($"PCD side error in mapping nonce step, unsupported key length {keyLength}", 2);
+        }
 
         try
         {
-            byte[] pcdNonce = new byte[piccNonce.Length];
+            // Doc 9303-11, 4.4.3.3.2: t has bit length k, the key size of the cipher (not the length of s).
+            byte[] pcdNonce = new byte[keyLength / 8];
             RandomNumberGenerator.Fill(pcdNonce);
 
             byte[] step2Data = TlvUtil.WrapDO(0x81, pcdNonce);

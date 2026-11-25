@@ -15,6 +15,15 @@
   around to the start of the file. It now uses 3 bytes from 65536 on (ISO/IEC 7816-4). A file whose
   declared length cannot be parsed, or is more than 16 MiB, is a `CardServiceException` instead of a
   buffer of the declared length. From JMRTD 0.8.10.
+- **PACE with integrated mapping and AES-192 failed.** The terminal's nonce t had the length of the
+  chip's nonce s (256 bits) instead of the key length (192 bits, Doc 9303-11, 4.4.3.3.2). New
+  overloads of `PaceProtocol.DoPaceStep2` and `DoPaceStep2Im` take the key length; the old ones are
+  `[Obsolete]`. From JMRTD 0.8.10.
+- **Chip Authentication public keys with standardized domain parameters** (Doc 9303-11, 9.5.1: the
+  algorithm `0.4.0.127.0.7.1.2` with a parameter id, as in the PACE-CAM worked example) are decoded;
+  `ChipAuthenticationPublicKeyInfo` threw and `Util.ToPublicKey` returned `null`. A statically
+  protected biometric information template without a plain value throws an `IOException`. From
+  JMRTD 0.8.10.
 - **An APDU listener that throws no longer changes the outcome of a command.** Listeners are notified
   from a `finally` block, so an exception replaced the response or the exception of `Transmit` (and,
   for instance, prevented the fallback to short reads after a 6700). It is now logged as a warning.

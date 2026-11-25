@@ -210,23 +210,27 @@ public class ISO781611Decoder<B> where B : BiometricDataBlock
     /// <param name="index">index of the template</param>
     private void ReadStaticallyProtectedBIT(Stream inputStream, int tag, int length, int index)
     {
-        /* NOTE: preserved Java quirk -- if decodeSMTValue returns null (the SMT_DO_CC/SMT_DO_DS/default
-         * branches below), Java wraps it straight into "new ByteArrayInputStream(null)", which throws a
-         * NullPointerException. The closest faithful C# equivalent is letting MemoryStream's constructor
-         * throw ArgumentNullException on a null buffer -- not special-cased away, since a real decoder for
-         * a statically-protected BIT with an unsupported/encrypted payload is expected to fail loudly here
-         * in both languages, not silently produce a half-built result. */
-        byte[]? bhtValue = DecodeSMTValue(inputStream);
-        using var bhtStream = new MemoryStream(bhtValue!, writable: false);
+        byte[] bhtValue = DecodePlainSMTValue(inputStream);
+        using var bhtStream = new MemoryStream(bhtValue, writable: false);
         using var tlvBhtIn = new TlvInputStream(bhtStream, leaveOpen: true);
         int headerTemplateTag = tlvBhtIn.ReadTag();
         int headerTemplateLength = tlvBhtIn.ReadLength();
         StandardBiometricHeader sbh = ReadBht(bhtStream, headerTemplateTag, headerTemplateLength, index);
 
-        byte[]? bdbValue = DecodeSMTValue(inputStream);
-        using var biometricDataBlockIn = new MemoryStream(bdbValue!, writable: false);
+        byte[] bdbValue = DecodePlainSMTValue(inputStream);
+        using var biometricDataBlockIn = new MemoryStream(bdbValue, writable: false);
         ReadBiometricDataBlock(biometricDataBlockIn, sbh, index);
     } /* FIXME: return type??? */
+
+    /// <summary>
+    /// Decodes a (protected) data object that should contain a plain value. A data object without one (a MAC, a
+    /// signature, or an unsupported data object) used to throw an <see cref="ArgumentNullException"/>; it is an
+    /// <see cref="IOException"/> as in JMRTD 0.8.10 (d2b9471c).
+    /// </summary>
+    /// <exception cref="IOException">if the data object has no plain value</exception>
+    private static byte[] DecodePlainSMTValue(Stream inputStream) =>
+        DecodeSMTValue(inputStream)
+        ?? throw new IOException("Expected a plain value data object in statically protected biometric information template");
 
     /// <summary>Decodes a (protected) data object. Encrypted payloads are not currently supported.</summary>
     /// <param name="inputStream">the stream to read from</param>
