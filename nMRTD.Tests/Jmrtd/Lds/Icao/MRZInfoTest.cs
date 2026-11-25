@@ -603,15 +603,23 @@ public class MRZInfoTest
         Assert.Equal(mrzString, GetMRZString(mrzInfo));
     }
 
-    /**
-      * Check digit worked example from ICAO Doc 9303 Part 3, Appendix A.
-      * MRZ_information = documentNumber + cd + dateOfBirth + cd + dateOfExpiry + cd
-      * = "L898902C3" + "6" + "690806" + "1" + "940623" + "6".
-      */
+    /// <summary>Check digit examples from ICAO Doc 9303 Part 3 (2021), Appendix A: example 1 (date 520727, check
+    /// digit 3), example 2 (document number AB2134 in a 9-character field, 5) and example 3 (TD3 composite check digit
+    /// over positions 1-10, 14-20 and 22-43 of the lower line, 8). As in JMRTD 0.8.11 (e43fcf4d).</summary>
     [Fact]
     public void testCheckDigitICAOWorkedExample()
     {
-        Assert.Equal('6', MRZInfo.CheckDigit("L898902C3"));
+        Assert.Equal('3', MRZInfo.CheckDigit("520727"));
+        Assert.Equal('5', MRZInfo.CheckDigit("AB2134<<<"));
+        Assert.Equal('8', MRZInfo.CheckDigit("HA672242<6" + "5802254" + "9601086<<<<<<<<<<<<<<0"));
+    }
+
+    /// <summary>The check digits of the BAC worked example in ICAO Doc 9303 Part 11 (2021), Appendix D.2:
+    /// MRZ_information "L898902C&lt;369080619406236".</summary>
+    [Fact]
+    public void testCheckDigitBACWorkedExample()
+    {
+        Assert.Equal('3', MRZInfo.CheckDigit("L898902C<"));
         Assert.Equal('1', MRZInfo.CheckDigit("690806"));
         Assert.Equal('6', MRZInfo.CheckDigit("940623"));
     }

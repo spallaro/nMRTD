@@ -18,15 +18,16 @@ namespace nMRTD.Tests.Jmrtd.Protocol;
 /// </remarks>
 public class BACProtocolTest
 {
-    /* ICAO Doc 9303 Part 11, Appendix D.2 worked example. */
-    private const string DOCUMENT_NUMBER = "L898902C3";
+    /* ICAO Doc 9303 Part 11 (2021), Appendix D.2 worked example (JMRTD 0.8.11, e43fcf4d). */
+    private const string DOCUMENT_NUMBER = "L898902C<";
     private const string DATE_OF_BIRTH = "690806";
     private const string DATE_OF_EXPIRY = "940623";
 
+    /* RND.IC and KIC from ICAO Doc 9303 Part 11 (2021), Appendix D.3. */
     private static readonly byte[] RND_ICC = TestData.Hex("4608F91988702212");
 
     /* The (fake) chip's contribution to the session key seed. */
-    private static readonly byte[] K_ICC = TestData.Hex("30F49CB0B5D0A97CB0B5D0A9BABABABA");
+    private static readonly byte[] K_ICC = TestData.Hex("0B4F80323EB3191CB04970CB4052790B");
 
     [Fact]
     public void testDoBACEndToEndViaScriptedCardService()
@@ -34,6 +35,9 @@ public class BACProtocolTest
         IAccessKeySpec bacKey = new BacKey(DOCUMENT_NUMBER, DATE_OF_BIRTH, DATE_OF_EXPIRY);
         var kEnc = new KeyParameter(Util.DeriveKey(bacKey.GetKey(), Util.ENC_MODE));
         var kMac = new KeyParameter(Util.DeriveKey(bacKey.GetKey(), Util.MAC_MODE));
+        /* KEnc and KMAC from Appendix D.1 step 3 (2-key 3DES, Ka' || Kb' || Ka', DES parity bits not adjusted). */
+        Assert.Equal("AB94FCEDF2664EDFB9B291F85D7F77F2AB94FCEDF2664EDF", Hex.BytesToHexString(kEnc.GetKey()).ToUpperInvariant());
+        Assert.Equal("7862D9ECE03C1BCD4D77089DCF1314427862D9ECE03C1BCD", Hex.BytesToHexString(kMac.GetKey()).ToUpperInvariant());
 
         var service = new FakeBACChip(kEnc, kMac, false, false);
 

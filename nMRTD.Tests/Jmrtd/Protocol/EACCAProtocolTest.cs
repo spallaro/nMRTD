@@ -30,9 +30,9 @@ public class EACCAProtocolTest
       * as BAC does; see UtilTest.testBACKeyDerivationICAOWorkedExample for the
       * independent verification of this vector.
       */
-    private static readonly byte[] DESEDE_SHARED_SECRET = TestData.Hex("7FF74C962710A2404373FC9CE8A1C6E2");
-    private static readonly byte[] EXPECTED_DESEDE_ENC_KEY = TestData.Hex("906CFE5E080051EFA05FC5B044E535CA906CFE5E080051EF");
-    private static readonly byte[] EXPECTED_DESEDE_MAC_KEY = TestData.Hex("E4F1F75506EC63594CA27D0EF91C01D7E4F1F75506EC6359");
+    private static readonly byte[] DESEDE_SHARED_SECRET = TestData.Hex("239AB9CB282DAF66231DC5A4DF6BFBAE");
+    private static readonly byte[] EXPECTED_DESEDE_ENC_KEY = TestData.Hex("AB94FCEDF2664EDFB9B291F85D7F77F2AB94FCEDF2664EDF");
+    private static readonly byte[] EXPECTED_DESEDE_MAC_KEY = TestData.Hex("7862D9ECE03C1BCD4D77089DCF1314427862D9ECE03C1BCD");
 
     /*
       * BSI TR-03110 / ICAO 9303 Part 11 Appendix G.1.1 ECDH-GM worked example

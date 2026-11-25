@@ -219,20 +219,68 @@ public class UtilTest
     }
 
     /// <summary>
-    /// BAC key derivation worked example from ICAO Doc 9303 Part 11, Appendix D.2.
-    /// Document number "L898902C3", date of birth 690806, date of expiry 940623.
+    /// BAC key derivation worked example from ICAO Doc 9303 Part 11 (2021), Appendix D.2 and D.1: document number
+    /// "L898902C&lt;" (check digit 3), date of birth 690806 (1), date of expiry 940623 (6), MRZ_information
+    /// "L898902C&lt;369080619406236". The expected values are the ones printed in the appendix. KEnc and KMAC are 2-key
+    /// 3DES keys, returned as 24 bytes (Ka || Kb || Ka), without the DES parity bits adjusted (D.1 step 4; DES ignores
+    /// them), so the keys are Ka' and Kb' from D.1 step 3. As in JMRTD 0.8.11 (e43fcf4d), which used "L898902C3" before.
     /// </summary>
     [Fact]
     public void testBACKeyDerivationICAOWorkedExample()
     {
-        byte[] keySeed = Util.ComputeKeySeed("L898902C3", "690806", "940623", "SHA-1", true);
-        Assert.Equal("7FF74C962710A2404373FC9CE8A1C6E2", Hex.BytesToHexString(keySeed).ToUpperInvariant());
+        byte[] keySeed = Util.ComputeKeySeed("L898902C<", "690806", "940623", "SHA-1", true);
+        Assert.Equal("239AB9CB282DAF66231DC5A4DF6BFBAE", Hex.BytesToHexString(keySeed).ToUpperInvariant());
 
         byte[] kEnc = Util.DeriveKey(keySeed, Util.ENC_MODE);
-        Assert.Equal("906CFE5E080051EFA05FC5B044E535CA906CFE5E080051EF", Hex.BytesToHexString(kEnc).ToUpperInvariant());
+        Assert.Equal("AB94FCEDF2664EDFB9B291F85D7F77F2AB94FCEDF2664EDF", Hex.BytesToHexString(kEnc).ToUpperInvariant());
+        Assert.Equal("AB94FDECF2674FDFB9B391F85D7F76F2AB94FDECF2674FDF", WithDesParity(kEnc));
 
         byte[] kMac = Util.DeriveKey(keySeed, Util.MAC_MODE);
-        Assert.Equal("E4F1F75506EC63594CA27D0EF91C01D7E4F1F75506EC6359", Hex.BytesToHexString(kMac).ToUpperInvariant());
+        Assert.Equal("7862D9ECE03C1BCD4D77089DCF1314427862D9ECE03C1BCD", Hex.BytesToHexString(kMac).ToUpperInvariant());
+        Assert.Equal("7962D9ECE03D1ACD4C76089DCE1315437962D9ECE03D1ACD", WithDesParity(kMac));
+    }
+
+    /// <summary>The same worked example with the document number without its filler, as readers often pass it:
+    /// BacKey pads it to 9 characters before the check digit, so the key seed is the same.</summary>
+    [Fact]
+    public void testBACKeySeedICAOWorkedExampleWithoutFiller()
+    {
+        byte[] keySeed = nMRTD.Protocol.BACProtocol.ComputeKeySeedForBAC(new BacKey("L898902C", "690806", "940623"));
+        Assert.Equal("239AB9CB282DAF66231DC5A4DF6BFBAE", Hex.BytesToHexString(keySeed).ToUpperInvariant());
+    }
+
+    /// <summary>Session keys and send sequence counter from ICAO Doc 9303 Part 11 (2021), Appendix D.3: Kseed =
+    /// KIFD xor KIC, SSC from the least significant 4 bytes of RND.IC and RND.IFD.</summary>
+    [Fact]
+    public void testBACSessionKeysICAOWorkedExample()
+    {
+        byte[] kIfd = Convert.FromHexString("0B795240CB7049B01C19B33E32804F0B");
+        byte[] kIc = Convert.FromHexString("0B4F80323EB3191CB04970CB4052790B");
+        byte[] keySeed = new byte[16];
+        for (int i = 0; i < keySeed.Length; i++)
+        {
+            keySeed[i] = (byte)(kIfd[i] ^ kIc[i]);
+        }
+        Assert.Equal("0036D272F5C350ACAC50C3F572D23600", Hex.BytesToHexString(keySeed).ToUpperInvariant());
+
+        // Parity-adjusted, as printed in the appendix (see testBACKeyDerivationICAOWorkedExample).
+        Assert.Equal("979EC13B1CBFE9DCD01AB0FED307EAE5979EC13B1CBFE9DC", WithDesParity(Util.DeriveKey(keySeed, Util.ENC_MODE)));
+        Assert.Equal("F1CB1F1FB5ADF208806B89DC579DC1F8F1CB1F1FB5ADF208", WithDesParity(Util.DeriveKey(keySeed, Util.MAC_MODE)));
+
+        long ssc = nMRTD.Protocol.BACProtocol.ComputeSendSequenceCounter(Convert.FromHexString("4608F91988702212"), Convert.FromHexString("781723860C06C226"));
+        Assert.Equal(unchecked((long)0x887022120C06C226UL), ssc);
+    }
+
+    /// <summary>The key with each byte's least significant bit set for odd parity (Doc 9303 Part 11, D.1 step 4), as hex.</summary>
+    private static string WithDesParity(byte[] key)
+    {
+        byte[] adjusted = new byte[key.Length];
+        for (int i = 0; i < key.Length; i++)
+        {
+            int b = key[i] & 0xFE;
+            adjusted[i] = (byte)(System.Numerics.BitOperations.PopCount((uint)b) % 2 == 0 ? b | 0x01 : b);
+        }
+        return Hex.BytesToHexString(adjusted).ToUpperInvariant();
     }
 
     /*
