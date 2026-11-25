@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+This release brings nMRTD up to date with JMRTD 0.8.10 and 0.8.11-SNAPSHOT (upstream commit
+`bb62243e`) and SCUBA 0.1.0: the fixes of the upstream bugs #90, #91, #92 and #93, malformed chip
+data rejected with checked exceptions (with JMRTD's regression inputs), and the changes below.
+
 ### Changed
 
 - **EAC Chip Authentication sends GENERAL AUTHENTICATE as a single command**, with extended length
