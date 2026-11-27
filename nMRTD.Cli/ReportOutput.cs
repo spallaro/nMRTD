@@ -70,7 +70,8 @@ public static class ReportOutput
             ["paceProtocol"] = report.PaceProtocol,
             ["paceProtocolName"] = report.PaceProtocolName,
             ["paceParameterId"] = report.PaceParameterId,
-            ["explicitPaceParameters"] = report.ExplicitPaceParameters,
+            // Only with PACE: null (left out of text and XML) for BAC or when no access control succeeded.
+            ["explicitPaceParameters"] = report.AccessProtocol == "PACE" ? report.ExplicitPaceParameters : null,
         };
 
         var dataGroups = new JsonArray();

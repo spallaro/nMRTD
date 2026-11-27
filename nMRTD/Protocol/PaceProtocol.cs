@@ -240,14 +240,16 @@ public class PaceProtocol
         }
         catch (CardServiceException cse)
         {
+            // The chip refused MSE:Set AT: the protocol, the domain parameters or the kind of access key (JMRTD calls
+            // this step "static PACE key derivation", but the key is derived on the PCD side).
             _log.Error(LogCategory, "MSE:Set AT failed (PICC side).", cse);
-            throw new CardServiceProtocolException("PICC side error in static PACE key derivation step", 0, cse);
+            throw new CardServiceProtocolException("PICC side error in MSE:Set AT step", 0, cse);
         }
         catch (Exception e)
         {
             /* NOTE: Any other exception, must be PCD side. */
             _log.Error(LogCategory, "MSE:Set AT failed (PCD side).", e);
-            throw new CardServiceProtocolException("PCD side error in static PACE key derivation step", 0, e);
+            throw new CardServiceProtocolException("PCD side error in MSE:Set AT step", 0, e);
         }
 
         /*
@@ -758,8 +760,9 @@ public class PaceProtocol
                 byte[] expectedPiccToken = GenerateAuthenticationToken(oid, macKey, pcdKeyPair.Public);
                 if (!expectedPiccToken.AsSpan().SequenceEqual(piccToken))
                 {
-                    throw new CryptographicException(
-                        $"PICC authentication token mismatch, expectedPICCToken = {Hex.BytesToHexString(expectedPiccToken)}, piccToken = {Hex.BytesToHexString(piccToken)}");
+                    // The PICC is not authenticated (JMRTD reports this as a PCD side exception).
+                    throw new CardServiceProtocolException(
+                        $"PICC side exception in authentication token step, PICC authentication token mismatch, expectedPICCToken = {Hex.BytesToHexString(expectedPiccToken)}, piccToken = {Hex.BytesToHexString(piccToken)}", 4);
                 }
 
                 if (mappingType == PACEInfo.MappingType.CAM)
@@ -787,6 +790,13 @@ public class PaceProtocol
         catch (CardServiceProtocolException)
         {
             throw;
+        }
+        catch (CardServiceException cse)
+        {
+            // The chip refused the PCD's token, typically because the access key is wrong (JMRTD reports this as a PCD
+            // side exception).
+            _log.Error(LogCategory, "Step 4 (authentication token exchange) failed (PICC side).", cse);
+            throw new CardServiceProtocolException("PICC side exception in authentication token step", 4, cse);
         }
         catch (Exception e)
         {

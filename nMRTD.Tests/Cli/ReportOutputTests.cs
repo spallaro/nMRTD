@@ -160,6 +160,7 @@ public class ReportOutputTests
         Assert.Contains("  LDS version: ", text);
         Assert.Contains("  Issuing state: UTO", text);
         Assert.Contains("Access protocol: BAC", text);
+        Assert.DoesNotContain("Explicit PACE parameters", text); // only with PACE
         Assert.Contains("  DG1" + Environment.NewLine + "    Length: 93", text);
         Assert.Contains("  DG5: not present", text);
         Assert.Contains("Document number: " + SimulatedDocument.DocumentNumber, text);

@@ -1,3 +1,4 @@
+using nMRTD.SmartCards;
 using nMRTD.Cli;
 using nMRTD.Lds;
 using nMRTD.Tests.Helpers;
@@ -117,9 +118,29 @@ public sealed class DocumentReaderTests
     public void CanOnADocumentWithoutPaceFails() =>
         Assert.Equal(ExitCodes.PaceNotAvailable, Run(new SimulatedDocument().Build(), Can).Report.ExitCode());
 
+    /// <summary>A wrong access key: the chip refuses the terminal's token in the last step of PACE.</summary>
     [Fact]
-    public void WrongKeyFailsPace() =>
-        Assert.Equal(ExitCodes.PaceFailed, Run(WithPace().Build(), new AccessCredentials(AccessKeyMode.Can, null, "654321")).Report.ExitCode());
+    public void WrongKeyFailsPace()
+    {
+        ReadReport report = Run(WithPace().Build(), new AccessCredentials(AccessKeyMode.Can, null, "654321")).Report;
+
+        Assert.Equal(ExitCodes.PaceFailed, report.ExitCode());
+        Assert.Contains("did not authenticate each other, status word 6300 (check the access key)", report.Error);
+        Assert.Contains("PICC side exception in authentication token step", report.Error);
+    }
+
+    /// <summary>A refused MSE:Set AT (as an Italian passport answers to a CAN) suggests the kind of access key.</summary>
+    [Fact]
+    public void RefusedMseSetAtSuggestsTheKindOfAccessKey()
+    {
+        var refused = new CardServiceProtocolException("PICC side error in MSE:Set AT step", 0,
+            new CardServiceException("Sending MSE:Set AT failed", 0x6A80));
+
+        string message = DocumentReader.DescribePaceFailure(refused);
+
+        Assert.StartsWith("PACE failed: the document refused MSE:Set AT, status word 6A80 (it may not accept this kind of access key", message);
+        Assert.Equal("PACE failed (check the access key): no", DocumentReader.DescribePaceFailure(new CardServiceException("no")));
+    }
 
     [Fact]
     public void WrongKeyFailsBac() =>

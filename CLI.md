@@ -452,7 +452,7 @@ out:
 | `paceProtocol` | The PACE protocol object identifier, or `null` |
 | `paceProtocolName` | Its name, for example `id-PACE-DH-GM-3DES-CBC-CBC` |
 | `paceParameterId` | The PACE domain parameter id (0 to 31: standardized), or `null` |
-| `explicitPaceParameters` | `true` when PACE used explicit domain parameters from EF.CardAccess |
+| `explicitPaceParameters` | `true` when PACE used explicit domain parameters from EF.CardAccess; `null` when PACE was not used |
 | `dataGroups[].number`, `.present` | The data group, and whether the document has it |
 | `dataGroups[].length` | Its length in bytes (present data groups) |
 | `dataGroups[].hash` | `"match"`, `"mismatch"`, `"not-in-sod"`, or `null` if not checked (present data groups) |
@@ -616,6 +616,7 @@ without reflection).
 | Exit code `-11` | No card on the reader, or not in the field: place it and run again. |
 | Exit code `-20` | The document has no PACE (for example older passports): use the MRZ access key without `--pace`. |
 | Exit code `-21` or `-22` | Check the access key: the document number without check digit, dates as yyMMdd. |
+| Exit code `-21`, "the document refused MSE:Set AT" | The document does not take this kind of access key for PACE: some passports take only the MRZ, not a CAN. |
 | Exit code `-30` | The card lost the field or the session: remove the card, put it back, and run again. |
 | Exit code `-40` to `-45` | A security check failed: see `failedChecks`. |
 | Exit code `-3` | The `--csca` files could not be read: run with `--verbose` to see which. |

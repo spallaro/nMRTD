@@ -8,6 +8,11 @@ data rejected with checked exceptions (with JMRTD's regression inputs), and the 
 
 ### Changed
 
+- **PACE errors say which side failed.** A chip that refuses MSE:Set AT (step 0) is reported as
+  "PICC side error in MSE:Set AT step" (it was "static PACE key derivation step"), a chip that
+  refuses the terminal's token in step 4 as a PICC side exception (it was "PCD side"), and a wrong
+  chip token as a PICC side `CardServiceProtocolException` (it was a `CryptographicException` inside
+  a PCD side one).
 - **EAC Chip Authentication sends GENERAL AUTHENTICATE as a single command**, with extended length
   when the key data needs it (Doc 9303-11, 9.3.1), without retry or fallback to command chaining.
   The fallback wrapped each segment in its own `7C` data object, and under secure messaging neither
@@ -105,6 +110,11 @@ data rejected with checked exceptions (with JMRTD's regression inputs), and the 
   longer taken for a wrong length.
 
 ### Command-line tool
+
+- A failed PACE says in which step and with which status word: a refused MSE:Set AT suggests that
+  the document does not take this kind of access key (an Italian passport refuses a CAN), a failed
+  last step that the access key is wrong. `explicitPaceParameters` is `null`, and left out of the
+  text and XML output, when PACE was not used.
 
 The options and the output of the tool are reorganized, to make it a tool to verify documents as well
 as to test the library. **The options are not compatible with 0.8.8-alpha.**

@@ -288,7 +288,7 @@ public sealed class DocumentReader
         }
         catch (CardServiceException e)
         {
-            throw new ReadFailure(ExitCodes.PaceFailed, $"PACE failed (check the access key): {e.Message}", e);
+            throw new ReadFailure(ExitCodes.PaceFailed, DescribePaceFailure(e), e);
         }
         report.AccessProtocol = "PACE";
         report.PaceProtocol = paceInfo.GetObjectIdentifier();
@@ -296,6 +296,22 @@ public sealed class DocumentReader
         report.PaceParameterId = parameterId?.IntValue;
         _out.WriteLine("PACE completed; secure messaging established.");
         return true;
+    }
+
+    /// <summary>Why PACE failed, from the step and the status word of the chip: a refused MSE:Set AT usually means
+    /// that the document does not take this kind of access key (for instance a CAN), a refused or wrong token in the
+    /// last step that the access key is wrong.</summary>
+    public static string DescribePaceFailure(CardServiceException e)
+    {
+        int sw = e.Sw & 0xFFFF;
+        string status = e.Sw == CardServiceException.SwNotSet || sw == 0 ? "" : $", status word {sw:X4}";
+        int? step = (e as CardServiceProtocolException)?.Step;
+        return step switch
+        {
+            0 => $"PACE failed: the document refused MSE:Set AT{status} (it may not accept this kind of access key, for instance a CAN, or these PACE parameters): {e.Message}",
+            4 => $"PACE failed: the document and the terminal did not authenticate each other{status} (check the access key): {e.Message}",
+            _ => $"PACE failed{status} (check the access key): {e.Message}",
+        };
     }
 
     private static byte[] ReadFileBytes(PassportService passportService, short fid)

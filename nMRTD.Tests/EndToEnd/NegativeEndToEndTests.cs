@@ -65,7 +65,9 @@ public class NegativeEndToEndTests
         chip.Fault = SimulatedChip.ChipFault.PaceToken;
         PassportService service = Open(chip);
 
-        Assert.ThrowsAny<CardServiceException>(() => DoPace(service, PaceKeySpec.CreateCanKey(SimulatedDocument.Can)));
+        var e = Assert.ThrowsAny<CardServiceException>(() => DoPace(service, PaceKeySpec.CreateCanKey(SimulatedDocument.Can)));
+        Assert.Contains("PICC authentication token mismatch", e.ToString());
+        Assert.Equal(4, Assert.IsType<CardServiceProtocolException>(Innermost<CardServiceProtocolException>(e)).Step);
 
         Assert.Null(service.GetWrapper());
     }
@@ -217,5 +219,19 @@ public class NegativeEndToEndTests
         // The chip has dropped the session: the terminal cannot carry on with its keys.
         Assert.ThrowsAny<CardServiceException>(() => Read(service, PassportService.EF_COM));
         Assert.Empty(chip.Reads);
+    }
+
+    /// <summary>The innermost exception of type <typeparamref name="T"/> in the chain.</summary>
+    private static T? Innermost<T>(Exception e) where T : Exception
+    {
+        T? found = null;
+        for (Exception? current = e; current != null; current = current.InnerException)
+        {
+            if (current is T match)
+            {
+                found = match;
+            }
+        }
+        return found;
     }
 }
