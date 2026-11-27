@@ -45,7 +45,7 @@ public class LdsEncodingTests
     public void DisplayedImageExposesItsBytesAndLength()
     {
         byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46];
-        var image = new DisplayedImageInfo(ImageInfo.TYPE_PORTRAIT, jpeg);
+        var image = new DisplayedImageInfo(ImageInfoTypes.TYPE_PORTRAIT, jpeg);
 
         Assert.Equal(jpeg.Length, image.GetImageLength());
         Assert.Equal(jpeg, ReadAll(image.GetImageInputStream()));

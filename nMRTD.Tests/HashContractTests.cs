@@ -50,7 +50,7 @@ public class HashContractTests
     [Fact]
     public void DisplayedImageDataGroupsWithEqualImages()
     {
-        DG5File Dg5() => new([new DisplayedImageInfo(ImageInfo.TYPE_PORTRAIT, [0xFF, 0xD8, 0xFF, 0xE0, 0x01])]);
+        DG5File Dg5() => new([new DisplayedImageInfo(ImageInfoTypes.TYPE_PORTRAIT, [0xFF, 0xD8, 0xFF, 0xE0, 0x01])]);
 
         Assert.Equal(Dg5(), Dg5());
         Assert.Equal(Dg5().GetHashCode(), Dg5().GetHashCode());

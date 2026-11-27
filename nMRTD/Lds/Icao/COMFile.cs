@@ -43,7 +43,7 @@ public class COMFile : AbstractTaggedLDSFile
     public COMFile(string versionLDS, string updateLevelLDS,
         string majorVersionUnicode, string minorVersionUnicode,
         string releaseLevelUnicode, int[] tagList)
-        : base(LDSFile.EF_COM_TAG)
+        : base(LDSFileTags.EF_COM_TAG)
     {
         Initialize(versionLDS, updateLevelLDS, majorVersionUnicode, minorVersionUnicode, releaseLevelUnicode, tagList);
     }
@@ -52,7 +52,7 @@ public class COMFile : AbstractTaggedLDSFile
     /// <param name="unicodeVer">a "x.y.z" version number</param>
     /// <param name="tagList">list of tags</param>
     public COMFile(string ldsVer, string unicodeVer, int[] tagList)
-        : base(LDSFile.EF_COM_TAG)
+        : base(LDSFileTags.EF_COM_TAG)
     {
         try
         {
@@ -93,7 +93,7 @@ public class COMFile : AbstractTaggedLDSFile
     /// <param name="inputStream">should contain a TLV object with appropriate tag and contents</param>
     /// <exception cref="IOException">if the input could not be decoded</exception>
     public COMFile(Stream inputStream)
-        : base(LDSFile.EF_COM_TAG, inputStream)
+        : base(LDSFileTags.EF_COM_TAG, inputStream)
     {
     }
 

@@ -90,7 +90,7 @@ public class FaceImageInfoTest
     internal static void CheckValidType(FaceImageInfo imageInfo)
     {
         int type = imageInfo.GetImageType();
-        Assert.Equal(ImageInfo.TYPE_PORTRAIT, type);
+        Assert.Equal(ImageInfoTypes.TYPE_PORTRAIT, type);
     }
 
     [Fact]

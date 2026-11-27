@@ -44,7 +44,7 @@ public class DG15File : DataGroup
     /// <summary>Constructs a new file.</summary>
     /// <param name="publicKey">the key to store in this file</param>
     public DG15File(AsymmetricKeyParameter publicKey)
-        : base(LDSFile.EF_DG15_TAG)
+        : base(LDSFileTags.EF_DG15_TAG)
     {
         this.publicKey = publicKey;
     }
@@ -52,7 +52,7 @@ public class DG15File : DataGroup
     /// <summary>Constructs a new file from binary representation.</summary>
     /// <param name="inputStream">an input stream</param>
     public DG15File(Stream inputStream)
-        : base(LDSFile.EF_DG15_TAG, inputStream)
+        : base(LDSFileTags.EF_DG15_TAG, inputStream)
     {
     }
 

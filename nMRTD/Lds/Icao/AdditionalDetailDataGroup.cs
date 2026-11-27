@@ -40,7 +40,7 @@ public abstract class AdditionalDetailDataGroup : DataGroup
     public const int COUNT_TAG = 0x02;
 
     protected AdditionalDetailDataGroup(int tag)
-        : base(LDSFile.EF_DG11_TAG)
+        : base(LDSFileTags.EF_DG11_TAG)
     {
     }
 

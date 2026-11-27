@@ -132,7 +132,7 @@ public class DG2File : CBEFFDataGroup
     /// <summary>Creates a new file based on an input stream.</summary>
     /// <param name="inputStream">an input stream</param>
     public DG2File(Stream inputStream)
-        : base(LDSFile.EF_DG2_TAG, inputStream, false)
+        : base(LDSFileTags.EF_DG2_TAG, inputStream, false)
     {
     }
 
@@ -142,7 +142,7 @@ public class DG2File : CBEFFDataGroup
     }
 
     private DG2File(BiometricEncodingType encodingType, IEnumerable<BiometricDataBlock> biometricDataBlocks, ISO39794EncodingProfile iso39794EncodingProfile)
-        : base(LDSFile.EF_DG2_TAG, encodingType, [.. biometricDataBlocks], false)
+        : base(LDSFileTags.EF_DG2_TAG, encodingType, [.. biometricDataBlocks], false)
     {
         // NOTE: Java null-checks iso39794EncodingProfile here and throws IllegalArgumentException; omitted
         // since ISO39794EncodingProfile is a C# enum (a value type) and so cannot be null in the first place

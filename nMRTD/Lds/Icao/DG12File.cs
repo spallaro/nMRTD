@@ -98,7 +98,7 @@ public class DG12File : AdditionalDetailDataGroup
         string? taxOrExitRequirements, byte[]? imageOfFront,
         byte[]? imageOfRear, string? dateAndTimeOfPersonalization,
         string? personalizationSystemSerialNumber)
-        : base(LDSFile.EF_DG12_TAG)
+        : base(LDSFileTags.EF_DG12_TAG)
     {
         this.issuingAuthority = issuingAuthority;
         this.dateOfIssue = dateOfIssue;
@@ -114,7 +114,7 @@ public class DG12File : AdditionalDetailDataGroup
     /// <summary>Constructs a new file.</summary>
     /// <param name="inputStream">an input stream</param>
     public DG12File(Stream inputStream)
-        : base(LDSFile.EF_DG12_TAG, inputStream)
+        : base(LDSFileTags.EF_DG12_TAG, inputStream)
     {
     }
 
@@ -203,7 +203,7 @@ public class DG12File : AdditionalDetailDataGroup
     public string? GetPersonalizationSystemSerialNumber() => personalizationSystemSerialNumber;
 
     /// <summary>Returns the DG12 tag. Overrides the base, as in JMRTD, so that encoding writes 0x6C.</summary>
-    public override int GetTag() => LDSFile.EF_DG12_TAG;
+    public override int GetTag() => LDSFileTags.EF_DG12_TAG;
 
     /// <summary>Returns a textual representation of this file.</summary>
     public override string ToString() =>

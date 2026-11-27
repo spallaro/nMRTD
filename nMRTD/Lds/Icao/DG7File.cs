@@ -21,13 +21,13 @@ public class DG7File : DisplayedImageDataGroup
     /// <summary>Constructs a new file from a list of displayed images.</summary>
     /// <param name="images">the displayed images, all of which should be of type <i>Signature or mark</i></param>
     public DG7File(List<DisplayedImageInfo> images)
-        : base(LDSFile.EF_DG7_TAG, images, DisplayedImageInfo.DISPLAYED_SIGNATURE_OR_MARK_TAG)
+        : base(LDSFileTags.EF_DG7_TAG, images, DisplayedImageInfo.DISPLAYED_SIGNATURE_OR_MARK_TAG)
     {
     }
 
     /// <summary>Constructs a new file from binary representation.</summary>
     public DG7File(Stream inputStream)
-        : base(LDSFile.EF_DG7_TAG, inputStream)
+        : base(LDSFileTags.EF_DG7_TAG, inputStream)
     {
     }
 }

@@ -139,7 +139,7 @@ public class DG4File : CBEFFDataGroup
     /// <param name="shouldAddRandomDataIfEmpty">indicates whether the encoder should add random data when no templates are present</param>
     [Obsolete("Use CreateISO19794DG4File instead.")]
     public DG4File(List<IrisInfo> irisInfos, bool shouldAddRandomDataIfEmpty)
-        : base(LDSFile.EF_DG4_TAG, BiometricEncodingType.Iso19794, [.. irisInfos], shouldAddRandomDataIfEmpty)
+        : base(LDSFileTags.EF_DG4_TAG, BiometricEncodingType.Iso19794, [.. irisInfos], shouldAddRandomDataIfEmpty)
     {
         // NOTE: preserved Java quirk -- redundantly re-assigns ShouldAddRandomDataIfEmpty to the same
         // value the base constructor already set it to.
@@ -152,7 +152,7 @@ public class DG4File : CBEFFDataGroup
     }
 
     private DG4File(BiometricEncodingType encodingType, IEnumerable<BiometricDataBlock> dataBlocks, bool shouldAddRandomDataIfEmpty, ISO39794EncodingProfile iso39794EncodingProfile)
-        : base(LDSFile.EF_DG4_TAG, encodingType, [.. dataBlocks], shouldAddRandomDataIfEmpty)
+        : base(LDSFileTags.EF_DG4_TAG, encodingType, [.. dataBlocks], shouldAddRandomDataIfEmpty)
     {
         // NOTE: Java null-checks iso39794EncodingProfile here and throws IllegalArgumentException; omitted
         // since ISO39794EncodingProfile is a C# enum (a value type) and so cannot be null in the first place
@@ -163,7 +163,7 @@ public class DG4File : CBEFFDataGroup
     /// <summary>Constructs a new file based on an input stream.</summary>
     /// <param name="inputStream">an input stream</param>
     public DG4File(Stream inputStream)
-        : base(LDSFile.EF_DG4_TAG, inputStream, false)
+        : base(LDSFileTags.EF_DG4_TAG, inputStream, false)
     {
     }
 

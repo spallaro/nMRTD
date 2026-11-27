@@ -144,7 +144,7 @@ public class DG3File : CBEFFDataGroup
     }
 
     private DG3File(BiometricEncodingType encodingType, IEnumerable<BiometricDataBlock> dataBlocks, bool shouldAddRandomDataIfEmpty, ISO39794EncodingProfile iso39794EncodingProfile)
-        : base(LDSFile.EF_DG3_TAG, encodingType, [.. dataBlocks], shouldAddRandomDataIfEmpty)
+        : base(LDSFileTags.EF_DG3_TAG, encodingType, [.. dataBlocks], shouldAddRandomDataIfEmpty)
     {
         // NOTE: Java null-checks iso39794EncodingProfile here and throws IllegalArgumentException; omitted
         // since ISO39794EncodingProfile is a C# enum (a value type) and so cannot be null in the first place
@@ -155,7 +155,7 @@ public class DG3File : CBEFFDataGroup
     /// <summary>Creates a new file based on an input stream.</summary>
     /// <param name="inputStream">an input stream</param>
     public DG3File(Stream inputStream)
-        : base(LDSFile.EF_DG3_TAG, inputStream, false)
+        : base(LDSFileTags.EF_DG3_TAG, inputStream, false)
     {
     }
 

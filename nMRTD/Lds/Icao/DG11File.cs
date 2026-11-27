@@ -85,7 +85,7 @@ public class DG11File : AdditionalDetailDataGroup
 
     /// <summary>Constructs a file from binary representation.</summary>
     public DG11File(Stream inputStream)
-        : base(LDSFile.EF_DG11_TAG, inputStream)
+        : base(LDSFileTags.EF_DG11_TAG, inputStream)
     {
     }
 
@@ -113,7 +113,7 @@ public class DG11File : AdditionalDetailDataGroup
         string? telephone, string? profession, string? title,
         string? personalSummary, byte[]? proofOfCitizenship,
         List<string>? otherValidTDNumbers, string? custodyInformation)
-        : base(LDSFile.EF_DG11_TAG)
+        : base(LDSFileTags.EF_DG11_TAG)
     {
         this.nameOfHolder = nameOfHolder;
         this.otherNames = otherNames == null ? null : [.. otherNames];
@@ -133,7 +133,7 @@ public class DG11File : AdditionalDetailDataGroup
     /* Accessors below. */
 
     /// <summary>Returns the DG11 tag. Overrides the base, as in JMRTD.</summary>
-    public override int GetTag() => LDSFile.EF_DG11_TAG;
+    public override int GetTag() => LDSFileTags.EF_DG11_TAG;
 
     /// <summary>Returns the list of tags of fields actually present.</summary>
     public override List<int> GetTagPresenceList()

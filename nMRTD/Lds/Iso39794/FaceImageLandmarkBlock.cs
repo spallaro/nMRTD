@@ -42,7 +42,7 @@ public class FaceImageLandmarkBlock : Block
         _landmarkKind = FaceImageLandmarkKind.DecodeLandmarkKind(taggedObjects[0]);
         if (taggedObjects.TryGetValue(1, out Asn1Encodable? coordinatesObject))
         {
-            _landmarkCoordinates = FaceImageLandmarkCoordinates.DecodeLandmarkCoordinates(coordinatesObject);
+            _landmarkCoordinates = FaceImageLandmarkCoordinatesCodec.DecodeLandmarkCoordinates(coordinatesObject);
         }
     }
 
@@ -82,7 +82,7 @@ public class FaceImageLandmarkBlock : Block
         };
         if (_landmarkCoordinates != null)
         {
-            taggedObjects[1] = FaceImageLandmarkCoordinates.EncodeLandmarkCoordinates(_landmarkCoordinates);
+            taggedObjects[1] = FaceImageLandmarkCoordinatesCodec.EncodeLandmarkCoordinates(_landmarkCoordinates);
         }
         return ASN1Util.EncodeTaggedObjects(taggedObjects)!;
     }

@@ -69,7 +69,7 @@ public class IrisImageInfo : AbstractImageInfo
     /// <param name="imageFormat">the image format used for encoding</param>
     public IrisImageInfo(int imageNumber, int quality, int rotationAngle, int rotationAngleUncertainty,
         int width, int height, Stream imageBytes, int imageLength, int imageFormat)
-        : base(ImageInfo.TYPE_IRIS, width, height, imageBytes, imageLength, GetMimeTypeFromImageFormat(imageFormat))
+        : base(ImageInfoTypes.TYPE_IRIS, width, height, imageBytes, imageLength, GetMimeTypeFromImageFormat(imageFormat))
     {
         /* NOTE: preserved Java quirk -- this null check runs after the base constructor already
          * consumed imageBytes (ReadImage reads from it immediately), so a null imageBytes throws inside
@@ -107,7 +107,7 @@ public class IrisImageInfo : AbstractImageInfo
     /// <param name="inputStream">input stream</param>
     /// <param name="imageFormat">the image format used for encoding</param>
     internal IrisImageInfo(Stream inputStream, int imageFormat)
-        : base(ImageInfo.TYPE_IRIS)
+        : base(ImageInfoTypes.TYPE_IRIS)
     {
         _imageFormat = imageFormat;
         SetMimeType(GetMimeTypeFromImageFormat(imageFormat));
@@ -261,10 +261,10 @@ public class IrisImageInfo : AbstractImageInfo
     /// <summary>Returns a mime-type for the given image format code.</summary>
     private static string? GetMimeTypeFromImageFormat(int imageFormat) => imageFormat switch
     {
-        IrisInfo.IMAGEFORMAT_MONO_RAW or IrisInfo.IMAGEFORMAT_RGB_RAW => ImageInfo.WSQ_MIME_TYPE,
+        IrisInfo.IMAGEFORMAT_MONO_RAW or IrisInfo.IMAGEFORMAT_RGB_RAW => ImageInfoTypes.WSQ_MIME_TYPE,
         IrisInfo.IMAGEFORMAT_MONO_JPEG or IrisInfo.IMAGEFORMAT_RGB_JPEG
-            or IrisInfo.IMAGEFORMAT_MONO_JPEG_LS or IrisInfo.IMAGEFORMAT_RGB_JPEG_LS => ImageInfo.JPEG_MIME_TYPE,
-        IrisInfo.IMAGEFORMAT_MONO_JPEG2000 or IrisInfo.IMAGEFORMAT_RGB_JPEG2000 => ImageInfo.JPEG2000_MIME_TYPE,
+            or IrisInfo.IMAGEFORMAT_MONO_JPEG_LS or IrisInfo.IMAGEFORMAT_RGB_JPEG_LS => ImageInfoTypes.JPEG_MIME_TYPE,
+        IrisInfo.IMAGEFORMAT_MONO_JPEG2000 or IrisInfo.IMAGEFORMAT_RGB_JPEG2000 => ImageInfoTypes.JPEG2000_MIME_TYPE,
         _ => null,
     };
 

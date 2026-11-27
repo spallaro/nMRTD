@@ -199,7 +199,7 @@ public class FaceImageRepresentationBlock : Block, ImageInfo
         + $", landmarkBlocks: {JavaListToString(_landmarkBlocks)}"
         + "]";
 
-    public int GetImageType() => ImageInfo.TYPE_PORTRAIT;
+    public int GetImageType() => ImageInfoTypes.TYPE_PORTRAIT;
 
     public string? GetMimeType() =>
         _imageRepresentation2DBlock == null ? "image/raw" : _imageRepresentation2DBlock.GetRepresentationData2DInputMimeType();

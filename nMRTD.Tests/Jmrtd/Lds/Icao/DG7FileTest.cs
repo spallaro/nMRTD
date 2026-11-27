@@ -40,7 +40,7 @@ public class DG7FileTest
         List<DisplayedImageInfo> displayedImageInfos = dg7File.GetImages();
         foreach (DisplayedImageInfo displayedImageInfo in displayedImageInfos)
         {
-            Assert.Equal(ImageInfo.TYPE_SIGNATURE_OR_MARK, displayedImageInfo.GetImageType());
+            Assert.Equal(ImageInfoTypes.TYPE_SIGNATURE_OR_MARK, displayedImageInfo.GetImageType());
         }
     }
 
@@ -117,7 +117,7 @@ public class DG7FileTest
         for (int i = 0; i < n; i++)
         {
             byte[] imageBytes = new byte[0];
-            DisplayedImageInfo imageInfo = new DisplayedImageInfo(ImageInfo.TYPE_SIGNATURE_OR_MARK, imageBytes);
+            DisplayedImageInfo imageInfo = new DisplayedImageInfo(ImageInfoTypes.TYPE_SIGNATURE_OR_MARK, imageBytes);
             images.Add(imageInfo);
         }
         DG7File dg7File = new DG7File(images);
@@ -127,7 +127,7 @@ public class DG7FileTest
     public static DG7File CreateTestObject()
     {
         byte[] image = CreateTrivialJPEGBytes(958, 208);
-        DisplayedImageInfo imageInfo = new DisplayedImageInfo(ImageInfo.TYPE_SIGNATURE_OR_MARK, image);
+        DisplayedImageInfo imageInfo = new DisplayedImageInfo(ImageInfoTypes.TYPE_SIGNATURE_OR_MARK, image);
         DG7File dg7File = new DG7File(new List<DisplayedImageInfo> { imageInfo });
         return dg7File;
     }

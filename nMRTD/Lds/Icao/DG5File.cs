@@ -21,13 +21,13 @@ public class DG5File : DisplayedImageDataGroup
     /// <summary>Constructs a new file from a list of displayed images.</summary>
     /// <param name="images">the displayed images, all of which should be of type <i>Portrait</i></param>
     public DG5File(List<DisplayedImageInfo> images)
-        : base(LDSFile.EF_DG5_TAG, images, DisplayedImageInfo.DISPLAYED_PORTRAIT_TAG)
+        : base(LDSFileTags.EF_DG5_TAG, images, DisplayedImageInfo.DISPLAYED_PORTRAIT_TAG)
     {
     }
 
     /// <summary>Constructs a new file from binary representation.</summary>
     public DG5File(Stream inputStream)
-        : base(LDSFile.EF_DG5_TAG, inputStream)
+        : base(LDSFileTags.EF_DG5_TAG, inputStream)
     {
     }
 }

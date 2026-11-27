@@ -354,7 +354,7 @@ public class FingerImageRepresentationBlock : Block, ImageInfo
 
     /* ImageInfo (LDSElement) */
 
-    public int GetImageType() => ImageInfo.TYPE_FINGER;
+    public int GetImageType() => ImageInfoTypes.TYPE_FINGER;
 
     public string? GetMimeType() => _imageDataFormat == null ? "image/raw" : GetMimeType(_imageDataFormat.Value);
 
@@ -501,42 +501,42 @@ public class FingerImageRepresentationBlock : Block, ImageInfo
     {
         if (position == null)
         {
-            return CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE;
+            return CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE;
         }
 
         return position.Value switch
         {
-            FingerImagePositionCode.UnknownPosition => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE,
-            FingerImagePositionCode.RightThumbFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_THUMB,
-            FingerImagePositionCode.RightIndexFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER,
-            FingerImagePositionCode.RightMiddleFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER,
-            FingerImagePositionCode.RightRingFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RING_FINGER,
-            FingerImagePositionCode.RightLittleFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER,
-            FingerImagePositionCode.LeftThumbFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_THUMB,
-            FingerImagePositionCode.LeftIndexFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER,
-            FingerImagePositionCode.LeftMiddleFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER,
-            FingerImagePositionCode.LeftRingFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RING_FINGER,
-            FingerImagePositionCode.LeftLittleFinger => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER,
-            FingerImagePositionCode.RightFourFingers => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
-            FingerImagePositionCode.LeftFourFingers => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
-            FingerImagePositionCode.BothThumbFingers => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_THUMB,
-            FingerImagePositionCode.UnknownPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE,
-            FingerImagePositionCode.RightFullPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
-            FingerImagePositionCode.RightWritersPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE,
-            FingerImagePositionCode.LeftFullPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
-            FingerImagePositionCode.LeftWritersPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
-            FingerImagePositionCode.RightLowerPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
-            FingerImagePositionCode.RightUpperPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
-            FingerImagePositionCode.LeftLowerPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
-            FingerImagePositionCode.LeftUpperPalm => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
-            FingerImagePositionCode.RightInterdigital => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
-            FingerImagePositionCode.RightThenar => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
-            FingerImagePositionCode.RightHypothenar => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT,
-            FingerImagePositionCode.LeftInterdigital => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
-            FingerImagePositionCode.LeftThenar => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
-            FingerImagePositionCode.LeftHypothenar => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE | CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT,
-            FingerImagePositionCode.OtherPosition => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE,
-            _ => CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE,
+            FingerImagePositionCode.UnknownPosition => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE,
+            FingerImagePositionCode.RightThumbFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_THUMB,
+            FingerImagePositionCode.RightIndexFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER,
+            FingerImagePositionCode.RightMiddleFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER,
+            FingerImagePositionCode.RightRingFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RING_FINGER,
+            FingerImagePositionCode.RightLittleFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER,
+            FingerImagePositionCode.LeftThumbFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_THUMB,
+            FingerImagePositionCode.LeftIndexFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER,
+            FingerImagePositionCode.LeftMiddleFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER,
+            FingerImagePositionCode.LeftRingFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RING_FINGER,
+            FingerImagePositionCode.LeftLittleFinger => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER,
+            FingerImagePositionCode.RightFourFingers => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT,
+            FingerImagePositionCode.LeftFourFingers => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT,
+            FingerImagePositionCode.BothThumbFingers => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_THUMB,
+            FingerImagePositionCode.UnknownPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE,
+            FingerImagePositionCode.RightFullPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT,
+            FingerImagePositionCode.RightWritersPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE,
+            FingerImagePositionCode.LeftFullPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT,
+            FingerImagePositionCode.LeftWritersPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT,
+            FingerImagePositionCode.RightLowerPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT,
+            FingerImagePositionCode.RightUpperPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT,
+            FingerImagePositionCode.LeftLowerPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT,
+            FingerImagePositionCode.LeftUpperPalm => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT,
+            FingerImagePositionCode.RightInterdigital => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT,
+            FingerImagePositionCode.RightThenar => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT,
+            FingerImagePositionCode.RightHypothenar => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT,
+            FingerImagePositionCode.LeftInterdigital => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT,
+            FingerImagePositionCode.LeftThenar => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT,
+            FingerImagePositionCode.LeftHypothenar => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE | CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT,
+            FingerImagePositionCode.OtherPosition => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE,
+            _ => CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE,
         };
     }
 

@@ -217,7 +217,7 @@ public class FingerInfoTest
         byte[] bioType = sbh.GetElements()[ISO781611.BIOMETRIC_TYPE_TAG];
         Assert.NotNull(bioType);
         Assert.Single(bioType);
-        Assert.Equal(CBEFFInfo<BiometricDataBlock>.BIOMETRIC_TYPE_FINGERPRINT, bioType[0]);
+        Assert.Equal(CBEFFBiometricTypes.BIOMETRIC_TYPE_FINGERPRINT, bioType[0]);
         Assert.Equal(8, bioType[0]);
 
         /* FIXME: is bio type really mandatory for DG3 (according to ICAO)? */

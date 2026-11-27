@@ -11,14 +11,14 @@ namespace nMRTD.Tests;
 /// </summary>
 public class Iso19794FingerTests
 {
-    private const int Right = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RIGHT;
-    private const int Left = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LEFT;
-    private const int Thumb = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_THUMB;
-    private const int Index = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER;
-    private const int Middle = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER;
-    private const int Ring = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_RING_FINGER;
-    private const int Little = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER;
-    private const int None = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE;
+    private const int Right = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT;
+    private const int Left = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT;
+    private const int Thumb = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_THUMB;
+    private const int Index = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER;
+    private const int Middle = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER;
+    private const int Ring = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RING_FINGER;
+    private const int Little = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER;
+    private const int None = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE;
 
     private static readonly byte[] Image = [0xFF, 0xA0, 0xFF, 0xA8, 0x00, 0x01, 0x02, 0x03];
 

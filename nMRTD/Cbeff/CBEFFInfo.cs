@@ -26,102 +26,124 @@ namespace nMRTD.Cbeff;
 /// <typeparam name="R">the type of biometric data block referenced by this CBEFF info</typeparam>
 public interface CBEFFInfo<R> where R : BiometricDataBlock
 {
-    /*
-     * Biometric type value, based on
-     * Section 5.2.1.5 and Table 4 in NISTIR-6529A,
-     * Table C.2 in ISO/IEC 7816-11,
-     * Section 6.5.6 of ISO/IEC 19785-1.
-     */
-    /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_NO_INFORMATION_GIVEN = 0x000000;
+#if !NETFRAMEWORK
+    // The constants are in CBEFFBiometricTypes: .NET Framework does not allow static members in interfaces.
+    // These forwarders keep existing code compiling on the other targets.
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_MULTIPLE_BIOMETRICS_USED = 0x000001;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_NO_INFORMATION_GIVEN.")]
+    public const int BIOMETRIC_TYPE_NO_INFORMATION_GIVEN = CBEFFBiometricTypes.BIOMETRIC_TYPE_NO_INFORMATION_GIVEN;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_FACIAL_FEATURES = 0x000002;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_MULTIPLE_BIOMETRICS_USED.")]
+    public const int BIOMETRIC_TYPE_MULTIPLE_BIOMETRICS_USED = CBEFFBiometricTypes.BIOMETRIC_TYPE_MULTIPLE_BIOMETRICS_USED;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_VOICE = 0x000004;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_FACIAL_FEATURES.")]
+    public const int BIOMETRIC_TYPE_FACIAL_FEATURES = CBEFFBiometricTypes.BIOMETRIC_TYPE_FACIAL_FEATURES;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_FINGERPRINT = 0x000008;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_VOICE.")]
+    public const int BIOMETRIC_TYPE_VOICE = CBEFFBiometricTypes.BIOMETRIC_TYPE_VOICE;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_IRIS = 0x000010;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_FINGERPRINT.")]
+    public const int BIOMETRIC_TYPE_FINGERPRINT = CBEFFBiometricTypes.BIOMETRIC_TYPE_FINGERPRINT;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_RETINA = 0x000020;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_IRIS.")]
+    public const int BIOMETRIC_TYPE_IRIS = CBEFFBiometricTypes.BIOMETRIC_TYPE_IRIS;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_HAND_GEOMETRY = 0x000040;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_RETINA.")]
+    public const int BIOMETRIC_TYPE_RETINA = CBEFFBiometricTypes.BIOMETRIC_TYPE_RETINA;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_SIGNATURE_DYNAMICS = 0x000080;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_HAND_GEOMETRY.")]
+    public const int BIOMETRIC_TYPE_HAND_GEOMETRY = CBEFFBiometricTypes.BIOMETRIC_TYPE_HAND_GEOMETRY;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_KEYSTROKE_DYNAMICS = 0x000100;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_SIGNATURE_DYNAMICS.")]
+    public const int BIOMETRIC_TYPE_SIGNATURE_DYNAMICS = CBEFFBiometricTypes.BIOMETRIC_TYPE_SIGNATURE_DYNAMICS;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_LIP_MOVEMENT = 0x000200;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_KEYSTROKE_DYNAMICS.")]
+    public const int BIOMETRIC_TYPE_KEYSTROKE_DYNAMICS = CBEFFBiometricTypes.BIOMETRIC_TYPE_KEYSTROKE_DYNAMICS;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_THERMAL_FACE_IMAGE = 0x000400;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_LIP_MOVEMENT.")]
+    public const int BIOMETRIC_TYPE_LIP_MOVEMENT = CBEFFBiometricTypes.BIOMETRIC_TYPE_LIP_MOVEMENT;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_THERMAL_HAND_IMAGE = 0x000800;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_THERMAL_FACE_IMAGE.")]
+    public const int BIOMETRIC_TYPE_THERMAL_FACE_IMAGE = CBEFFBiometricTypes.BIOMETRIC_TYPE_THERMAL_FACE_IMAGE;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_GAIT = 0x001000;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_THERMAL_HAND_IMAGE.")]
+    public const int BIOMETRIC_TYPE_THERMAL_HAND_IMAGE = CBEFFBiometricTypes.BIOMETRIC_TYPE_THERMAL_HAND_IMAGE;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_BODY_ODOR = 0x002000;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_GAIT.")]
+    public const int BIOMETRIC_TYPE_GAIT = CBEFFBiometricTypes.BIOMETRIC_TYPE_GAIT;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_DNA = 0x004000;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_BODY_ODOR.")]
+    public const int BIOMETRIC_TYPE_BODY_ODOR = CBEFFBiometricTypes.BIOMETRIC_TYPE_BODY_ODOR;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_EAR_SHAPE = 0x008000;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_DNA.")]
+    public const int BIOMETRIC_TYPE_DNA = CBEFFBiometricTypes.BIOMETRIC_TYPE_DNA;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_FINGER_GEOMETRY = 0x010000;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_EAR_SHAPE.")]
+    public const int BIOMETRIC_TYPE_EAR_SHAPE = CBEFFBiometricTypes.BIOMETRIC_TYPE_EAR_SHAPE;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_PALM_PRINT = 0x020000;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_FINGER_GEOMETRY.")]
+    public const int BIOMETRIC_TYPE_FINGER_GEOMETRY = CBEFFBiometricTypes.BIOMETRIC_TYPE_FINGER_GEOMETRY;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_VEIN_PATTERN = 0x040000;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_PALM_PRINT.")]
+    public const int BIOMETRIC_TYPE_PALM_PRINT = CBEFFBiometricTypes.BIOMETRIC_TYPE_PALM_PRINT;
 
     /// <summary>Biometric type value.</summary>
-    public const int BIOMETRIC_TYPE_FOOT_PRINT = 0x080000;
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_VEIN_PATTERN.")]
+    public const int BIOMETRIC_TYPE_VEIN_PATTERN = CBEFFBiometricTypes.BIOMETRIC_TYPE_VEIN_PATTERN;
 
-    /*
-     * Biometric subtype, based on
-     * Section 5.1.2.6 and Table 6 in NISTIR-6529A,
-     * Table C.3 in ISO/IEC 7816-11,
-     * Section 6.5.7 of ISO/IEC 19785-1.
-     */
-    /// <summary>Biometric subtype.</summary>
-    public const int BIOMETRIC_SUBTYPE_NONE = 0x00; /* 00000000 */
-
-    /// <summary>Biometric subtype.</summary>
-    public const int BIOMETRIC_SUBTYPE_MASK_RIGHT = 0x01; /* xxxxxx01 */
-
-    /// <summary>Biometric subtype.</summary>
-    public const int BIOMETRIC_SUBTYPE_MASK_LEFT = 0x02; /* xxxxxx10 */
-
-    /// <summary>Biometric subtype.</summary>
-    public const int BIOMETRIC_SUBTYPE_MASK_THUMB = 0x04; /* xxx001xx */
-
-    /// <summary>Biometric subtype.</summary>
-    public const int BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER = 0x08; /* xxx010xx */
+    /// <summary>Biometric type value.</summary>
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_TYPE_FOOT_PRINT.")]
+    public const int BIOMETRIC_TYPE_FOOT_PRINT = CBEFFBiometricTypes.BIOMETRIC_TYPE_FOOT_PRINT;
 
     /// <summary>Biometric subtype.</summary>
-    public const int BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER = 0x0C; /* xxx011xx */
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE.")]
+    public const int BIOMETRIC_SUBTYPE_NONE = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE;
 
     /// <summary>Biometric subtype.</summary>
-    public const int BIOMETRIC_SUBTYPE_MASK_RING_FINGER = 0x10; /* xxx100xx */
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT.")]
+    public const int BIOMETRIC_SUBTYPE_MASK_RIGHT = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RIGHT;
 
     /// <summary>Biometric subtype.</summary>
-    public const int BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER = 0x14; /* xxx101xx */
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT.")]
+    public const int BIOMETRIC_SUBTYPE_MASK_LEFT = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LEFT;
+
+    /// <summary>Biometric subtype.</summary>
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_THUMB.")]
+    public const int BIOMETRIC_SUBTYPE_MASK_THUMB = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_THUMB;
+
+    /// <summary>Biometric subtype.</summary>
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER.")]
+    public const int BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_POINTER_FINGER;
+
+    /// <summary>Biometric subtype.</summary>
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER.")]
+    public const int BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_MIDDLE_FINGER;
+
+    /// <summary>Biometric subtype.</summary>
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RING_FINGER.")]
+    public const int BIOMETRIC_SUBTYPE_MASK_RING_FINGER = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_RING_FINGER;
+
+    /// <summary>Biometric subtype.</summary>
+    [Obsolete("Use CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER.")]
+    public const int BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_MASK_LITTLE_FINGER;
+#endif
 }

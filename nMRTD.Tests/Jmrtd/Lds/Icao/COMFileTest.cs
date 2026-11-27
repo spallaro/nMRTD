@@ -55,18 +55,18 @@ public class COMFileTest
         int[] tagList = comFile.GetTagList();
         Assert.NotNull(tagList);
         Assert.Equal(4, tagList.Length);
-        Assert.Equal(LDSFile.EF_DG1_TAG, tagList[0]);
-        Assert.Equal(LDSFile.EF_DG2_TAG, tagList[1]);
-        Assert.Equal(LDSFile.EF_DG4_TAG, tagList[2]);
-        Assert.Equal(LDSFile.EF_DG12_TAG, tagList[3]);
+        Assert.Equal(LDSFileTags.EF_DG1_TAG, tagList[0]);
+        Assert.Equal(LDSFileTags.EF_DG2_TAG, tagList[1]);
+        Assert.Equal(LDSFileTags.EF_DG4_TAG, tagList[2]);
+        Assert.Equal(LDSFileTags.EF_DG12_TAG, tagList[3]);
     }
 
     [Fact]
     public void testAlternativeConstructor()
     {
         int[] tagList1 = new int[2];
-        tagList1[0] = LDSFile.EF_DG1_TAG;
-        tagList1[1] = LDSFile.EF_DG2_TAG;
+        tagList1[0] = LDSFileTags.EF_DG1_TAG;
+        tagList1[1] = LDSFileTags.EF_DG2_TAG;
         int[] tagList2 = new int[tagList1.Length];
         Array.Copy(tagList1, 0, tagList2, 0, tagList1.Length);
         Assert.NotNull(tagList1);
@@ -84,9 +84,9 @@ public class COMFileTest
     internal static COMFile CreateTestObject()
     {
         int[] tagList = new int[3];
-        tagList[0] = LDSFile.EF_DG1_TAG;
-        tagList[1] = LDSFile.EF_DG2_TAG;
-        tagList[2] = LDSFile.EF_DG15_TAG;
+        tagList[0] = LDSFileTags.EF_DG1_TAG;
+        tagList[1] = LDSFileTags.EF_DG2_TAG;
+        tagList[2] = LDSFileTags.EF_DG15_TAG;
         return new COMFile("01", "07", "04", "00", "00", tagList);
     }
 

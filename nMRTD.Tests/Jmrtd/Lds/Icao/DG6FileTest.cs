@@ -20,10 +20,10 @@ public class DG6FileTest
         byte[] encoded = { 0x66, 0x08, 0x02, 0x01, 0x01, 0x5F, 0x40, 0x02, 0x01, 0x02 }; // NOTE: Uses 5F40, i.e. portrait. Not sure if DG6 is supposed to hold portrait images...
         DG6File dg6File = new DG6File(new MemoryStream(encoded));
 
-        Assert.Equal(LDSFile.EF_DG6_TAG, dg6File.GetTag());
+        Assert.Equal(LDSFileTags.EF_DG6_TAG, dg6File.GetTag());
 
         byte[] imageBytes = { 0x01, 0x02 };
-        DisplayedImageInfo image = new DisplayedImageInfo(ImageInfo.TYPE_PORTRAIT, imageBytes);
+        DisplayedImageInfo image = new DisplayedImageInfo(ImageInfoTypes.TYPE_PORTRAIT, imageBytes);
         List<DisplayedImageInfo> expectedImages = new List<DisplayedImageInfo> { image };
 
         Assert.Equal(expectedImages, dg6File.GetImages());

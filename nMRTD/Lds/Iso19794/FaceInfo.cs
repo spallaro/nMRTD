@@ -207,8 +207,8 @@ public class FaceInfo : AbstractListInfo<FaceImageInfo>, BiometricDataBlock
     {
         if (_sbh == null)
         {
-            byte[] biometricType = [(byte)CBEFFInfo<BiometricDataBlock>.BIOMETRIC_TYPE_FACIAL_FEATURES];
-            byte[] biometricSubtype = [(byte)CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE];
+            byte[] biometricType = [(byte)CBEFFBiometricTypes.BIOMETRIC_TYPE_FACIAL_FEATURES];
+            byte[] biometricSubtype = [(byte)CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE];
             byte[] formatOwner =
             [
                 (byte)((StandardBiometricHeader.JTC1_SC37_FORMAT_OWNER_VALUE & 0xFF00) >> 8),

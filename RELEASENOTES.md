@@ -3,6 +3,24 @@
 nMRTD has its own version numbers, independent of JMRTD's; each release says which JMRTD and SCUBA
 code it is based on.
 
+## Unreleased
+
+Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.
+
+### Changed
+
+- **Constants and static methods moved out of interfaces**, so that the library can target .NET
+  Framework, which does not allow static members in interfaces. On .NET 6, 8 and 10 the old members
+  remain, as `[Obsolete]` forwarders with the same values (still constants, so `switch` statements
+  compile):
+
+  | Before | Now |
+  |---|---|
+  | `LDSFile.EF_COM_TAG`, `LDSFile.EF_DG1_TAG` ... `LDSFile.EF_SOD_TAG` | `LDSFileTags.EF_COM_TAG` ... |
+  | `ImageInfo.JPEG_MIME_TYPE`, `ImageInfo.TYPE_PORTRAIT` ... | `ImageInfoTypes.JPEG_MIME_TYPE` ... |
+  | `CBEFFInfo<BiometricDataBlock>.BIOMETRIC_TYPE_...` | `CBEFFBiometricTypes.BIOMETRIC_TYPE_...` |
+  | `FaceImageLandmarkCoordinates.DecodeLandmarkCoordinates`, `EncodeLandmarkCoordinates` | `FaceImageLandmarkCoordinatesCodec.DecodeLandmarkCoordinates` ... |
+
 ## 0.8.9-alpha (2026-11-27)
 
 Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.

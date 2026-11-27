@@ -435,10 +435,10 @@ public class IrisInfo : AbstractListInfo<IrisBiometricSubtypeInfo>, BiometricDat
     {
         if (_sbh == null)
         {
-            /* NOTE: preserved Java quirk -- upstream uses CBEFFInfo.BIOMETRIC_TYPE_FINGERPRINT here
-             * instead of CBEFFInfo.BIOMETRIC_TYPE_IRIS, so a generated (not caller-supplied) SBH for an
+            /* NOTE: preserved Java quirk -- upstream uses CBEFFBiometricTypes.BIOMETRIC_TYPE_FINGERPRINT here
+             * instead of CBEFFBiometricTypes.BIOMETRIC_TYPE_IRIS, so a generated (not caller-supplied) SBH for an
              * iris record is mislabeled as a fingerprint record's biometric type. */
-            byte[] biometricType = { (byte)CBEFFInfo<BiometricDataBlock>.BIOMETRIC_TYPE_FINGERPRINT };
+            byte[] biometricType = { (byte)CBEFFBiometricTypes.BIOMETRIC_TYPE_FINGERPRINT };
             byte[] biometricSubtype = { (byte)GetBiometricSubtype() };
             byte[] formatOwner =
             {
@@ -606,7 +606,7 @@ public class IrisInfo : AbstractListInfo<IrisBiometricSubtypeInfo>, BiometricDat
          * sub-record's biometric subtype with bitwise AND (&=). Since 0 AND anything is always 0, this
          * unconditionally returns 0 regardless of the actual subtypes present; it reads like a bug (an
          * OR-based bitmask accumulation was presumably intended) but is preserved verbatim. */
-        int result = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE;
+        int result = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE;
         List<IrisBiometricSubtypeInfo> irisBiometricSubtypeInfos = GetSubRecords();
         foreach (IrisBiometricSubtypeInfo irisBiometricSubtypeInfo in irisBiometricSubtypeInfos)
         {

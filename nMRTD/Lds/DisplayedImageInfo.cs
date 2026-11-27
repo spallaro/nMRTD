@@ -28,7 +28,7 @@ public sealed class DisplayedImageInfo : AbstractImageInfo
     private int _displayedImageTag;
 
     /// <summary>Constructs a displayed image info from the image bytes.</summary>
-    /// <param name="type">one of <see cref="ImageInfo.TYPE_PORTRAIT"/> or <see cref="ImageInfo.TYPE_SIGNATURE_OR_MARK"/></param>
+    /// <param name="type">one of <see cref="ImageInfoTypes.TYPE_PORTRAIT"/> or <see cref="ImageInfoTypes.TYPE_SIGNATURE_OR_MARK"/></param>
     /// <param name="imageBytes">encoded image, for <i>Portrait</i> and <i>Signature or mark</i> use JPEG encoding</param>
     public DisplayedImageInfo(int type, byte[] imageBytes)
         : base(type, GetMimeTypeFromType(type))
@@ -156,25 +156,25 @@ public sealed class DisplayedImageInfo : AbstractImageInfo
     /// </summary>
     private static string GetMimeTypeFromType(int type) => type switch
     {
-        ImageInfo.TYPE_PORTRAIT => "image/jpeg",
-        ImageInfo.TYPE_FINGER => "image/x-wsq",
-        ImageInfo.TYPE_SIGNATURE_OR_MARK => "image/jpeg",
+        ImageInfoTypes.TYPE_PORTRAIT => "image/jpeg",
+        ImageInfoTypes.TYPE_FINGER => "image/x-wsq",
+        ImageInfoTypes.TYPE_SIGNATURE_OR_MARK => "image/jpeg",
         _ => throw new FormatException($"Unknown type: {type:X}"),
     };
 
     /// <summary>Derives the displayed image info tag from the image type.</summary>
     private static int GetDisplayedImageTagFromType(int type) => type switch
     {
-        ImageInfo.TYPE_PORTRAIT => DISPLAYED_PORTRAIT_TAG,
-        ImageInfo.TYPE_SIGNATURE_OR_MARK => DISPLAYED_SIGNATURE_OR_MARK_TAG,
+        ImageInfoTypes.TYPE_PORTRAIT => DISPLAYED_PORTRAIT_TAG,
+        ImageInfoTypes.TYPE_SIGNATURE_OR_MARK => DISPLAYED_SIGNATURE_OR_MARK_TAG,
         _ => throw new FormatException($"Unknown type: {type:X}"),
     };
 
     /// <summary>Derives the image info type from the given tag.</summary>
     private static int GetTypeFromDisplayedImageTag(int tag) => tag switch
     {
-        DISPLAYED_PORTRAIT_TAG => ImageInfo.TYPE_PORTRAIT,
-        DISPLAYED_SIGNATURE_OR_MARK_TAG => ImageInfo.TYPE_SIGNATURE_OR_MARK,
+        DISPLAYED_PORTRAIT_TAG => ImageInfoTypes.TYPE_PORTRAIT,
+        DISPLAYED_SIGNATURE_OR_MARK_TAG => ImageInfoTypes.TYPE_SIGNATURE_OR_MARK,
         _ => throw new FormatException($"Unknown tag: {tag:X}"),
     };
 }

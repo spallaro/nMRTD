@@ -37,7 +37,7 @@ public class DG14File : DataGroup
     /// <summary>Constructs a new DG14 file from the provided data.</summary>
     /// <param name="securityInfos">a list of security infos</param>
     public DG14File(IEnumerable<SecurityInfo> securityInfos)
-        : base(LDSFile.EF_DG14_TAG)
+        : base(LDSFileTags.EF_DG14_TAG)
     {
         ArgumentNullException.ThrowIfNull(securityInfos);
         this.securityInfos = [.. securityInfos];
@@ -46,7 +46,7 @@ public class DG14File : DataGroup
     /// <summary>Constructs a new DG14 file from the data in an input stream.</summary>
     /// <param name="inputStream">the input stream to parse the data from</param>
     public DG14File(Stream inputStream)
-        : base(LDSFile.EF_DG14_TAG, inputStream)
+        : base(LDSFileTags.EF_DG14_TAG, inputStream)
     {
     }
 

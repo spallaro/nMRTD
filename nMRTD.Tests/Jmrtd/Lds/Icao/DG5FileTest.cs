@@ -17,11 +17,11 @@ public class DG5FileTest
     public void testDG5File()
     {
         byte[] imageBytes = { 0x01, 0x02 };
-        DisplayedImageInfo image = new DisplayedImageInfo(ImageInfo.TYPE_PORTRAIT, imageBytes);
+        DisplayedImageInfo image = new DisplayedImageInfo(ImageInfoTypes.TYPE_PORTRAIT, imageBytes);
         List<DisplayedImageInfo> images = new List<DisplayedImageInfo> { image };
         DG5File dg5File = new DG5File(images);
 
-        Assert.Equal(LDSFile.EF_DG5_TAG, dg5File.GetTag());
+        Assert.Equal(LDSFileTags.EF_DG5_TAG, dg5File.GetTag());
         Assert.Equal(new List<DisplayedImageInfo>(images), dg5File.GetImages());
 
         byte[] expectedEncoded = { 0x65, 0x08, 0x02, 0x01, 0x01, 0x5F, 0x40, 0x02, 0x01, 0x02 };
@@ -34,10 +34,10 @@ public class DG5FileTest
     {
         byte[] encoded = { 0x65, 0x08, 0x02, 0x01, 0x01, 0x5F, 0x40, 0x02, 0x01, 0x02 };
         DG5File dg5File = new DG5File(new MemoryStream(encoded));
-        Assert.Equal(LDSFile.EF_DG5_TAG, dg5File.GetTag());
+        Assert.Equal(LDSFileTags.EF_DG5_TAG, dg5File.GetTag());
 
         byte[] imageBytes = { 0x01, 0x02 };
-        DisplayedImageInfo image = new DisplayedImageInfo(ImageInfo.TYPE_PORTRAIT, imageBytes);
+        DisplayedImageInfo image = new DisplayedImageInfo(ImageInfoTypes.TYPE_PORTRAIT, imageBytes);
         List<DisplayedImageInfo> expectedImages = new List<DisplayedImageInfo> { image };
         Assert.Equal(new List<DisplayedImageInfo>(expectedImages), dg5File.GetImages());
     }

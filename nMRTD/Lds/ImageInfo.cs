@@ -18,33 +18,46 @@ namespace nMRTD.Lds;
 /// </summary>
 public interface ImageInfo : LDSElement
 {
-    /// <summary>Mime-type.</summary>
-    public const string JPEG_MIME_TYPE = "image/jpeg";
+#if !NETFRAMEWORK
+    // The constants are in ImageInfoTypes: .NET Framework does not allow static members in interfaces.
+    // These forwarders keep existing code compiling on the other targets.
 
     /// <summary>Mime-type.</summary>
-    public const string JPEG2000_MIME_TYPE = "image/jp2";
+    [Obsolete("Use ImageInfoTypes.JPEG_MIME_TYPE.")]
+    public const string JPEG_MIME_TYPE = ImageInfoTypes.JPEG_MIME_TYPE;
 
     /// <summary>Mime-type.</summary>
-    public const string WSQ_MIME_TYPE = "image/x-wsq";
+    [Obsolete("Use ImageInfoTypes.JPEG2000_MIME_TYPE.")]
+    public const string JPEG2000_MIME_TYPE = ImageInfoTypes.JPEG2000_MIME_TYPE;
+
+    /// <summary>Mime-type.</summary>
+    [Obsolete("Use ImageInfoTypes.WSQ_MIME_TYPE.")]
+    public const string WSQ_MIME_TYPE = ImageInfoTypes.WSQ_MIME_TYPE;
 
     /// <summary>Type of image.</summary>
-    public const int TYPE_UNKNOWN = -1;
+    [Obsolete("Use ImageInfoTypes.TYPE_UNKNOWN.")]
+    public const int TYPE_UNKNOWN = ImageInfoTypes.TYPE_UNKNOWN;
 
     /// <summary>Type of image.</summary>
-    public const int TYPE_PORTRAIT = 0;
+    [Obsolete("Use ImageInfoTypes.TYPE_PORTRAIT.")]
+    public const int TYPE_PORTRAIT = ImageInfoTypes.TYPE_PORTRAIT;
 
     /// <summary>Type of image.</summary>
-    public const int TYPE_SIGNATURE_OR_MARK = 1;
+    [Obsolete("Use ImageInfoTypes.TYPE_SIGNATURE_OR_MARK.")]
+    public const int TYPE_SIGNATURE_OR_MARK = ImageInfoTypes.TYPE_SIGNATURE_OR_MARK;
 
     /// <summary>Type of image.</summary>
-    public const int TYPE_FINGER = 2;
+    [Obsolete("Use ImageInfoTypes.TYPE_FINGER.")]
+    public const int TYPE_FINGER = ImageInfoTypes.TYPE_FINGER;
 
     /// <summary>Type of image.</summary>
-    public const int TYPE_IRIS = 3;
+    [Obsolete("Use ImageInfoTypes.TYPE_IRIS.")]
+    public const int TYPE_IRIS = ImageInfoTypes.TYPE_IRIS;
+#endif
 
     /// <summary>
-    /// Returns the (biometric) type of the image. One of <see cref="TYPE_PORTRAIT"/>,
-    /// <see cref="TYPE_SIGNATURE_OR_MARK"/>, <see cref="TYPE_FINGER"/>, <see cref="TYPE_IRIS"/>.
+    /// Returns the (biometric) type of the image. One of <see cref="ImageInfoTypes.TYPE_PORTRAIT"/>,
+    /// <see cref="ImageInfoTypes.TYPE_SIGNATURE_OR_MARK"/>, <see cref="ImageInfoTypes.TYPE_FINGER"/>, <see cref="ImageInfoTypes.TYPE_IRIS"/>.
     /// Named <c>GetImageType</c> rather than Java's <c>getType()</c>, which would collide with
     /// <see cref="object.GetType"/> in C#.
     /// </summary>

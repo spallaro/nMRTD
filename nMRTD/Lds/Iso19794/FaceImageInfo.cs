@@ -330,7 +330,7 @@ public class FaceImageInfo : AbstractImageInfo
         FeaturePoint[]? featurePoints,
         int width, int height,
         Stream imageInputStream, int imageLength, int imageDataType)
-        : base(ImageInfo.TYPE_PORTRAIT, width, height, imageInputStream, imageLength, ToMimeType(imageDataType))
+        : base(ImageInfoTypes.TYPE_PORTRAIT, width, height, imageInputStream, imageLength, ToMimeType(imageDataType))
     {
         /* NOTE: preserved Java quirk -- Java's constructor calls super(...) (which already reads the
          * image bytes) before this null check, so a null stream would already have thrown a
@@ -375,7 +375,7 @@ public class FaceImageInfo : AbstractImageInfo
     /// <summary>Constructs a new face information structure from binary encoding.</summary>
     /// <param name="inputStream">an input stream</param>
     public FaceImageInfo(Stream inputStream)
-        : base(ImageInfo.TYPE_PORTRAIT)
+        : base(ImageInfoTypes.TYPE_PORTRAIT)
     {
         _gender = SmartCards.Gender.Unspecified;
         _eyeColor = EyeColor.Unspecified;
@@ -806,8 +806,8 @@ public class FaceImageInfo : AbstractImageInfo
     /// <param name="compressionAlg">the compression algorithm code as it occurs in the header</param>
     private static string? ToMimeType(int compressionAlg) => compressionAlg switch
     {
-        IMAGE_DATA_TYPE_JPEG => ImageInfo.JPEG_MIME_TYPE,
-        IMAGE_DATA_TYPE_JPEG2000 => ImageInfo.JPEG2000_MIME_TYPE,
+        IMAGE_DATA_TYPE_JPEG => ImageInfoTypes.JPEG_MIME_TYPE,
+        IMAGE_DATA_TYPE_JPEG2000 => ImageInfoTypes.JPEG2000_MIME_TYPE,
         // NOTE: Java logs a warning here ("Unknown image type: ..."); omitted per precedent (see
         // D:\GIT\nMRTD\src\nMRTD\Lds\Icao\DG11File.cs and porting-conventions.md).
         _ => null,

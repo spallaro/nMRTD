@@ -32,7 +32,7 @@ public abstract class AbstractImageInfo : ImageInfo
 
     /// <summary>Constructs a default abstract image info. Java package-only visibility; <c>internal</c> here since this assembly is the closest C# equivalent.</summary>
     internal AbstractImageInfo()
-        : this(ImageInfo.TYPE_UNKNOWN, 0, 0, null)
+        : this(ImageInfoTypes.TYPE_UNKNOWN, 0, 0, null)
     {
     }
 
@@ -225,11 +225,11 @@ public abstract class AbstractImageInfo : ImageInfo
 
     private static string TypeToString(int type) => type switch
     {
-        ImageInfo.TYPE_PORTRAIT => "Portrait",
-        ImageInfo.TYPE_SIGNATURE_OR_MARK => "Signature or usual mark",
-        ImageInfo.TYPE_FINGER => "Finger",
-        ImageInfo.TYPE_IRIS => "Iris",
-        ImageInfo.TYPE_UNKNOWN => "Unknown",
+        ImageInfoTypes.TYPE_PORTRAIT => "Portrait",
+        ImageInfoTypes.TYPE_SIGNATURE_OR_MARK => "Signature or usual mark",
+        ImageInfoTypes.TYPE_FINGER => "Finger",
+        ImageInfoTypes.TYPE_IRIS => "Iris",
+        ImageInfoTypes.TYPE_UNKNOWN => "Unknown",
         _ => throw new FormatException($"Unknown type: {type:X}"),
     };
 }

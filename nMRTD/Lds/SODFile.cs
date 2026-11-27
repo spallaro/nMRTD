@@ -114,7 +114,7 @@ public class SODFile : AbstractTaggedLDSFile
         AsymmetricKeyParameter privateKey,
         X509Certificate docSigningCertificate,
         string? ldsVersion, string? unicodeVersion)
-        : base(LDSFile.EF_SOD_TAG)
+        : base(LDSFileTags.EF_SOD_TAG)
     {
         ContentInfo contentInfo = ToContentInfo(IcaoLdsSodOid, digestAlgorithm, dataGroupHashes, ldsVersion, unicodeVersion);
         byte[]? encryptedDigest = SignedDataUtil.SignData(digestAlgorithm, digestEncryptionAlgorithm, digestEncryptionParameters, IcaoLdsSodOid, contentInfo, privateKey);
@@ -152,7 +152,7 @@ public class SODFile : AbstractTaggedLDSFile
         IReadOnlyDictionary<int, byte[]> dataGroupHashes,
         byte[] encryptedDigest,
         X509Certificate docSigningCertificate)
-        : base(LDSFile.EF_SOD_TAG)
+        : base(LDSFileTags.EF_SOD_TAG)
     {
         ArgumentNullException.ThrowIfNull(dataGroupHashes);
 
@@ -162,7 +162,7 @@ public class SODFile : AbstractTaggedLDSFile
 
     /// <summary>Constructs a Security Object data structure from binary representation.</summary>
     public SODFile(Stream inputStream)
-        : base(LDSFile.EF_SOD_TAG, inputStream)
+        : base(LDSFileTags.EF_SOD_TAG, inputStream)
     {
         /* Will throw if no signer info. */
         SignedDataUtil.GetSignerInfo(_signedData);

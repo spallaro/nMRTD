@@ -42,14 +42,14 @@ public class DG1File : DataGroup
 
     /// <summary>Creates a new file based on MRZ information.</summary>
     public DG1File(MRZInfo mrzInfo)
-        : base(LDSFile.EF_DG1_TAG)
+        : base(LDSFileTags.EF_DG1_TAG)
     {
         this.mrzInfo = mrzInfo;
     }
 
     /// <summary>Creates a new file based on an input stream.</summary>
     public DG1File(Stream inputStream)
-        : base(LDSFile.EF_DG1_TAG, inputStream)
+        : base(LDSFileTags.EF_DG1_TAG, inputStream)
     {
         // mrzInfo is assigned by ReadContent, invoked (virtually) from the base constructor above,
         // before this body runs -- see the field's own doc comment for why nothing more is needed here.

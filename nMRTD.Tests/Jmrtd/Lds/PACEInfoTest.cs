@@ -270,18 +270,18 @@ public class DisplayedImageInfoTest
     [Fact]
     public void testValidType()
     {
-        DisplayedImageInfo signatureInfo = CreateNonEmptyTestObject(ImageInfo.TYPE_SIGNATURE_OR_MARK);
+        DisplayedImageInfo signatureInfo = CreateNonEmptyTestObject(ImageInfoTypes.TYPE_SIGNATURE_OR_MARK);
         CheckValidType(signatureInfo);
-        DisplayedImageInfo portraitInfo = CreateNonEmptyTestObject(ImageInfo.TYPE_PORTRAIT);
+        DisplayedImageInfo portraitInfo = CreateNonEmptyTestObject(ImageInfoTypes.TYPE_PORTRAIT);
         CheckValidType(portraitInfo);
     }
 
     private static void CheckValidType(DisplayedImageInfo imageInfo)
     {
         int type = imageInfo.GetImageType();
-        Assert.True(type == ImageInfo.TYPE_PORTRAIT || type == ImageInfo.TYPE_SIGNATURE_OR_MARK);
+        Assert.True(type == ImageInfoTypes.TYPE_PORTRAIT || type == ImageInfoTypes.TYPE_SIGNATURE_OR_MARK);
     }
 
-    internal static DisplayedImageInfo CreateNonEmptyTestObject(int type = ImageInfo.TYPE_SIGNATURE_OR_MARK) =>
+    internal static DisplayedImageInfo CreateNonEmptyTestObject(int type = ImageInfoTypes.TYPE_SIGNATURE_OR_MARK) =>
         new(type, TrivialJpeg);
 }

@@ -181,7 +181,7 @@ public class SODFileTest
 
             SODFile sod = new SODFile(digestAlgorithm, signatureAlgorithm, hashes, privateKey, docSigningCert);
 
-            int[] dgPresenceList = [LDSFile.EF_DG1_TAG, LDSFile.EF_DG2_TAG];
+            int[] dgPresenceList = [LDSFileTags.EF_DG1_TAG, LDSFileTags.EF_DG2_TAG];
             COMFile com = new COMFile("1.7", "4.0.0", dgPresenceList);
 
             //			File outputDir = new File("tmp");

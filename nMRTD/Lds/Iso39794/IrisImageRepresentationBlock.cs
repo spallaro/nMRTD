@@ -386,7 +386,7 @@ public class IrisImageRepresentationBlock : Block, ImageInfo
         + $", padDataBlock: {_padDataBlock?.ToString() ?? "null"}"
         + "]";
 
-    public int GetImageType() => ImageInfo.TYPE_IRIS;
+    public int GetImageType() => ImageInfoTypes.TYPE_IRIS;
 
     public string? GetMimeType() => _imageDataFormatCode == null ? "image/raw" : GetMimeType(_imageDataFormatCode.Value);
 

@@ -20,7 +20,7 @@ public class DG6File : DisplayedImageDataGroup
 {
     /// <summary>Constructs a new file from binary representation.</summary>
     public DG6File(Stream inputStream)
-        : base(LDSFile.EF_DG6_TAG, inputStream)
+        : base(LDSFileTags.EF_DG6_TAG, inputStream)
     {
     }
 }

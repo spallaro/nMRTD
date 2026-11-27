@@ -122,7 +122,7 @@ public class FingerImageInfoTest
     internal static void CheckValidType(FingerImageInfo imageInfo)
     {
         int type = imageInfo.GetImageType();
-        Assert.Equal(ImageInfo.TYPE_FINGER, type);
+        Assert.Equal(ImageInfoTypes.TYPE_FINGER, type);
     }
 
     [Fact]

@@ -356,7 +356,7 @@ public class FingerInfo : AbstractListInfo<FingerImageInfo>, BiometricDataBlock
     {
         if (_sbh == null)
         {
-            byte[] biometricType = [(byte)CBEFFInfo<BiometricDataBlock>.BIOMETRIC_TYPE_FINGERPRINT];
+            byte[] biometricType = [(byte)CBEFFBiometricTypes.BIOMETRIC_TYPE_FINGERPRINT];
             byte[] biometricSubtype = [(byte)GetBiometricSubtype()];
             byte[] formatOwner =
             [
@@ -400,7 +400,7 @@ public class FingerInfo : AbstractListInfo<FingerImageInfo>, BiometricDataBlock
     /// <returns>a biometric sub-type bit mask</returns>
     private int GetBiometricSubtype()
     {
-        int result = CBEFFInfo<BiometricDataBlock>.BIOMETRIC_SUBTYPE_NONE;
+        int result = CBEFFBiometricTypes.BIOMETRIC_SUBTYPE_NONE;
         bool isFirst = true;
         List<FingerImageInfo> fingerImageInfos = GetSubRecords();
         foreach (FingerImageInfo fingerImageInfo in fingerImageInfos)

@@ -13,66 +13,86 @@
 
 namespace nMRTD.Lds;
 
-/// <summary>Port of <c>org.jmrtd.lds.LDSFile</c>: LDS element at file level. ICAO tags for the LDS files
-/// (EF.COM, EF.DG1 through EF.DG16, EF.SOD) live here so both the base classes and the concrete
-/// <c>nMRTD.Lds.Icao</c> file classes can reference them as <c>LDSFile.EF_xxx_TAG</c>.</summary>
+/// <summary>Port of <c>org.jmrtd.lds.LDSFile</c>: LDS element at file level. The ICAO tags of the LDS files
+/// (EF.COM, EF.DG1 through EF.DG16, EF.SOD), which JMRTD declares here, are in <see cref="LDSFileTags"/>.</summary>
 public interface LDSFile : LDSElement
 {
-    /* NOTE: In EAC 1.11 documents there is also the CVCA file that has no tag. */
+#if !NETFRAMEWORK
+    // The constants are in LDSFileTags: .NET Framework does not allow static members in interfaces.
+    // These forwarders keep existing code compiling on the other targets.
 
     /// <summary>ICAO tag for document index (COM).</summary>
-    public const int EF_COM_TAG = 0x60;
+    [Obsolete("Use LDSFileTags.EF_COM_TAG.")]
+    public const int EF_COM_TAG = LDSFileTags.EF_COM_TAG;
 
     /// <summary>ICAO data group tag for DG1.</summary>
-    public const int EF_DG1_TAG = 0x61;
+    [Obsolete("Use LDSFileTags.EF_DG1_TAG.")]
+    public const int EF_DG1_TAG = LDSFileTags.EF_DG1_TAG;
 
     /// <summary>ICAO data group tag for DG2.</summary>
-    public const int EF_DG2_TAG = 0x75;
+    [Obsolete("Use LDSFileTags.EF_DG2_TAG.")]
+    public const int EF_DG2_TAG = LDSFileTags.EF_DG2_TAG;
 
     /// <summary>ICAO data group tag for DG3.</summary>
-    public const int EF_DG3_TAG = 0x63;
+    [Obsolete("Use LDSFileTags.EF_DG3_TAG.")]
+    public const int EF_DG3_TAG = LDSFileTags.EF_DG3_TAG;
 
     /// <summary>ICAO data group tag for DG4.</summary>
-    public const int EF_DG4_TAG = 0x76;
+    [Obsolete("Use LDSFileTags.EF_DG4_TAG.")]
+    public const int EF_DG4_TAG = LDSFileTags.EF_DG4_TAG;
 
     /// <summary>ICAO data group tag for DG5.</summary>
-    public const int EF_DG5_TAG = 0x65;
+    [Obsolete("Use LDSFileTags.EF_DG5_TAG.")]
+    public const int EF_DG5_TAG = LDSFileTags.EF_DG5_TAG;
 
     /// <summary>ICAO data group tag for DG6.</summary>
-    public const int EF_DG6_TAG = 0x66;
+    [Obsolete("Use LDSFileTags.EF_DG6_TAG.")]
+    public const int EF_DG6_TAG = LDSFileTags.EF_DG6_TAG;
 
     /// <summary>ICAO data group tag for DG7.</summary>
-    public const int EF_DG7_TAG = 0x67;
+    [Obsolete("Use LDSFileTags.EF_DG7_TAG.")]
+    public const int EF_DG7_TAG = LDSFileTags.EF_DG7_TAG;
 
     /// <summary>ICAO data group tag for DG8.</summary>
-    public const int EF_DG8_TAG = 0x68;
+    [Obsolete("Use LDSFileTags.EF_DG8_TAG.")]
+    public const int EF_DG8_TAG = LDSFileTags.EF_DG8_TAG;
 
     /// <summary>ICAO data group tag for DG9.</summary>
-    public const int EF_DG9_TAG = 0x69;
+    [Obsolete("Use LDSFileTags.EF_DG9_TAG.")]
+    public const int EF_DG9_TAG = LDSFileTags.EF_DG9_TAG;
 
     /// <summary>ICAO data group tag for DG10.</summary>
-    public const int EF_DG10_TAG = 0x6A;
+    [Obsolete("Use LDSFileTags.EF_DG10_TAG.")]
+    public const int EF_DG10_TAG = LDSFileTags.EF_DG10_TAG;
 
     /// <summary>ICAO data group tag for DG11.</summary>
-    public const int EF_DG11_TAG = 0x6B;
+    [Obsolete("Use LDSFileTags.EF_DG11_TAG.")]
+    public const int EF_DG11_TAG = LDSFileTags.EF_DG11_TAG;
 
     /// <summary>ICAO data group tag for DG12.</summary>
-    public const int EF_DG12_TAG = 0x6C;
+    [Obsolete("Use LDSFileTags.EF_DG12_TAG.")]
+    public const int EF_DG12_TAG = LDSFileTags.EF_DG12_TAG;
 
     /// <summary>ICAO data group tag for DG13.</summary>
-    public const int EF_DG13_TAG = 0x6D;
+    [Obsolete("Use LDSFileTags.EF_DG13_TAG.")]
+    public const int EF_DG13_TAG = LDSFileTags.EF_DG13_TAG;
 
     /// <summary>ICAO data group tag for DG14.</summary>
-    public const int EF_DG14_TAG = 0x6E;
+    [Obsolete("Use LDSFileTags.EF_DG14_TAG.")]
+    public const int EF_DG14_TAG = LDSFileTags.EF_DG14_TAG;
 
     /// <summary>ICAO data group tag for DG15.</summary>
-    public const int EF_DG15_TAG = 0x6F;
+    [Obsolete("Use LDSFileTags.EF_DG15_TAG.")]
+    public const int EF_DG15_TAG = LDSFileTags.EF_DG15_TAG;
 
     /// <summary>ICAO data group tag for DG16.</summary>
-    public const int EF_DG16_TAG = 0x70;
+    [Obsolete("Use LDSFileTags.EF_DG16_TAG.")]
+    public const int EF_DG16_TAG = LDSFileTags.EF_DG16_TAG;
 
     /// <summary>ICAO tag for document security index (SOd).</summary>
-    public const int EF_SOD_TAG = 0x77;
+    [Obsolete("Use LDSFileTags.EF_SOD_TAG.")]
+    public const int EF_SOD_TAG = LDSFileTags.EF_SOD_TAG;
+#endif
 
     /* FIXME: Note that this is not necessarily the total length of the file: for TLV files this
      * gives the length of the value. -- MO (carried over from JMRTD source comment) */

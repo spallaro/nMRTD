@@ -181,13 +181,13 @@ public abstract class DisplayedImageDataGroup : DataGroup
             }
             switch (imageInfo.GetImageType())
             {
-                case ImageInfo.TYPE_SIGNATURE_OR_MARK:
+                case ImageInfoTypes.TYPE_SIGNATURE_OR_MARK:
                     if (_displayedImageTagToUse != DisplayedImageInfo.DISPLAYED_SIGNATURE_OR_MARK_TAG)
                     {
                         throw new ArgumentException("'Portrait' image cannot be part of a 'Signature or usual mark' displayed image datagroup");
                     }
                     break;
-                case ImageInfo.TYPE_PORTRAIT:
+                case ImageInfoTypes.TYPE_PORTRAIT:
                     if (_displayedImageTagToUse != DisplayedImageInfo.DISPLAYED_PORTRAIT_TAG)
                     {
                         throw new ArgumentException("'Signature or usual mark' image cannot be part of a 'Portrait' displayed image datagroup");
