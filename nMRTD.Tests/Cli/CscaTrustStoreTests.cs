@@ -104,6 +104,19 @@ public sealed class CscaTrustStoreTests : IDisposable
         Assert.Contains("1 certificate(s) of the master list could not be read", Assert.Single(store.Warnings));
     }
 
+    /// <summary>A CSCA whose subject key identifier cannot be decoded is still matched by name and signature. Two
+    /// Lithuanian CSCAs in the Italian master list put the 20 identifier bytes in the extension without the OCTET
+    /// STRING around them, as here.</summary>
+    [Fact]
+    public void UndecodableSubjectKeyIdentifierIsIgnored()
+    {
+        Issuer csca = Csca(Utopia, Rsa(), rawSubjectKeyIdentifier: Convert.FromHexString("B5E23D3BA102A77B77B55B0E6AD37B8E9D434D2D"));
+
+        CscaTrustStore.Verification result = new CscaTrustStore([csca.Certificate]).Verify(DocumentSigner(csca, Rsa().Public));
+
+        Assert.True(result.Trusted, result.Detail);
+    }
+
     [Fact]
     public void AuthorityKeyIdentifierSelectsTheCsca()
     {

@@ -135,7 +135,9 @@ A rejected access key ends with exit code `-21` (PACE) or `-22` (BAC).
 Every standard data group is read, except **DG3** (fingerprints) and **DG4** (iris), which need
 Terminal Authentication with an inspection system certificate. For each data group the result says
 whether it is present, its length and its hash check; with `--include-information` and
-`--include-raw`, also its content (see [Output](#output)).
+`--include-raw`, also its content (see [Output](#output)). A data group is not present when the chip answers its
+SELECT or READ BINARY with an error status word (6A82, file not found); a read that fails otherwise
+(no answer, a wrong MAC, the card removed, also in the middle of the file) ends with exit code `-30`.
 
 ### 3. Passive Authentication
 

@@ -314,6 +314,24 @@ public sealed class DocumentReader
         };
     }
 
+    /// <summary>Whether the chip answered with an error status word (61xx-6Fxx), as opposed to no usable answer.</summary>
+    private static bool IsErrorStatusWord(CardServiceException e)
+    {
+        int sw = e.Sw & 0xFFFF;
+        return e.Sw != CardServiceException.SwNotSet && sw >= 0x6200 && sw < 0x7000;
+    }
+
+    /// <summary>The message of an exception and of its causes.</summary>
+    private static string Describe(Exception e)
+    {
+        var parts = new List<string>();
+        for (Exception? current = e; current != null; current = current.InnerException)
+        {
+            parts.Add(current.Message);
+        }
+        return string.Join(": ", parts.Distinct());
+    }
+
     private static byte[] ReadFileBytes(PassportService passportService, short fid)
     {
         using Stream stream = passportService.GetInputStream(fid, PassportService.DefaultMaxBlocksize);
@@ -358,10 +376,18 @@ public sealed class DocumentReader
             {
                 bytes = ReadFileBytes(passportService, fid);
             }
-            catch (CardServiceException e)
+            catch (CardServiceException e) when (IsErrorStatusWord(e))
             {
+                // The chip answered with an error status word (6A82 file not found, typically).
                 _out.WriteLine($"DG{number}: not present ({e.Message}).");
                 continue;
+            }
+            catch (Exception e) when (e is CardServiceException or IOException)
+            {
+                // No answer, a wrong MAC, the card removed, also in the middle of the file: the data group is not
+                // known to be absent, so reading stops (it used to be reported as not present, and the document as
+                // valid).
+                throw new ReadFailure(ExitCodes.CommunicationError, $"DG{number} could not be read: {Describe(e)}", e);
             }
 
             dataGroupBytes[number] = bytes;

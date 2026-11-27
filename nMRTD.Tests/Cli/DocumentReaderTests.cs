@@ -312,4 +312,18 @@ public sealed class DocumentReaderTests
         Assert.Equal(ExitCodes.SodSignatureInvalid, report.ExitCode());
         Assert.Null(report.FailureExitCode);
     }
+
+    /// <summary>A data group read that fails without an error status word (here a wrong MAC) stops reading with a
+    /// communication error; it used to be reported as not present, and the document as valid.</summary>
+    [Fact]
+    public void FailedDataGroupReadIsACommunicationError()
+    {
+        SimulatedChip chip = new SimulatedDocument().Build();
+        chip.CorruptNextResponseMac = true; // the first protected response is the read of DG1
+
+        ReadReport report = Run(chip, Mrz).Report;
+
+        Assert.Equal(ExitCodes.CommunicationError, report.ExitCode());
+        Assert.StartsWith("DG1 could not be read", report.Error);
+    }
 }

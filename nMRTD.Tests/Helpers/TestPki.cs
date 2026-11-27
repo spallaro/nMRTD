@@ -37,7 +37,7 @@ internal static class TestPki
 
     /// <summary>A self-signed CSCA certificate with a subject key identifier.</summary>
     public static Issuer Csca(string subject, AsymmetricCipherKeyPair keyPair, string signatureAlgorithm = "SHA256WITHRSA",
-        DateTime? notBefore = null, DateTime? notAfter = null)
+        DateTime? notBefore = null, DateTime? notAfter = null, byte[]? rawSubjectKeyIdentifier = null)
     {
         var name = new X509Name(subject);
         var generator = new X509V3CertificateGenerator();
@@ -48,8 +48,43 @@ internal static class TestPki
         generator.SetNotAfter(notAfter ?? Now.AddYears(10));
         generator.SetPublicKey(keyPair.Public);
         generator.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(0));
+        if (rawSubjectKeyIdentifier != null)
+        {
+            return new Issuer(keyPair, WithRawSubjectKeyIdentifier(name, keyPair, signatureAlgorithm, notBefore, notAfter, rawSubjectKeyIdentifier));
+        }
         generator.AddExtension(X509Extensions.SubjectKeyIdentifier, false, X509ExtensionUtilities.CreateSubjectKeyIdentifier(keyPair.Public));
         return new Issuer(keyPair, generator.Generate(new Asn1SignatureFactory(signatureAlgorithm, keyPair.Private)));
+    }
+
+    /// <summary>A self-signed CSCA certificate whose subject key identifier extension holds
+    /// <paramref name="rawExtensionValue"/> as it is (the certificate generator would wrap it in an OCTET STRING).</summary>
+    private static X509Certificate WithRawSubjectKeyIdentifier(X509Name name, AsymmetricCipherKeyPair keyPair, string signatureAlgorithm,
+        DateTime? notBefore, DateTime? notAfter, byte[] rawExtensionValue)
+    {
+        var signatureFactory = new Asn1SignatureFactory(signatureAlgorithm, keyPair.Private);
+        var tbs = new V3TbsCertificateGenerator();
+        tbs.SetSerialNumber(new DerInteger(Interlocked.Increment(ref serial)));
+        tbs.SetIssuer(name);
+        tbs.SetSubject(name);
+        tbs.SetStartDate(new Org.BouncyCastle.Asn1.X509.Time(notBefore ?? Now.AddYears(-5)));
+        tbs.SetEndDate(new Org.BouncyCastle.Asn1.X509.Time(notAfter ?? Now.AddYears(10)));
+        tbs.SetSubjectPublicKeyInfo(Org.BouncyCastle.X509.SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(keyPair.Public));
+        tbs.SetSignature((AlgorithmIdentifier)signatureFactory.AlgorithmDetails);
+        var extensions = new Dictionary<DerObjectIdentifier, X509Extension>
+        {
+            [X509Extensions.BasicConstraints] = new X509Extension(true, new DerOctetString(new BasicConstraints(0))),
+            [X509Extensions.SubjectKeyIdentifier] = new X509Extension(false, new DerOctetString(rawExtensionValue)),
+        };
+        tbs.SetExtensions(new X509Extensions(extensions));
+        TbsCertificateStructure tbsCertificate = tbs.GenerateTbsCertificate();
+        Org.BouncyCastle.Crypto.IStreamCalculator<Org.BouncyCastle.Crypto.IBlockResult> calculator = signatureFactory.CreateCalculator();
+        using (Stream stream = calculator.Stream)
+        {
+            byte[] encoded = tbsCertificate.GetDerEncoded();
+            stream.Write(encoded, 0, encoded.Length);
+        }
+        byte[] signature = calculator.GetResult().Collect();
+        return new X509Certificate(new X509CertificateStructure(tbsCertificate, (AlgorithmIdentifier)signatureFactory.AlgorithmDetails, new DerBitString(signature)));
     }
 
     /// <summary>A Document Signer certificate issued by <paramref name="csca"/>, with an authority key identifier.</summary>

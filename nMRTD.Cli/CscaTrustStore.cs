@@ -274,17 +274,35 @@ public sealed class CscaTrustStore
         }
     }
 
-    private static byte[]? AuthorityKeyIdentifier(X509Certificate certificate)
-    {
-        Asn1OctetString? value = certificate.GetExtensionValue(X509Extensions.AuthorityKeyIdentifier);
-        return value == null ? null
-            : Org.BouncyCastle.Asn1.X509.AuthorityKeyIdentifier.GetInstance(X509ExtensionUtilities.FromExtensionValue(value)).GetKeyIdentifier();
-    }
+    /// <summary>The authority key identifier, or <c>null</c> without one or when it cannot be decoded.</summary>
+    private static byte[]? AuthorityKeyIdentifier(X509Certificate certificate) =>
+        DecodeKeyIdentifier(certificate, X509Extensions.AuthorityKeyIdentifier,
+            value => Org.BouncyCastle.Asn1.X509.AuthorityKeyIdentifier.GetInstance(value).GetKeyIdentifier());
 
-    private static byte[]? SubjectKeyIdentifier(X509Certificate certificate)
+    /// <summary>The subject key identifier, or <c>null</c> without one or when it cannot be decoded.</summary>
+    private static byte[]? SubjectKeyIdentifier(X509Certificate certificate) =>
+        DecodeKeyIdentifier(certificate, X509Extensions.SubjectKeyIdentifier,
+            value => Org.BouncyCastle.Asn1.X509.SubjectKeyIdentifier.GetInstance(value).GetKeyIdentifier());
+
+    /// <summary>
+    /// A key identifier extension, or <c>null</c> when it cannot be decoded: some certificates in real master lists
+    /// (two Lithuanian CSCAs in the Italian one) have an encoding Bouncy Castle rejects, and a key identifier only
+    /// narrows the candidates, so the match then relies on the name and the signature.
+    /// </summary>
+    private static byte[]? DecodeKeyIdentifier(X509Certificate certificate, DerObjectIdentifier extension, Func<Asn1Object, byte[]?> decode)
     {
-        Asn1OctetString? value = certificate.GetExtensionValue(X509Extensions.SubjectKeyIdentifier);
-        return value == null ? null
-            : Org.BouncyCastle.Asn1.X509.SubjectKeyIdentifier.GetInstance(X509ExtensionUtilities.FromExtensionValue(value)).GetKeyIdentifier();
+        Asn1OctetString? value = certificate.GetExtensionValue(extension);
+        if (value == null)
+        {
+            return null;
+        }
+        try
+        {
+            return decode(X509ExtensionUtilities.FromExtensionValue(value));
+        }
+        catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
     }
 }

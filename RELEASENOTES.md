@@ -119,6 +119,12 @@ data rejected with checked exceptions (with JMRTD's regression inputs), and the 
   `--csca` path are read and checked (signed by a trusted CSCA of the same name, the most recent one
   used); a revoked Document Signer fails with the new exit code **-46**, and `passiveAuthentication`
   has `revocation` and `revocationDetail`. CRLs are not downloaded.
+- **A data group that cannot be read is no longer reported as not present.** Only an error status
+  word from the chip (6A82, file not found) means not present; a read that fails otherwise (no
+  answer, a wrong MAC, the card removed, also in the middle of the file) ends with exit code -30. Such
+  a document used to be reported as valid, without that data group.
+- The CSCA check ignores a key identifier extension it cannot decode (two Lithuanian CSCAs in the
+  Italian master list have one) and matches on the name and the signature.
 - In the DG14 information, `keyId` and `parameterId` are JSON numbers, as `paceParameterId`; they
   were strings.
 
