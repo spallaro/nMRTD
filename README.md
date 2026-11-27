@@ -164,14 +164,15 @@ Native AOT publishing and troubleshooting.
 
 ## Tested documents
 
-Results of reading real documents with `nMRTD.Cli` (nMRTD 0.8.0-alpha, Windows, REINER SCT
-cyberJack RFID basis reader), as a JIT build and as a Native AOT executable. The CIE 3.0 was read again
-with PACE and nMRTD 0.8.8-alpha (Windows 11), with the same results.
+Results of reading real documents with `nMRTD.Cli` (Windows 11, REINER SCT cyberJack RFID basis
+reader), as a JIT build and as a Native AOT executable. Both documents were first read with nMRTD
+0.8.0-alpha and read again with nMRTD 0.8.9-alpha, with the same results; the passport also offers
+PACE, which the first reading did not use.
 
 | Document | BAC | PACE | Passive Authentication | Chip Authentication | Active Authentication | LDS |
 |---|---|---|---|---|---|---|
 | Italian identity card (CIE 3.0) | ✅ MRZ | ✅ CAN; DH 2048-bit (parameter id 2), Generic Mapping, 3DES (`id-PACE-DH-GM-3DES-CBC-CBC`) | ✅ SHA-512 hashes; RSASSA-PSS SHA-512 signature | ✅ DH 2048-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | n.a. | 1.8 |
-| Italian passport | ✅ MRZ | n.a. | ✅ SHA-1 hashes; SHA1withRSA signature | ✅ DH 1024-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | n.a. | 1.7 |
+| Italian passport | ✅ MRZ | ✅ MRZ; DH 2048-bit (parameter id 2), Generic Mapping, 3DES (`id-PACE-DH-GM-3DES-CBC-CBC`) | ✅ SHA-1 hashes; SHA1withRSA signature | ✅ DH 1024-bit, 3DES (`id-CA-DH-3DES-CBC-CBC`) | n.a. | 1.7 |
 
 These two documents do not cover:
 
@@ -181,8 +182,8 @@ These two documents do not cover:
   verifier to read the fingerprints (DG3).
 
 Passive Authentication here checks the document signature with the signer certificate stored in
-EF.SOD; these results predate `--csca`, so that certificate was not validated against the issuing
-country's CSCA.
+EF.SOD; these readings did not use `--csca`, so that certificate was not validated against the
+issuing country's CSCA.
 
 > ***Please help extend this table.*** *If you read another document with `nMRTD.Cli` (another country,
 > another document type, or the same document with a different access method), please
