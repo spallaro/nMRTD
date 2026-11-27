@@ -48,14 +48,19 @@ public interface IApduLevelEacCACapable
 
     /// <summary>
     /// Sends the General Authenticate command of Chip Authentication as a single command, with extended length if
-    /// the data needs it (Doc 9303-11, 9.3.1), as in JMRTD 0.8.11 (8711eb58). The default implementation sends it
-    /// as the last command of a chain.
+    /// the data needs it (Doc 9303-11, 9.3.1), as in JMRTD 0.8.11 (8711eb58). On .NET 6/8/10 the default
+    /// implementation sends it as the last command of a chain; .NET Framework does not support default interface
+    /// implementations, so there implementations must provide it.
     /// </summary>
     /// <param name="wrapper">secure messaging wrapper</param>
     /// <param name="data">data to be sent, without the 0x7C prefix (this method will add it)</param>
     /// <returns>dynamic authentication data without the 0x7C prefix (this method will remove it)</returns>
     /// <exception cref="CardServiceException">on error</exception>
+#if NETFRAMEWORK
+    byte[] SendGeneralAuthenticate(IApduWrapper? wrapper, byte[] data);
+#else
 #pragma warning disable CS0618
     byte[] SendGeneralAuthenticate(IApduWrapper? wrapper, byte[] data) => SendGeneralAuthenticate(wrapper, data, true);
 #pragma warning restore CS0618
+#endif
 }

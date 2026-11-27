@@ -69,7 +69,7 @@ public class DG14File : DataGroup
             // NullReferenceException (JMRTD 0.8.10, 737881b8).
             throw new IOException("Malformed set of security infos", e);
         }
-        securityInfos = new HashSet<SecurityInfo>(set.Count);
+        securityInfos = new HashSet<SecurityInfo>();
         for (int i = 0; i < set.Count; i++)
         {
             try

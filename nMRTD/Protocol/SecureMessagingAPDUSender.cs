@@ -60,7 +60,7 @@ public class SecureMessagingAPDUSender
     /// shared by every protocol sender wrapping the same underlying <see cref="CardService"/> -- see
     /// <see cref="Logging.LogSource"/>'s own doc comment. Distinct from <see cref="AddApduListener"/>:
     /// that mechanism delivers structured, full-byte <see cref="ApduEvent"/>s for every exchange; this one
-    /// additionally carries a compact human-readable <see cref="LogLevel.Trace"/> summary of each exchange
+    /// additionally carries a compact human-readable <see cref="Logging.LogLevel.Trace"/> summary of each exchange
     /// (raised from <see cref="Transmit"/>, alongside the free-form protocol-level narration that protocol
     /// classes such as <c>BACProtocol</c>/<c>PaceProtocol</c> raise through it directly) on the same
     /// single subscription, so a caller that just wants readable diagnostic output does not need to also
@@ -272,7 +272,7 @@ public class SecureMessagingAPDUSender
     };
 
     /// <summary>
-    /// Raises two <see cref="LogLevel.Trace"/> events on <see cref="Log"/> for one APDU exchange -- one for
+    /// Raises two <see cref="Logging.LogLevel.Trace"/> events on <see cref="Log"/> for one APDU exchange -- one for
     /// the outgoing command, one for the incoming response -- rather than a single combined line, so a
     /// listener (e.g. <c>nMRTD.Cli</c>'s console listener) can visually tell requests and responses apart
     /// (arrows, color, etc.) without having to parse a combined string back apart. Each message starts with

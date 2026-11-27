@@ -1,6 +1,6 @@
 # nMRTD — Technical Documentation
 
-nMRTD is a .NET 6/8/10 library for reading ICAO Doc 9303 electronic Machine Readable Travel
+nMRTD is a .NET 6/8/10 and .NET Framework 4.6.2/4.7.2 library for reading ICAO Doc 9303 electronic Machine Readable Travel
 Documents (ePassports, eID cards) over PC/SC-connected contactless readers. It is a
 from-scratch C# port of [JMRTD](https://jmrtd.org/). This document is a deep technical
 reference for consumers of the library (and for contributors extending it). It assumes
@@ -1206,7 +1206,8 @@ signed by one of them (`nMRTD.Cli/CscaTrustStore.cs`; see [CLI.md](CLI.md)).
 
 ### 5.1 Current project configuration
 
-Both projects multi-target `net6.0;net8.0;net10.0`. Native AOT tooling is only first-class in
+The library multi-targets `net462;net472;net6.0;net8.0;net10.0`, the CLI `net6.0;net8.0;net10.0`
+(the .NET Framework targets are described in §5.7). Native AOT tooling is only first-class in
 the SDK from .NET 7/8 onward, so AOT- and trim-analyzer properties are split accordingly.
 `net8.0` is out of support but kept on purpose: it gives .NET 8 and 9 apps an AOT-compatible
 build (without it they would get the `net6.0` one, which is not AOT-annotated or analyzed).
@@ -1215,10 +1216,14 @@ build (without it they would get the `net6.0` one, which is not AOT-annotated or
 
 ```xml
 <PropertyGroup>
-  <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+  <TargetFrameworks>net462;net472;net6.0;net8.0;net10.0</TargetFrameworks>
+  <InvariantGlobalization>true</InvariantGlobalization>
+</PropertyGroup>
+
+<!-- The trim analyzer: .NET 6 and later, not .NET Framework. -->
+<PropertyGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'">
   <IsTrimmable>true</IsTrimmable>
   <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-  <InvariantGlobalization>true</InvariantGlobalization>
 </PropertyGroup>
 
 <!-- IsAotCompatible / EnableAotAnalyzer / EnableSingleFileAnalyzer: net8.0 and later. -->
@@ -1229,8 +1234,8 @@ build (without it they would get the `net6.0` one, which is not AOT-annotated or
 </PropertyGroup>
 ```
 
-`IsTrimmable`/`EnableTrimAnalyzer`/`InvariantGlobalization` apply to **all** target
-frameworks — the ILLink trim analyzer itself works from `net6.0` onward, even though full
+`IsTrimmable`/`EnableTrimAnalyzer` apply to the .NET 6/8/10 targets — the ILLink trim analyzer
+works from `net6.0` onward, even though full
 Native AOT publishing does not. `IsAotCompatible`/`EnableAotAnalyzer`/
 `EnableSingleFileAnalyzer` apply to `net8.0` and `net10.0`.
 
@@ -1385,3 +1390,29 @@ publish output — keep the culture-aware layer at the edge, above the protocol 
    `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]` as appropriate, or avoid the
    reflection entirely, following the same static-dispatch discipline the library itself
    uses.
+
+### 5.7 .NET Framework 4.6.2 and 4.7.2
+
+The `net462` and `net472` builds have the same public API as the others, with two differences
+that the framework imposes (it allows neither static members nor default implementations in
+interfaces):
+
+- The constants and static methods are only on the static classes `LDSFileTags`,
+  `ImageInfoTypes`, `CBEFFBiometricTypes` and `FaceImageLandmarkCoordinatesCodec`. On .NET 6/8/10
+  the old members on the interfaces remain as `[Obsolete]` forwarders.
+- A class that implements `IApduLevelEacCACapable` must implement the two-argument
+  `SendGeneralAuthenticate(IApduWrapper?, byte[])` itself; on .NET 6/8/10 it has a default
+  implementation.
+
+The members of the .NET 6+ base library that the code uses and the framework lacks are
+supplied at compile time: [PolySharp](https://github.com/Sergio0694/PolySharp) generates the
+language support types (`IsExternalInit`, `Index`/`Range`, the nullable attributes), and the
+internal extension members in `nMRTD/Compat/` stand in for `Convert.ToHexString`,
+`ArgumentNullException.ThrowIfNull`, `CryptographicOperations.FixedTimeEquals` and a few others.
+The only added package dependencies are `System.Memory`, `Microsoft.Bcl.HashCode` and
+`Portable.System.DateTimeOnly`, for .NET Framework only; the .NET 6/8/10 builds are unchanged.
+
+The PCSC package is built for .NET Standard 2.0, which .NET Framework 4.6.2 runs through the
+facades that NuGet adds; 4.7.2 and later support .NET Standard 2.0 natively. The tests run on both
+targets (except the CLI ones), on the .NET Framework 4.8.1 runtime: 4.8.x replaces the earlier 4.x
+runtimes in place, so a 4.6.2 build runs on it.

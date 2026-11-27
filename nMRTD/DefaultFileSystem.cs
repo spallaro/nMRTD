@@ -318,7 +318,7 @@ public class DefaultFileSystem : IFileSystemStructured
                 if (fileLength < prefix.Length)
                 {
                     // We got more than the file's length. Ignore trailing bytes.
-                    prefix = prefix[..fileLength];
+                    prefix = prefix.AsSpan(0, fileLength).ToArray();
                 }
 
                 fileInfo = new DefaultFileInfo(_selectedFid, fileLength);

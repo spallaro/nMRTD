@@ -609,7 +609,7 @@ public class FaceImageInfo : AbstractImageInfo
             && _eyeColor == other._eyeColor
             && _faceImageType == other._faceImageType
             && _featureMask == other._featureMask
-            && _featurePoints.AsSpan().SequenceEqual(other._featurePoints)
+            && _featurePoints.SequenceEqual(other._featurePoints)
             && _gender == other._gender
             && _hairColor == other._hairColor
             && _imageDataType == other._imageDataType

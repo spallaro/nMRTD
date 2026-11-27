@@ -24,7 +24,7 @@ namespace nMRTD.Protocol;
 /// Port of <c>org.jmrtd.protocol.BACProtocol</c>: the Basic Access Control protocol.
 ///
 /// ADAPTATION: Java's <c>java.util.Random random = new SecureRandom()</c> instance field is dropped in
-/// favor of calling <see cref="RandomNumberGenerator.Fill(Span{byte})"/> directly at each use site -- a
+/// favor of calling <c>RandomNumberGenerator.Fill</c> directly at each use site -- a
 /// stateless, thread-safe, cryptographically secure source of randomness requiring no instance field.
 /// </summary>
 public class BACProtocol

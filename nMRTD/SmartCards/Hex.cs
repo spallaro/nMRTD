@@ -15,7 +15,7 @@ namespace nMRTD.SmartCards;
 
 /// <summary>
 /// Port of <c>net.sf.scuba.util.Hex</c>. Uppercase, no separators, matching common ICAO tooling
-/// conventions. <see cref="Convert.FromHexString(string)"/> already rejects odd-length input and
+/// conventions. <c>Convert.FromHexString</c> already rejects odd-length input and
 /// non-hex-digit characters with a <see cref="FormatException"/>, giving <see cref="DecodeStrict"/>
 /// the required strict behavior for free.
 /// </summary>

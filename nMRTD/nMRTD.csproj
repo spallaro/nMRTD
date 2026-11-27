@@ -1,15 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net462;net472;net6.0;net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
 
-    <!-- Trimming friendliness: the ILLink trim analyzer works from net6.0 onward, so this applies
-         to every target framework. -->
-    <IsTrimmable>true</IsTrimmable>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <InvariantGlobalization>true</InvariantGlobalization>
 
     <RootNamespace>nMRTD</RootNamespace>
@@ -18,6 +14,25 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+
+  <!-- Trimming friendliness: the ILLink trim analyzer works from net6.0 onward (not on .NET Framework). -->
+  <PropertyGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'">
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+  </PropertyGroup>
+
+  <!-- .NET Framework 4.6.2 and 4.7.2: the language features and types the code uses that the framework lacks.
+       PolySharp generates internal polyfills at compile time (IsExternalInit, Index/Range, nullable attributes...)
+       and adds no dependency; the others are the official packages for Span, HashCode and DateOnly. Only these
+       targets get them, so the dependencies of the .NET 6/8/10 builds do not change. -->
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <PackageReference Include="PolySharp" Version="1.15.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="System.Memory" Version="4.6.3" />
+    <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
+    <PackageReference Include="Portable.System.DateTimeOnly" Version="9.0.0" />
+    <Using Remove="System.Net.Http" />
+    <Using Include="nMRTD.Compat" />
+  </ItemGroup>
 
   <!-- Native AOT is only officially supported by the SDK starting with .NET 7/8; net6.0 has no
        first-class PublishAot/AOT-analyzer support, so these apply to the net8.0 and net10.0 targets.
@@ -33,7 +48,7 @@
     <PackageId>nMRTD</PackageId>
     <Version>0.8.9-alpha</Version>
     <Title>nMRTD</Title>
-    <Description>.NET 6/8/10 port of JMRTD for reading ICAO 9303 electronic travel documents (ePassports, eID cards) with contactless PC/SC readers: BAC, PACE, EAC, Active and Passive Authentication, and ISO/IEC 19794 and 39794 biometrics. Native AOT compatible.</Description>
+    <Description>.NET 6/8/10 and .NET Framework 4.6.2/4.7.2 port of JMRTD for reading ICAO 9303 electronic travel documents (ePassports, eID cards) with contactless PC/SC readers: BAC, PACE, EAC, Active and Passive Authentication, and ISO/IEC 19794 and 39794 biometrics. Native AOT compatible on .NET 8 and 10.</Description>
     <Authors>Sebastiano Pallaro</Authors>
     <Copyright>(C) 2026 Sebastiano Pallaro</Copyright>
     <PackageTags>mrtd emrtd epassport eid</PackageTags>

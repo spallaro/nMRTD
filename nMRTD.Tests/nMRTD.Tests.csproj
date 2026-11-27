@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net462;net472;net6.0;net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -20,6 +20,12 @@
     <NoWarn>$(NoWarn);CS0618</NoWarn>
   </PropertyGroup>
 
+  <!-- .NET Framework: the tests' RuntimeHelpers.GetSubArray polyfill hides the framework type (see
+       Helpers/NetFrameworkTestCompat.cs). -->
+  <PropertyGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -35,7 +41,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\nMRTD\nMRTD.csproj" />
+  </ItemGroup>
+
+  <!-- The command-line tool targets .NET 6/8/10 only: its tests run there. -->
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'">
     <ProjectReference Include="..\nMRTD.Cli\nMRTD.Cli.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <Compile Remove="Cli\**" />
+    <Using Remove="System.Net.Http" />
+    <Using Include="nMRTD.Compat" />
+    <Using Include="nMRTD.Tests.Helpers" />
   </ItemGroup>
 
   <ItemGroup>

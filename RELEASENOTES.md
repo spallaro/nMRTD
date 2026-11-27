@@ -7,6 +7,16 @@ code it is based on.
 
 Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.
 
+### Added
+
+- **.NET Framework 4.6.2 and 4.7.2 targets** (`net462`, `net472`), for applications that cannot move
+  to .NET 6 or later. The API is the same, except that the constants are only on the new static
+  classes below, and that a class implementing `IApduLevelEacCACapable` must implement the
+  two-argument `SendGeneralAuthenticate` itself (there are no default interface implementations on
+  .NET Framework). On these targets the package also depends on `System.Memory`,
+  `Microsoft.Bcl.HashCode` and `Portable.System.DateTimeOnly` (which supplies `DateOnly`). The tests
+  run on the .NET Framework 4.8.1 runtime; the command-line tool stays on .NET 6/8/10.
+
 ### Changed
 
 - **Constants and static methods moved out of interfaces**, so that the library can target .NET

@@ -278,7 +278,12 @@ public class UtilTest
         for (int i = 0; i < key.Length; i++)
         {
             int b = key[i] & 0xFE;
-            adjusted[i] = (byte)(System.Numerics.BitOperations.PopCount((uint)b) % 2 == 0 ? b | 0x01 : b);
+            int bits = 0;
+            for (int v = b; v != 0; v >>= 1)
+            {
+                bits += v & 1;
+            }
+            adjusted[i] = (byte)(bits % 2 == 0 ? b | 0x01 : b);
         }
         return Hex.BytesToHexString(adjusted).ToUpperInvariant();
     }

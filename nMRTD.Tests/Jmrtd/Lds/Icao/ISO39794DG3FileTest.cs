@@ -100,6 +100,6 @@ public class ISO39794DG3FileTest
     /// <summary>Java's <c>ImageDataFormatCode.getMimeType()</c>; in nMRTD a private static helper of the block.</summary>
     private static string MimeTypeOf(FingerImageRepresentationBlock.ImageDataFormatCode code) =>
         (string)typeof(FingerImageRepresentationBlock)
-            .GetMethod("GetMimeType", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static, [typeof(FingerImageRepresentationBlock.ImageDataFormatCode)])!
+            .GetMethod("GetMimeType", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static, null, [typeof(FingerImageRepresentationBlock.ImageDataFormatCode)], null)!
             .Invoke(null, [code])!;
 }

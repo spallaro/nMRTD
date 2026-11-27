@@ -300,7 +300,8 @@ public class SODFile : AbstractTaggedLDSFile
             return null;
         }
 
-        return new BigInteger(issuerAndSerialNumber.SerialNumber.Value.ToByteArray(), isUnsigned: false, isBigEndian: true);
+        // Big endian two's complement, reversed for the little endian constructor (available on every target).
+        return new BigInteger(Enumerable.Reverse(issuerAndSerialNumber.SerialNumber.Value.ToByteArray()).ToArray());
     }
 
     /// <summary>

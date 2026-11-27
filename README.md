@@ -1,7 +1,7 @@
 # nMRTD
 
 [![NuGet version](https://img.shields.io/nuget/v/nMRTD.svg)](https://www.nuget.org/packages/nMRTD/)
-[![Target Framework](https://img.shields.io/badge/.NET-6%20|%208%20|%2010-white)](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)
+[![Target Framework](https://img.shields.io/badge/.NET-6%20|%208%20|%2010%20|%20Framework%204.6.2%20|%204.7.2-white)](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)
 [![Native AOT](https://img.shields.io/badge/.NET%20AOT-8%20|%2010-white)](https://learn.microsoft.com/dotnet/core/deploying/native-aot/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-white.svg)](https://opensource.org/license/lgpl-3-0)
 
@@ -9,9 +9,9 @@
 
 > **Please note:** this project is AI-assisted.
 
-**nMRTD** is a .NET 6/8/10 library for reading electronic Machine Readable Travel Documents (eMRTDs) — biometric passports, electronic ID cards, and similar ICAO-compliant documents — over NFC/contactless smart card readers, implementing the [ICAO Doc 9303](https://www.icao.int/publications/doc-series/doc-9303) specification.
+**nMRTD** is a .NET 6/8/10 and .NET Framework 4.6.2/4.7.2 library for reading electronic Machine Readable Travel Documents (eMRTDs) — biometric passports, electronic ID cards, and similar ICAO-compliant documents — over NFC/contactless smart card readers, implementing the [ICAO Doc 9303](https://www.icao.int/publications/doc-series/doc-9303) specification.
 
-It is a from-scratch **C# port of [JMRTD](https://jmrtd.org/)**, the reference Java implementation of the MRTD standards, targeting **.NET 6/8/10**, **Native AOT** (.NET 8 and 10), and cross-platform smart card access (Windows, Linux, macOS) via PC/SC. Its version numbers are its own; the current code is based on JMRTD 0.8.11-SNAPSHOT (upstream commit `bb62243e`) and SCUBA 0.1.0, and each release says its base in the [release notes](https://github.com/spallaro/nMRTD/blob/main/RELEASENOTES.md).
+It is a from-scratch **C# port of [JMRTD](https://jmrtd.org/)**, the reference Java implementation of the MRTD standards, targeting **.NET 6/8/10** and **.NET Framework 4.6.2/4.7.2**, **Native AOT** (.NET 8 and 10), and cross-platform smart card access (Windows, Linux, macOS) via PC/SC. Its version numbers are its own; the current code is based on JMRTD 0.8.11-SNAPSHOT (upstream commit `bb62243e`) and SCUBA 0.1.0, and each release says its base in the [release notes](https://github.com/spallaro/nMRTD/blob/main/RELEASENOTES.md).
 
 ## Contents
 
@@ -55,10 +55,16 @@ or reference it directly in your `.csproj`:
 </ItemGroup>
 ```
 
-nMRTD targets **.NET 6/8/10** and depends on the following transitive dependencies:
+nMRTD targets **.NET 6/8/10** and **.NET Framework 4.6.2/4.7.2** and depends on the following transitive dependencies:
 - [`BouncyCastle.Cryptography`](https://www.nuget.org/packages/BouncyCastle.Cryptography) (crypto/ASN.1)
 - [`PCSC`](https://www.nuget.org/packages/PCSC)
 - [`PCSC.Iso7816`](https://www.nuget.org/packages/PCSC.Iso7816) (smart card access)
+
+On .NET Framework it also depends on [`System.Memory`](https://www.nuget.org/packages/System.Memory),
+[`Microsoft.Bcl.HashCode`](https://www.nuget.org/packages/Microsoft.Bcl.HashCode) and
+[`Portable.System.DateTimeOnly`](https://www.nuget.org/packages/Portable.System.DateTimeOnly) (the `DateOnly`
+type of the MRZ and certificate dates). Both builds are tested on the .NET Framework 4.8.1 runtime, which runs
+them in place of 4.6.2 and 4.7.2. The command-line tool targets .NET 6/8/10 only.
 
 ## Quick start
 
@@ -206,7 +212,7 @@ dotnet test nMRTD.sln
 dotnet test nMRTD.sln --collect:"XPlat Code Coverage"
 ```
 
-The tests run on all three target frameworks. With `--collect`, coverlet writes a
+The tests run on all five target frameworks (the CLI tests on .NET 6/8/10 only). With `--collect`, coverlet writes a
 `coverage.opencover.xml` for each framework under `nMRTD.Tests/TestResults/` (the format is set in
 [`nMRTD.Tests/coverage.runsettings`](https://github.com/spallaro/nMRTD/blob/main/nMRTD.Tests/coverage.runsettings)).
 
