@@ -183,7 +183,9 @@ These two documents do not cover:
 
 Passive Authentication here is complete: the data group hashes and the EF.SOD signature are checked,
 and with `--csca` the Document Signer certificate was found to be issued by a CSCA certificate
-published by the Italian Ministry of the Interior. Revocation (CRLs) was not checked.
+published by the Italian Ministry of the Interior. With the CSCA's CRL, the CIE's Document Signer is
+not revoked; the passport's was issued under the CSCA's earlier name, which the current CRL does not
+cover.
 
 > ***Please help extend this table.*** *If you read another document with `nMRTD.Cli` (another country,
 > another document type, or the same document with a different access method), please

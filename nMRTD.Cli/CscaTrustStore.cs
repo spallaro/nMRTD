@@ -215,7 +215,11 @@ public sealed class CscaTrustStore
         List<X509Crl> ofIssuer = crls.Where(crl => crl.IssuerDN.Equivalent(issuer)).ToList();
         if (ofIssuer.Count == 0)
         {
-            return new RevocationCheck("no-crl", "no CRL of the CSCA was given");
+            // A CRL covers only the certificates issued under its issuer's name (RFC 5280): after a CSCA name change
+            // the CRL of the new name says nothing about certificates issued under the old one.
+            return new RevocationCheck("no-crl", crls.Count == 0
+                ? "no CRL of the CSCA was given"
+                : $"no CRL issued under the name of the CSCA that issued the Document Signer certificate ({crls.Count} CRL(s) of another name given)");
         }
 
         List<X509Certificate> keys = certificates.Where(c => c.SubjectDN.Equivalent(issuer)).ToList();

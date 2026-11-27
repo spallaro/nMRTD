@@ -564,6 +564,11 @@ public sealed class DocumentReader
         {
             check = new CscaTrustStore.RevocationCheck("crl-invalid", e.Message);
         }
+        if (check.Status == "no-crl")
+        {
+            _out.WriteLine($"No CRL of {verification.Csca!.SubjectDN}; CRLs given: "
+                + string.Join("; ", TrustStore.Crls.Select(crl => crl.IssuerDN.ToString()).Distinct()) + ".");
+        }
         report.PassiveAuthentication.Revocation = check.Status;
         report.PassiveAuthentication.RevocationDetail = check.Detail;
         _out.WriteLine(check.Status == "revoked"

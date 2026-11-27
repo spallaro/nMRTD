@@ -257,7 +257,23 @@ public sealed class CscaTrustStoreTests : IDisposable
         Issuer elsewhere = Csca("C=XX, O=Elsewhere, CN=CSCA Elsewhere", Rsa());
         var store = new CscaTrustStore([csca.Certificate, elsewhere.Certificate], [Crl(elsewhere)]);
 
-        Assert.Equal("no-crl", store.CheckRevocation(DocumentSigner(csca, Rsa().Public), csca.Certificate).Status);
+        CscaTrustStore.RevocationCheck check = store.CheckRevocation(DocumentSigner(csca, Rsa().Public), csca.Certificate);
+
+        Assert.Equal("no-crl", check.Status);
+        Assert.Contains("1 CRL(s) of another name given", check.Detail);
+    }
+
+    /// <summary>After a CSCA name change (as the Italian CSCA in 2020, OU "State Police" to "Italian National
+    /// Police"), the CRL of the new name does not cover certificates issued under the old one.</summary>
+    [Fact]
+    public void CrlOfTheRenamedCscaDoesNotCoverTheOldName()
+    {
+        Issuer oldName = Csca("C=UT, O=Utopia, OU=State Police, CN=CSCA Utopia", Rsa());
+        Issuer newName = Csca("C=UT, O=Utopia, OU=National Police, CN=CSCA Utopia", Rsa());
+        X509Certificate signer = DocumentSigner(oldName, Rsa().Public);
+        var store = new CscaTrustStore([oldName.Certificate, newName.Certificate], [Crl(newName, revoked: signer)]);
+
+        Assert.Equal("no-crl", store.CheckRevocation(signer, oldName.Certificate).Status);
     }
 
     /// <summary>A CRL with the CSCA's name but signed with another key counts for nothing, even if it lists the

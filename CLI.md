@@ -186,7 +186,9 @@ With `--csca`, the tool checks that the Document Signer certificate was issued b
   the current CRL is signed with the new key and also covers the certificates issued with the old one),
   takes the most recent one and looks up the certificate's serial number: `revoked` (exit code `-46`,
   with the revocation date and reason), `not-revoked`, `no-crl` (no CRL of that CSCA was given) or
-  `crl-invalid` (the CRLs of that CSCA do not verify). A CRL past its next update is still used, and
+  `crl-invalid` (the CRLs of that CSCA do not verify). A CRL covers only the certificates issued
+  under its issuer's name (RFC 5280): after a CSCA name change, as the Italian CSCA's in 2020, the CRL
+  of the new name gives `no-crl` for a Document Signer issued under the old one. A CRL past its next update is still used, and
   that is reported. Without any `.crl` file, revocation is `not-checked`. CRLs are not downloaded.
 - **Not checked:** the signature of a master list (loading one means trusting where it came from).
 
