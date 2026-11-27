@@ -82,6 +82,9 @@ public static class ExitCodes
 
     /// <summary>Chip or Active Authentication succeeded with a key not covered by a valid EF.SOD signature.</summary>
     public const int KeyNotAuthenticated = -45;
+
+    /// <summary>The Document Signer certificate is revoked by a CRL of its CSCA (in the <c>--csca</c> path).</summary>
+    public const int DocumentSignerRevoked = -46;
 }
 
 /// <summary>A problem that stops reading, with its exit code.</summary>

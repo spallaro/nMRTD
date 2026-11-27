@@ -178,11 +178,19 @@ With `--csca`, the tool checks that the Document Signer certificate was issued b
 - **Dates:** reported, not enforced. The result says whether the CSCA certificate was valid when the
   Document Signer certificate was issued, and whether the Document Signer certificate is valid today.
   An expired document normally has an expired Document Signer certificate.
-- **Not checked:** the signature of a master list (loading one means trusting where it came from),
-  and revocation (CRLs).
+- **Revocation:** certificate revocation lists (`.crl`, DER or PEM) in the `--csca` path are read too.
+  When the Document Signer certificate is trusted, the tool looks for the CRLs whose issuer is its
+  CSCA and whose signature verifies with a trusted CSCA certificate of that name (after a key rollover
+  the current CRL is signed with the new key and also covers the certificates issued with the old one),
+  takes the most recent one and looks up the certificate's serial number: `revoked` (exit code `-46`,
+  with the revocation date and reason), `not-revoked`, `no-crl` (no CRL of that CSCA was given) or
+  `crl-invalid` (the CRLs of that CSCA do not verify). A CRL past its next update is still used, and
+  that is reported. Without any `.crl` file, revocation is `not-checked`. CRLs are not downloaded.
+- **Not checked:** the signature of a master list (loading one means trusting where it came from).
 
-Get the CSCA certificates from the issuing country (its CSCA publication page) or from a master list
-published by a document verification authority, and keep them outside the repository.
+Get the CSCA certificates and their CRL from the issuing country (its CSCA publication page, such as
+[csca-ita.interno.gov.it](https://csca-ita.interno.gov.it/) for Italy) or from a master list published
+by a document verification authority, and keep them outside the repository.
 
 ### 5. Chip Authentication
 
@@ -220,6 +228,7 @@ The result lists every failed security check with its code (`failedChecks`):
 | `-40` | A data group whose hash differs from EF.SOD (one entry per data group). |
 | `-41` | An invalid EF.SOD signature, or EF.SOD content that does not match its signed digest. |
 | `-42` | With `--csca`, a Document Signer certificate not issued by a trusted CSCA (or no certificate). |
+| `-46` | With a CRL in the `--csca` path, a revoked Document Signer certificate. |
 | `-43` | A failed Chip Authentication. |
 | `-44` | An Active Authentication signature that does not verify. |
 | `-45` | A Chip or Active Authentication that succeeded with a key not covered by a valid EF.SOD signature. |
@@ -253,11 +262,12 @@ The result lists every failed security check with its code (`failedChecks`):
 | `-40` | A data group hash does not match EF.SOD. |
 | `-41` | The EF.SOD signature is invalid. |
 | `-42` | The Document Signer certificate was not issued by a trusted CSCA (`--csca`). |
+| `-46` | The Document Signer certificate is revoked (a CRL in the `--csca` path). |
 | `-43` | Chip Authentication failed. |
 | `-44` | Active Authentication failed. |
 | `-45` | Chip or Active Authentication used a key not covered by a valid EF.SOD signature. |
 
-From `-1` to `-31` the reading stopped: the result has an `error` with the reason. From `-40` to `-45`
+From `-1` to `-31` the reading stopped: the result has an `error` with the reason. From `-40` to `-46`
 the document was read and a check failed; when several checks fail, the exit code is the first of
 `failedChecks`, in the order of this table, and the result lists all of them.
 
@@ -470,6 +480,8 @@ out:
 | `passiveAuthentication.csca` | `"trusted"`, `"untrusted"`, `"no-certificate"`, `"error"`, `"skipped"`, `"not-checked"` (no `--csca`) |
 | `passiveAuthentication.cscaSubject` | The trusted CSCA that issued the Document Signer certificate |
 | `passiveAuthentication.cscaDetail` | Why the certificate is not trusted, or a note on the CSCA's validity |
+| `passiveAuthentication.revocation` | `"not-revoked"`, `"revoked"`, `"no-crl"`, `"crl-invalid"`, `"not-checked"` (no `.crl` in the `--csca` path, or the certificate is not trusted) |
+| `passiveAuthentication.revocationDetail` | The CRL used (its dates) and, when revoked, the revocation date and reason |
 | `passiveAuthentication.signerCertificateValidNow` | Whether the Document Signer certificate is within its validity period today |
 | `chipAuthentication.status` | `"succeeded"`, `"failed"`, `"error"` (malformed DG14), `"not-available"` |
 | `activeAuthentication.status` | `"succeeded"`, `"failed"` (wrong signature), `"error"` (no usable answer), `"unverifiable"`, `"not-available"` |
@@ -624,6 +636,8 @@ without reflection).
 | Exit code `-30` | The card lost the field or the session: remove the card, put it back, and run again. |
 | Exit code `-40` to `-45` | A security check failed: see `failedChecks`. |
 | Exit code `-3` | The `--csca` files could not be read: run with `--verbose` to see which. |
+| Exit code `-46` | The Document Signer certificate is in the CSCA's CRL: see `revocationDetail`. |
+| Revocation `no-crl` or `crl-invalid` | The `--csca` path has no CRL of the document's CSCA, or one signed with a key that is not among the trusted CSCA certificates: add the CRL and all the CSCA certificates (also the older ones) from the same publication. |
 | Exit code `216`, `214`... on Linux/macOS | The negative code seen by the shell (`256 + code`): see [Exit codes](#exit-codes). |
 
 ## Code layout

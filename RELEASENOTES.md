@@ -115,6 +115,10 @@ data rejected with checked exceptions (with JMRTD's regression inputs), and the 
   the document does not take this kind of access key (an Italian passport refuses a CAN), a failed
   last step that the access key is wrong. `explicitPaceParameters` is `null`, and left out of the
   text and XML output, when PACE was not used.
+- **Revocation of the Document Signer certificate:** certificate revocation lists (`.crl`) in the
+  `--csca` path are read and checked (signed by a trusted CSCA of the same name, the most recent one
+  used); a revoked Document Signer fails with the new exit code **-46**, and `passiveAuthentication`
+  has `revocation` and `revocationDetail`. CRLs are not downloaded.
 - In the DG14 information, `keyId` and `parameterId` are JSON numbers, as `paceParameterId`; they
   were strings.
 

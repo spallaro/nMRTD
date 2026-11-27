@@ -80,6 +80,10 @@ public sealed class ReadReport
         {
             failed.Add(new(ExitCodes.DocumentSignerNotTrusted, "Document Signer certificate is not issued by a trusted CSCA"));
         }
+        if (PassiveAuthentication.Revocation == "revoked")
+        {
+            failed.Add(new(ExitCodes.DocumentSignerRevoked, "Document Signer certificate is revoked"));
+        }
         if (ChipAuthentication.Status == "failed")
         {
             failed.Add(new(ExitCodes.ChipAuthenticationFailed, "Chip Authentication failed"));
@@ -151,6 +155,13 @@ public sealed class PassiveAuthenticationResult
     public string? CscaSubject { get; set; }
 
     public string? CscaDetail { get; set; }
+
+    /// <summary>"not-revoked", "revoked", "no-crl", "crl-invalid" (see <see cref="CscaTrustStore.RevocationCheck"/>),
+    /// or "not-checked" (no CRL given, or the Document Signer certificate is not trusted).</summary>
+    public string Revocation { get; set; } = "not-checked";
+
+    /// <summary>The CRL used, and the revocation date and reason when revoked.</summary>
+    public string? RevocationDetail { get; set; }
 
     /// <summary>Whether the Document Signer certificate is within its validity period today; an expired
     /// document normally has an expired Document Signer certificate.</summary>

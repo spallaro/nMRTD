@@ -515,7 +515,34 @@ public sealed class DocumentReader
         _out.WriteLine(docSigningCertificate.IsValidNow
             ? $"Document Signer certificate valid until {docSigningCertificate.NotAfter:yyyy-MM-dd}."
             : $"Document Signer certificate expired on {docSigningCertificate.NotAfter:yyyy-MM-dd} (normal for an expired document).");
-        _out.WriteLine("NOTE: revocation (CRLs) is not checked.");
+        CheckRevocation(docSigningCertificate, verification);
+    }
+
+    /// <summary>The revocation of a trusted Document Signer certificate, from the CRLs in the <c>--csca</c> path.</summary>
+    private void CheckRevocation(Org.BouncyCastle.X509.X509Certificate documentSigner, CscaTrustStore.Verification verification)
+    {
+        if (!verification.Trusted || TrustStore!.Crls.Count == 0)
+        {
+            _out.WriteLine(verification.Trusted
+                ? "NOTE: revocation is not checked: no certificate revocation list (.crl) in the --csca path."
+                : "Revocation is not checked: the Document Signer certificate is not trusted.");
+            return;
+        }
+
+        CscaTrustStore.RevocationCheck check;
+        try
+        {
+            check = TrustStore.CheckRevocation(documentSigner, verification.Csca!);
+        }
+        catch (Exception e)
+        {
+            check = new CscaTrustStore.RevocationCheck("crl-invalid", e.Message);
+        }
+        report.PassiveAuthentication.Revocation = check.Status;
+        report.PassiveAuthentication.RevocationDetail = check.Detail;
+        _out.WriteLine(check.Status == "revoked"
+            ? $"Document Signer certificate is REVOKED: {check.Detail}."
+            : $"Revocation: {check.Status} ({check.Detail}).");
     }
 
     /// <summary>

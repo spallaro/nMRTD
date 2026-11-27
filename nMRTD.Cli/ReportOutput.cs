@@ -119,6 +119,8 @@ public static class ReportOutput
             ["csca"] = pa.Csca,
             ["cscaSubject"] = options.Share ? null : pa.CscaSubject,
             ["cscaDetail"] = options.Share ? null : pa.CscaDetail, // may name the certificates
+            ["revocation"] = pa.Revocation,
+            ["revocationDetail"] = pa.RevocationDetail, // dates and reason only
             ["signerCertificateValidNow"] = pa.SignerCertificateValidNow,
         };
         tree["chipAuthentication"] = Protocol(report.ChipAuthentication);

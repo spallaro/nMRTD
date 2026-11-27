@@ -64,7 +64,7 @@ static int Run(string[] args)
         {
             return Fail(options, ExitCodes.CscaNotLoaded, $"No CSCA certificate could be read from {options.CscaPath}.");
         }
-        log.WriteLine($"Loaded {trustStore.Certificates.Count} trusted CSCA certificate(s) from {options.CscaPath}.");
+        log.WriteLine($"Loaded {trustStore.Certificates.Count} trusted CSCA certificate(s) and {trustStore.Crls.Count} certificate revocation list(s) from {options.CscaPath}.");
     }
 
     // Find the reader first, to tell "no reader" from "no card".
@@ -203,7 +203,8 @@ static void PrintUsage()
 
         Checks:
           --csca <path>                  Trusted CSCA certificates (.cer/.crt/.der/.pem, ICAO master list .ml,
-                                         or a folder of them): check the Document Signer certificate
+                                         or a folder of them, with the CSCAs' revocation lists .crl): check
+                                         the Document Signer certificate and its revocation
           --skip-passive-authentication  Do not check the data group hashes and the EF.SOD signature
 
         Output (stdout):
@@ -222,6 +223,7 @@ static void PrintUsage()
           -20 PACE not available, -21 PACE failed, -22 BAC failed,
           -30 communication error, -31 unexpected error,
           -40 data group hash mismatch, -41 invalid EF.SOD signature, -42 Document Signer not trusted,
+          -46 Document Signer revoked (CRL in the --csca path),
           -43 Chip Authentication failed, -44 Active Authentication failed,
           -45 Chip/Active Authentication with a key not covered by EF.SOD.
         When several checks fail, the code is the first in this list. See CLI.md.

@@ -1,6 +1,7 @@
 using nMRTD.Cli;
 using nMRTD.Tests.Helpers;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.X509;
 using static nMRTD.Tests.EndToEnd.EndToEnd;
 using static nMRTD.Tests.Helpers.TestPki;
 
@@ -198,18 +199,162 @@ public sealed class CscaTrustStoreTests : IDisposable
         Assert.Equal(expected, report.PassiveAuthentication.Csca);
         Assert.Equal(trustTheCsca ? ExitCodes.Success : ExitCodes.DocumentSignerNotTrusted, report.ExitCode());
         Assert.True(report.PassiveAuthentication.SignerCertificateValidNow);
-        Assert.Contains("revocation (CRLs) is not checked", log.ToString());
+        Assert.Contains(trustTheCsca ? "revocation is not checked: no certificate revocation list" : "Revocation is not checked: the Document Signer certificate is not trusted", log.ToString());
+        Assert.Equal("not-checked", report.PassiveAuthentication.Revocation);
         if (trustTheCsca)
         {
             Assert.Contains("CN=CSCA Utopia", report.PassiveAuthentication.CscaSubject);
         }
     }
 
-    private static string ToPem(Org.BouncyCastle.X509.X509Certificate certificate)
+    // ---- Revocation (certificate revocation lists in the --csca path) ----
+
+    [Fact]
+    public void DocumentSignerNotInTheCrlIsNotRevoked()
+    {
+        Issuer csca = Csca(Utopia, Rsa());
+        X509Certificate signer = DocumentSigner(csca, Rsa().Public);
+        X509Certificate other = DocumentSigner(csca, Rsa().Public);
+        var store = new CscaTrustStore([csca.Certificate], [Crl(csca, revoked: other)]);
+
+        CscaTrustStore.RevocationCheck check = store.CheckRevocation(signer, csca.Certificate);
+
+        Assert.Equal("not-revoked", check.Status);
+        Assert.Contains("not in the CRL of " + Now.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), check.Detail);
+    }
+
+    [Fact]
+    public void DocumentSignerInTheCrlIsRevoked()
+    {
+        Issuer csca = Csca(Utopia, Rsa());
+        X509Certificate signer = DocumentSigner(csca, Rsa().Public);
+        var store = new CscaTrustStore([csca.Certificate], [Crl(csca, revoked: signer)]);
+
+        CscaTrustStore.RevocationCheck check = store.CheckRevocation(signer, csca.Certificate);
+
+        Assert.Equal("revoked", check.Status);
+        Assert.Contains("revoked on " + Now.AddDays(-7).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), check.Detail);
+        Assert.Contains("reason keyCompromise", check.Detail);
+    }
+
+    [Fact]
+    public void NoCrlOfTheCsca()
+    {
+        Issuer csca = Csca(Utopia, Rsa());
+        Issuer elsewhere = Csca("C=XX, O=Elsewhere, CN=CSCA Elsewhere", Rsa());
+        var store = new CscaTrustStore([csca.Certificate, elsewhere.Certificate], [Crl(elsewhere)]);
+
+        Assert.Equal("no-crl", store.CheckRevocation(DocumentSigner(csca, Rsa().Public), csca.Certificate).Status);
+    }
+
+    /// <summary>A CRL with the CSCA's name but signed with another key counts for nothing, even if it lists the
+    /// certificate.</summary>
+    [Fact]
+    public void CrlNotSignedByATrustedCscaIsInvalid()
+    {
+        Issuer csca = Csca(Utopia, Rsa());
+        Issuer impostor = Csca(Utopia, Rsa());
+        X509Certificate signer = DocumentSigner(csca, Rsa().Public);
+        var store = new CscaTrustStore([csca.Certificate], [Crl(impostor, revoked: signer)]);
+
+        Assert.Equal("crl-invalid", store.CheckRevocation(signer, csca.Certificate).Status);
+    }
+
+    /// <summary>After a key rollover the CRL is signed with the new key and also covers the certificates issued
+    /// with the old one, as the Italian CSCA does.</summary>
+    [Fact]
+    public void CrlSignedWithTheNewCscaKeyCoversTheOldOne()
+    {
+        Issuer oldKey = Csca(Utopia, Rsa());
+        Issuer newKey = Csca(Utopia, Rsa());
+        X509Certificate signer = DocumentSigner(oldKey, Rsa().Public);
+        var store = new CscaTrustStore([oldKey.Certificate, newKey.Certificate], [Crl(newKey, revoked: signer)]);
+
+        Assert.Equal("revoked", store.CheckRevocation(signer, oldKey.Certificate).Status);
+    }
+
+    [Fact]
+    public void TheMostRecentCrlIsUsed()
+    {
+        Issuer csca = Csca(Utopia, Rsa());
+        X509Certificate signer = DocumentSigner(csca, Rsa().Public);
+        X509Crl older = Crl(csca, Now.AddMonths(-6), Now.AddMonths(-3));
+        X509Crl newer = Crl(csca, Now.AddDays(-1), Now.AddMonths(3), signer);
+        var store = new CscaTrustStore([csca.Certificate], [newer, older]);
+
+        Assert.Equal("revoked", store.CheckRevocation(signer, csca.Certificate).Status);
+        Assert.Equal("not-revoked", new CscaTrustStore([csca.Certificate], [older]).CheckRevocation(signer, csca.Certificate).Status);
+    }
+
+    [Fact]
+    public void OutOfDateCrlIsUsedAndReported()
+    {
+        Issuer csca = Csca(Utopia, Rsa());
+        var store = new CscaTrustStore([csca.Certificate], [Crl(csca, Now.AddMonths(-6), Now.AddMonths(-3))]);
+
+        CscaTrustStore.RevocationCheck check = store.CheckRevocation(DocumentSigner(csca, Rsa().Public), csca.Certificate);
+
+        Assert.Equal("not-revoked", check.Status);
+        Assert.Contains("out of date", check.Detail);
+    }
+
+    [Fact]
+    public void CrlsAreLoadedFromAFolderInDerAndPem()
+    {
+        Issuer csca = Csca(Utopia, Rsa());
+        File.WriteAllBytes(Path.Combine(folder, "csca.cer"), csca.Certificate.GetEncoded());
+        File.WriteAllBytes(Path.Combine(folder, "CRL_CSCA.crl"), Crl(csca).GetEncoded());
+        File.WriteAllText(Path.Combine(folder, "other.crl"), ToPem(Crl(csca)));
+        File.WriteAllText(Path.Combine(folder, "broken.crl"), "not a CRL");
+
+        CscaTrustStore store = CscaTrustStore.Load(folder);
+
+        Assert.Equal(2, store.Crls.Count);
+        Assert.Single(store.Certificates);
+        Assert.Contains(store.Warnings, w => w.Contains("broken.crl", StringComparison.Ordinal));
+    }
+
+    /// <summary>The whole flow: a revoked Document Signer fails with -46; without a CRL revocation is not
+    /// checked.</summary>
+    [Theory]
+    [InlineData("revoked", ExitCodes.DocumentSignerRevoked)]
+    [InlineData("not-revoked", ExitCodes.Success)]
+    [InlineData("not-checked", ExitCodes.Success)]
+    public void DocumentReaderChecksTheRevocation(string revocation, int exitCode)
+    {
+        Issuer csca = Csca(Utopia, Rsa());
+        AsymmetricCipherKeyPair signerKey = Rsa();
+        X509Certificate signer = DocumentSigner(csca, signerKey.Public);
+        var document = new SimulatedDocument { DocumentSignerKey = signerKey.Private, DocumentSignerCertificate = signer };
+        X509Crl[] crls = revocation switch
+        {
+            "revoked" => [Crl(csca, revoked: signer)],
+            "not-revoked" => [Crl(csca)],
+            _ => [],
+        };
+
+        (ReadReport report, StringWriter log) = DocumentReaderTests.Run(document.Build(), new AccessCredentials(AccessKeyMode.Mrz,
+            new BacKey(SimulatedDocument.DocumentNumber, SimulatedDocument.DateOfBirth, SimulatedDocument.DateOfExpiry), null),
+            trustStore: new CscaTrustStore([csca.Certificate], crls));
+
+        Assert.Equal("trusted", report.PassiveAuthentication.Csca);
+        Assert.Equal(revocation, report.PassiveAuthentication.Revocation);
+        Assert.Equal(exitCode, report.ExitCode());
+        if (revocation == "revoked")
+        {
+            Assert.Equal([new FailedCheck(ExitCodes.DocumentSignerRevoked, "Document Signer certificate is revoked")], report.FailedChecks());
+        }
+        if (revocation == "not-checked")
+        {
+            Assert.Contains("revocation is not checked", log.ToString());
+        }
+    }
+
+    private static string ToPem(object pemObject)
     {
         var writer = new StringWriter();
         var pem = new Org.BouncyCastle.OpenSsl.PemWriter(writer);
-        pem.WriteObject(certificate);
+        pem.WriteObject(pemObject);
         pem.Writer.Flush();
         return writer.ToString();
     }

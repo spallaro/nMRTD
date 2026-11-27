@@ -70,6 +70,22 @@ internal static class TestPki
         return generator.Generate(new Asn1SignatureFactory(signatureAlgorithm, csca.KeyPair.Private));
     }
 
+    /// <summary>A certificate revocation list issued and signed by <paramref name="csca"/>, revoking
+    /// <paramref name="revoked"/> (each with the key compromise reason, revoked a week ago).</summary>
+    public static X509Crl Crl(Issuer csca, DateTime? thisUpdate = null, DateTime? nextUpdate = null, params X509Certificate[] revoked)
+    {
+        var generator = new X509V2CrlGenerator();
+        generator.SetIssuerDN(csca.Certificate.SubjectDN);
+        generator.SetThisUpdate(thisUpdate ?? Now.AddDays(-1));
+        generator.SetNextUpdate(nextUpdate ?? Now.AddMonths(3));
+        foreach (X509Certificate certificate in revoked)
+        {
+            generator.AddCrlEntry(certificate.SerialNumber, Now.AddDays(-7), CrlReason.KeyCompromise);
+        }
+        generator.AddExtension(X509Extensions.AuthorityKeyIdentifier, false, X509ExtensionUtilities.CreateAuthorityKeyIdentifier(csca.KeyPair.Public));
+        return generator.Generate(new Asn1SignatureFactory("SHA256WITHRSA", csca.KeyPair.Private));
+    }
+
     /// <summary>An ICAO CSCA master list (CMS SignedData with content type id-icao-cscaMasterList). It carries
     /// no signer: the trust store does not check the signature of a master list.</summary>
     public static byte[] MasterList(params X509Certificate[] certificates)
