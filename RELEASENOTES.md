@@ -3,7 +3,7 @@
 nMRTD has its own version numbers, independent of JMRTD's; each release says which JMRTD and SCUBA
 code it is based on.
 
-## Unreleased
+## 0.8.9-alpha (2026-11-27)
 
 Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.
 
