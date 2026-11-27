@@ -459,11 +459,22 @@ public class MRZInfo : AbstractLDSInfo
         string str = Encoding.UTF8.GetString(GetEncoded() ?? []);
         return str.Length switch
         {
-            90 => str.Substring(0, 30) + "\n" + str.Substring(30, 30) + "\n" + str.Substring(60, 30) + "\n",
-            72 => str.Substring(0, 36) + "\n" + str.Substring(36, 36) + "\n",
-            88 => str.Substring(0, 44) + "\n" + str.Substring(44, 44) + "\n",
+            90 => ToLines(str, 30),
+            72 => ToLines(str, 36),
+            88 => ToLines(str, 44),
             _ => str,
         };
+    }
+
+    /// <summary>Splits an MRZ into lines of the given width, each ending in a newline char.</summary>
+    private static string ToLines(string mrz, int width)
+    {
+        var lines = new StringBuilder(mrz.Length + (mrz.Length / width));
+        for (int i = 0; i < mrz.Length; i += width)
+        {
+            lines.Append(mrz, i, width).Append('\n');
+        }
+        return lines.ToString();
     }
 
     /// <summary>Returns the hash code for this MRZ info.</summary>
