@@ -115,6 +115,8 @@ data rejected with checked exceptions (with JMRTD's regression inputs), and the 
   the document does not take this kind of access key (an Italian passport refuses a CAN), a failed
   last step that the access key is wrong. `explicitPaceParameters` is `null`, and left out of the
   text and XML output, when PACE was not used.
+- In the DG14 information, `keyId` and `parameterId` are JSON numbers, as `paceParameterId`; they
+  were strings.
 
 The options and the output of the tool are reorganized, to make it a tool to verify documents as well
 as to test the library. **The options are not compatible with 0.8.8-alpha.**

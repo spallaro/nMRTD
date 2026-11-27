@@ -329,7 +329,9 @@ public static class DataGroupFields
     {
         if (value != null)
         {
-            fields[name] = value.ToString();
+            // A JSON number, as the other numbers (paceParameterId); a value beyond a long, which these identifiers
+            // never are, stays a string.
+            fields[name] = value.BitLength < 64 ? (JsonNode)value.LongValue : value.ToString();
         }
     }
 

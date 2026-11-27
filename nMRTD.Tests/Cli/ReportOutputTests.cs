@@ -83,6 +83,7 @@ public class ReportOutputTests
 
         JsonElement infos = DataGroup(json, 14).GetProperty("information").GetProperty("securityInfos");
         Assert.Contains(infos.EnumerateArray(), i => i.GetProperty("type").GetString() == "ChipAuthenticationInfo");
+        Assert.Equal(1, infos.EnumerateArray().First(i => i.GetProperty("type").GetString() == "ChipAuthenticationInfo").GetProperty("keyId").GetInt32());
         Assert.Equal("RSA [1024 bit]", DataGroup(json, 15).GetProperty("information").GetProperty("publicKey").GetString());
     }
 

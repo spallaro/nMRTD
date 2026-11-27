@@ -71,6 +71,10 @@ dotnet run --project nMRTD.Cli -f net10.0 -- --can 123456 --include-information 
 `dotnet run` may print build messages to stdout; to capture the result alone, run the built executable
 (`nMRTD.Cli/bin/...`) or a [Native AOT](#native-aot) build.
 
+The result is written in UTF-8. In Windows PowerShell 5.1, `>` re-encodes the output (as UTF-16, and
+characters outside ASCII through the console code page); to keep the bytes, redirect in `cmd`
+(`cmd /c "nMRTD.Cli.exe --can 123456 --output-json > result.json"`) or use PowerShell 7.
+
 The access key is always given on the command line: the tool never prompts.
 
 ## Options
