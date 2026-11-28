@@ -1,8 +1,8 @@
 # nMRTD
 
 [![NuGet version](https://img.shields.io/nuget/v/nMRTD.svg)](https://www.nuget.org/packages/nMRTD/)
-[![Target Framework](https://img.shields.io/badge/.NET-6%20|%208%20|%2010-white)](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)
 [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.6.2%20|%204.7.2-white)](https://learn.microsoft.com/lifecycle/products/microsoft-net-framework)
+[![Target Framework](https://img.shields.io/badge/.NET-6%20|%208%20|%2010-white)](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)
 [![Native AOT](https://img.shields.io/badge/.NET%20AOT-8%20|%2010-white)](https://learn.microsoft.com/dotnet/core/deploying/native-aot/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-white.svg)](https://opensource.org/license/lgpl-3-0)
 
