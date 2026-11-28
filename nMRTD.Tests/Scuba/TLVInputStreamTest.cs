@@ -5,9 +5,10 @@ namespace nMRTD.Tests.Scuba;
 /// <summary>
 /// Port of SCUBA's <c>net.sf.scuba.tlv.TLVInputStreamTest</c> (SCUBA 0.1.0: 03bc03f, a04c2b1, 6d2c9f2, b96948f):
 /// <see cref="TlvInputStream"/> on malformed input, lengths that are invalid or larger than the available data,
-/// multi byte tags, and <see cref="TlvInputStream.SkipToTag"/>. Not ported, because nMRTD's reader keeps no state
-/// about enclosing objects: the tests that expect an <see cref="IOException"/> for a nested tag, length or value that
-/// does not fit in its parent, and the one that reads a constructed value byte by byte.
+/// nested tags, lengths and values that do not fit in their parent, multi byte tags, and
+/// <see cref="TlvInputStream.SkipToTag"/>. Not ported: <c>skipToTag_carrierSkipsNothing_stillFindsTag</c>, because
+/// nMRTD skips by reading. The tests after those of SCUBA cover what is particular to nMRTD's reader, which works with
+/// the position of the wrapped stream.
 /// </summary>
 public class TLVInputStreamTest
 {
@@ -209,6 +210,189 @@ public class TLVInputStreamTest
         Assert.IsNotType<EndOfStreamException>(e); // the leading bytes used to be shifted out, giving a wrong tag
     }
 
+    [Fact]
+    public void readLength_nestedValueLongerThanParent_throwsIOException()
+    {
+        // 30 with length 3, containing 04 with length 5.
+        TlvInputStream input = NewStream("30030405AABBCCDDEE");
+        input.ReadTag();
+        input.ReadLength();
+        input.ReadTag();
+        AssertNestingError(() => input.ReadLength()); // before reading the value
+    }
+
+    [Fact]
+    public void readLength_hugeNestedLength_throwsIOExceptionBeforeReading()
+    {
+        TlvInputStream input = NewStream("300604847FFFFFF0");
+        input.ReadTag();
+        input.ReadLength();
+        input.ReadTag();
+        AssertNestingError(() => input.ReadLength());
+    }
+
+    [Fact]
+    public void readLength_nestedLengthBytesBeyondParent_throwsIOException()
+    {
+        // 30 with length 2, containing 04 with a 2 byte length (82 00 00) that ends outside 30.
+        TlvInputStream input = NewStream("3002048200000000");
+        input.ReadTag();
+        input.ReadLength();
+        input.ReadTag();
+        AssertNestingError(() => input.ReadLength());
+    }
+
+    [Fact]
+    public void readTag_nestedTagBeyondParent_throwsIOException()
+    {
+        // 30 with length 1, containing the 2 byte tag 5F1F.
+        TlvInputStream input = NewStream("30015F1F01AA");
+        input.ReadTag();
+        input.ReadLength();
+        AssertNestingError(() => input.ReadTag());
+    }
+
+    [Fact]
+    public void readTag_emptyObjectsCompletingParent_nextTagIsSibling()
+    {
+        // 31 { 30 {} 04 {} } 02 {05}: the empty 04 completes 31.
+        TlvInputStream input = NewStream("310430000400020105");
+        Assert.Equal(0x31, input.ReadTag());
+        Assert.Equal(4, input.ReadLength());
+        Assert.Equal(0x30, input.ReadTag());
+        Assert.Equal(0, input.ReadLength());
+        Assert.Equal(0x04, input.ReadTag());
+        Assert.Equal(0, input.ReadLength());
+        Assert.Empty(input.ReadValue());
+        Assert.Equal(0x02, input.ReadTag());
+        Assert.Equal(1, input.ReadLength());
+        Assert.Equal(Convert.FromHexString("05"), input.ReadValue());
+    }
+
+    [Fact]
+    public void readTag_emptyObjectCompletingLastChild_nextTagIsSiblingOfParent()
+    {
+        // 30 { 04 {AA} 31 { 32 {} } } 02 {05}
+        TlvInputStream input = NewStream("30070401AA31023200020105");
+        Assert.Equal(0x30, input.ReadTag());
+        Assert.Equal(7, input.ReadLength());
+        Assert.Equal(0x04, input.ReadTag());
+        Assert.Equal(1, input.ReadLength());
+        Assert.Equal(Convert.FromHexString("AA"), input.ReadValue());
+        Assert.Equal(0x31, input.ReadTag());
+        Assert.Equal(2, input.ReadLength());
+        Assert.Equal(0x32, input.ReadTag());
+        Assert.Equal(0, input.ReadLength());
+        Assert.Equal(0x02, input.ReadTag());
+        Assert.Equal(1, input.ReadLength());
+        Assert.Equal(Convert.FromHexString("05"), input.ReadValue());
+    }
+
+    [Fact]
+    public void read_constructedValueByteByByte_followedBySibling()
+    {
+        // 30 {04 01 AA} read as raw bytes from the wrapped stream (SCUBA reads them through its stream), then
+        // sibling 04 {BB}.
+        var stream = new MemoryStream(Convert.FromHexString("30030401AA0401BB"));
+        var input = new TlvInputStream(stream);
+        input.ReadTag();
+        Assert.Equal(3, input.ReadLength());
+        for (int i = 0; i < 3; i++)
+        {
+            stream.ReadByte();
+        }
+        Assert.Equal(0x04, input.ReadTag());
+        Assert.Equal(1, input.ReadLength());
+        Assert.Equal(Convert.FromHexString("BB"), input.ReadValue());
+    }
+
+    // nMRTD only: the check works with the position of the wrapped stream.
+
+    [Fact]
+    public void readTag_childrenReadByAnotherReader_nextTagIsSibling()
+    {
+        // 30 { 04 {AA} 04 {BB} } 02 {05}: the decoders read a value with another reader over the same stream.
+        var stream = new MemoryStream(Convert.FromHexString("30060401AA0401BB020105"));
+        var outer = new TlvInputStream(stream, leaveOpen: true);
+        Assert.Equal(0x30, outer.ReadTag());
+        Assert.Equal(6, outer.ReadLength());
+        var inner = new TlvInputStream(stream, leaveOpen: true);
+        for (int i = 0; i < 2; i++)
+        {
+            Assert.Equal(0x04, inner.ReadTag());
+            Assert.Equal(1, inner.ReadLength());
+            inner.ReadValue();
+        }
+        Assert.Equal(0x02, outer.ReadTag());
+        Assert.Equal(1, outer.ReadLength());
+        Assert.Equal(Convert.FromHexString("05"), outer.ReadValue());
+    }
+
+    [Fact]
+    public void readLength_nestedValueLongerThanParent_positionOnlyStream_throwsIOException()
+    {
+        // A forward-only stream that reports its position, as CardFileInputStream does.
+        var stream = new nMRTD.Io.PositionInputStream(new ForwardOnlyStream(Convert.FromHexString("30030405AABBCCDDEE")));
+        var input = new TlvInputStream(stream);
+        input.ReadTag();
+        input.ReadLength();
+        input.ReadTag();
+        AssertNestingError(() => input.ReadLength());
+    }
+
+    [Fact]
+    public void readLength_nestedValueLongerThanParent_streamWithoutPosition_isNotChecked()
+    {
+        var input = new TlvInputStream(new ForwardOnlyStream(Convert.FromHexString("30030405AABBCCDDEE")));
+        input.ReadTag();
+        input.ReadLength();
+        input.ReadTag();
+        Assert.Equal(5, input.ReadLength());
+        Assert.Equal(Convert.FromHexString("AABBCCDDEE"), input.ReadValue());
+    }
+
+    [Fact]
+    public void readTag_afterRewindingBeforeParent_readsAgain()
+    {
+        // 30 { 04 {AA} }, read, rewound to the start and read again.
+        var stream = new MemoryStream(Convert.FromHexString("30030401AA"));
+        var input = new TlvInputStream(stream);
+        for (int pass = 0; pass < 2; pass++)
+        {
+            stream.Position = 0;
+            Assert.Equal(0x30, input.ReadTag());
+            Assert.Equal(3, input.ReadLength());
+            Assert.Equal(0x04, input.ReadTag());
+            Assert.Equal(1, input.ReadLength());
+            Assert.Equal(Convert.FromHexString("AA"), input.ReadValue());
+        }
+    }
+
+    [Fact]
+    public void readTag_afterRewindingIntoParent_isStillChecked()
+    {
+        // 30 with length 3, containing 04 {AA}; rewound into the value of 30 and read as 04 with length 5.
+        var stream = new MemoryStream(Convert.FromHexString("30030401AA"));
+        var input = new TlvInputStream(stream);
+        input.ReadTag();
+        input.ReadLength();
+        input.ReadTag();
+        input.ReadLength();
+        input.ReadValue();
+        stream.Position = 2;
+        stream.Write([0x04, 0x05], 0, 2);
+        stream.Position = 2;
+        input.ReadTag();
+        AssertNestingError(() => input.ReadLength());
+    }
+
+    private static void AssertNestingError(Func<int> read)
+    {
+        IOException e = Assert.ThrowsAny<IOException>(() => read());
+        Assert.IsNotType<EndOfStreamException>(e);
+        Assert.Contains("does not fit in the remaining", e.Message);
+    }
+
     private static void AssertReadLengthThrowsIOException(string hex)
     {
         TlvInputStream input = NewStream(hex);
@@ -217,6 +401,18 @@ public class TLVInputStreamTest
     }
 
     private static TlvInputStream NewStream(string hex) => new(new MemoryStream(Convert.FromHexString(hex)));
+
+    /// <summary>A stream that can only be read forward and does not report its position.</summary>
+    private sealed class ForwardOnlyStream(byte[] bytes) : MemoryStream(bytes)
+    {
+        public override bool CanSeek => false;
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+    }
 
     /// <summary>A stream that returns at most 1000 bytes per read.</summary>
     private sealed class SlowStream(byte[] bytes) : MemoryStream(bytes)

@@ -3,6 +3,20 @@
 nMRTD has its own version numbers, independent of JMRTD's; each release says which JMRTD and SCUBA
 code it is based on.
 
+## Unreleased
+
+Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.
+
+### Changed
+
+- **`TlvInputStream` rejects nested data objects that do not fit in their parent**, as SCUBA 0.1.0's
+  `TLVInputState` does: a tag, length bytes or value that would end after the value of the enclosing
+  object is an `IOException`, raised before the value is read or allocated. nMRTD's decoders read
+  values directly from the wrapped stream, or with other readers over it, so the check works with
+  the position of the wrapped stream rather than with a count of the bytes read; it is skipped for
+  a stream that does not report its position. With this, SCUBA's `TLVInputStreamTest` is ported
+  except `skipToTag_carrierSkipsNothing_stillFindsTag`, which does not apply: nMRTD skips by reading.
+
 ## 0.8.10-alpha (2026-11-28)
 
 Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.

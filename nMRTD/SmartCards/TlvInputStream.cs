@@ -23,12 +23,38 @@ namespace nMRTD.SmartCards;
 /// (checking <c>x instanceof TLVInputStream</c>) doesn't carry over structurally -- call sites that hold
 /// a <see cref="TlvInputStream"/> reference already know not to re-wrap it.
 /// </summary>
+/// <remarks>
+/// <para>
+/// As SCUBA's <c>TLVInputState</c> (SCUBA 0.1.0), a tag, length bytes or value that would end after the value of
+/// the object enclosing it is an <see cref="IOException"/>, raised before the value is read. Where SCUBA counts the
+/// bytes that pass through its stream, this reader works with the position of the wrapped stream: callers in nMRTD
+/// read values directly from the wrapped stream or with other readers over it, so a count would miss bytes. It
+/// remembers where the value of each object it read ends; an object stops enclosing once the position reaches its
+/// end, or goes back before its start.
+/// </para>
+/// <para>
+/// The check needs <see cref="Stream.Position"/>; with a stream that does not support it, the reader keeps no
+/// state and does not check nesting.
+/// </para>
+/// </remarks>
 public sealed class TlvInputStream : IDisposable
 {
     private readonly Stream _stream;
     private readonly bool _leaveOpen;
 
     private int _pendingLength = -1;
+
+    /// <summary>Whether <see cref="Stream.Position"/> of the wrapped stream can be read; null until first tried.</summary>
+    private bool? _hasPosition;
+
+    /// <summary>The tag read last, for the object pushed when its length is read; -1 if not known.</summary>
+    private int _pendingTag = -1;
+
+    /// <summary>The objects whose value may still enclose what is read, innermost on top.</summary>
+    private readonly Stack<OpenObject> _openObjects = new();
+
+    /// <summary>An object read by this reader: its tag and where its value starts and ends in the wrapped stream.</summary>
+    private readonly record struct OpenObject(int Tag, long ValueStart, long ValueEnd);
 
     public TlvInputStream(Stream stream, bool leaveOpen = false)
     {
@@ -37,8 +63,10 @@ public sealed class TlvInputStream : IDisposable
     }
 
     /// <summary>Reads the full (possibly multi-byte) BER-TLV tag as an int.</summary>
+    /// <exception cref="IOException">if the tag ends after the value of the object enclosing it</exception>
     public int ReadTag()
     {
+        long start = GetPosition();
         int firstByte = ReadByteChecked();
         int tag = firstByte;
         if ((firstByte & 0x1F) == 0x1F)
@@ -56,13 +84,17 @@ public sealed class TlvInputStream : IDisposable
                 tag = (tag << 8) | b;
             } while ((b & 0x80) != 0);
         }
+        CheckFitsInEnclosing(start, GetPosition(), () => $"Tag {tag:X}");
         _pendingLength = -1;
+        _pendingTag = tag;
         return tag;
     }
 
     /// <summary>Reads the BER-TLV length octets and returns the decoded value length.</summary>
+    /// <exception cref="IOException">if the length bytes or the value end after the value of the object enclosing them</exception>
     public int ReadLength()
     {
+        long start = GetPosition();
         int firstByte = ReadByteChecked();
         int length;
         if ((firstByte & 0x80) == 0)
@@ -89,6 +121,15 @@ public sealed class TlvInputStream : IDisposable
             }
             length = (int)value;
         }
+        long valueStart = GetPosition();
+        if (valueStart >= 0)
+        {
+            // Checked before anything is read or allocated for the value.
+            int tag = _pendingTag;
+            CheckFitsInEnclosing(start, valueStart + length, () => $"Length {length} of tag {tag:X}");
+            _openObjects.Push(new OpenObject(tag, valueStart, valueStart + length));
+        }
+        _pendingTag = -1;
         _pendingLength = length;
         return length;
     }
@@ -166,6 +207,50 @@ public sealed class TlvInputStream : IDisposable
             first >>= 8;
         }
         return (first & 0x20) != 0;
+    }
+
+    /// <summary>
+    /// Checks that what starts at <paramref name="start"/> and ends at <paramref name="end"/> fits in the value of
+    /// the innermost object enclosing <paramref name="start"/>. Objects that no longer enclose it are dropped first.
+    /// Each object was checked against its own enclosing object when it was read, so the innermost one is enough.
+    /// </summary>
+    private void CheckFitsInEnclosing(long start, long end, Func<string> what)
+    {
+        if (start < 0)
+        {
+            return;
+        }
+        while (_openObjects.Count > 0 && (start >= _openObjects.Peek().ValueEnd || start < _openObjects.Peek().ValueStart))
+        {
+            _openObjects.Pop();
+        }
+        if (_openObjects.Count > 0 && end > _openObjects.Peek().ValueEnd)
+        {
+            OpenObject parent = _openObjects.Peek();
+            throw new IOException(
+                $"{what()} does not fit in the remaining {parent.ValueEnd - start} value bytes of tag {parent.Tag:X}"
+                + $" (length {parent.ValueEnd - parent.ValueStart})");
+        }
+    }
+
+    /// <summary>The position of the wrapped stream, or -1 if it does not support <see cref="Stream.Position"/>.</summary>
+    private long GetPosition()
+    {
+        if (_hasPosition == false)
+        {
+            return -1;
+        }
+        try
+        {
+            long position = _stream.Position;
+            _hasPosition = true;
+            return position;
+        }
+        catch (NotSupportedException)
+        {
+            _hasPosition = false;
+            return -1;
+        }
     }
 
     private int ReadByteChecked()
