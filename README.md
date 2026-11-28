@@ -97,12 +97,12 @@ passportService.SendSelectApplet(false);
 passportService.DoBAC(bacKey);
 
 // Read and parse EF.DG1 (the MRZ).
-using Stream dg1Stream = passportService.GetInputStream(PassportService.EF_DG1);
+using Stream dg1Stream = passportService.GetInputStream(PassportService.EF_DG1, PassportService.DefaultMaxBlocksize);
 var dg1 = new DG1File(dg1Stream);
 Console.WriteLine($"Document number: {dg1.GetMRZInfo().GetDocumentNumber()}");
 
 // Read and parse EF.DG2 (the facial image).
-using Stream dg2Stream = passportService.GetInputStream(PassportService.EF_DG2);
+using Stream dg2Stream = passportService.GetInputStream(PassportService.EF_DG2, PassportService.DefaultMaxBlocksize);
 var dg2 = new DG2File(dg2Stream);
 
 passportService.Close();
@@ -117,7 +117,7 @@ using nMRTD;
 using nMRTD.Lds;
 using nMRTD.SmartCards;
 
-using Stream cardAccessStream = passportService.GetInputStream(PassportService.EF_CARD_ACCESS);
+using Stream cardAccessStream = passportService.GetInputStream(PassportService.EF_CARD_ACCESS, PassportService.DefaultMaxBlocksize);
 var cardAccessFile = new CardAccessFile(cardAccessStream);
 PACEInfo paceInfo = cardAccessFile.GetSecurityInfos().OfType<PACEInfo>().First();
 
