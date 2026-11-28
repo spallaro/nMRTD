@@ -295,7 +295,7 @@ The default. Example (a simulated test document read with a CAN):
 
 ```text
 Environment:
-  nMRTD version: 0.8.11-alpha
+  nMRTD version: 0.8.12-alpha.1
   Operating system: Microsoft Windows 10.0.26200 (X64)
   Reader: REINER SCT cyberJack RFID basis 0
 ATR: 3B80800101
@@ -362,7 +362,7 @@ The same document:
 ```json
 {
   "environment": {
-    "nmrtdVersion": "0.8.11-alpha",
+    "nmrtdVersion": "0.8.12-alpha.1",
     "operatingSystem": "Microsoft Windows 10.0.26200 (X64)",
     "reader": "REINER SCT cyberJack RFID basis 0"
   },
@@ -433,7 +433,7 @@ out:
 <?xml version="1.0" encoding="utf-8"?>
 <nmrtdReport>
   <environment>
-    <nmrtdVersion>0.8.11-alpha</nmrtdVersion>
+    <nmrtdVersion>0.8.12-alpha.1</nmrtdVersion>
     ...
   </environment>
   <atr>3B80800101</atr>
