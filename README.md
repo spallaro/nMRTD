@@ -173,8 +173,10 @@ Native AOT publishing and troubleshooting.
 
 Results of reading real documents with `nMRTD.Cli` (Windows 11, REINER SCT cyberJack RFID basis
 reader), as a JIT build and as a Native AOT executable. Both documents were first read with nMRTD
-0.8.0-alpha and read again with nMRTD 0.8.9-alpha, with the same results; the passport also offers
-PACE, which the first reading did not use.
+0.8.0-alpha and read again with nMRTD 0.8.9-alpha and 0.8.11-alpha, with the same results; the
+passport also offers PACE, which the first reading did not use. The identity card was also read with
+the .NET Framework 4.6.2 and 4.7.2 builds of the library, through a small test program (PACE,
+Passive Authentication and Chip Authentication).
 
 | Document | BAC | PACE | Passive Authentication | Chip Authentication | Active Authentication | LDS |
 |---|---|---|---|---|---|---|
