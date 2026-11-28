@@ -69,6 +69,108 @@ public class LdsFileTableTests
     public void UnknownFileIsRejected() =>
         Assert.Throws<FormatException>(() => LDSFileUtil.GetLDSFile(0x0042, new MemoryStream([0x01, 0x02])));
 
+    /// <summary>Encoded files of every type <see cref="LDSFileUtil"/> parses, with the file identifier they belong to.</summary>
+    public static TheoryData<short, Type> ParsedFiles => new()
+    {
+        { PassportService.EF_COM, typeof(COMFile) },
+        { PassportService.EF_DG1, typeof(DG1File) },
+        { PassportService.EF_DG2, typeof(DG2File) },
+        { PassportService.EF_DG3, typeof(DG3File) },
+        { PassportService.EF_DG4, typeof(DG4File) },
+        { PassportService.EF_DG5, typeof(DG5File) },
+        { PassportService.EF_DG6, typeof(DG6File) },
+        { PassportService.EF_DG7, typeof(DG7File) },
+        { PassportService.EF_DG11, typeof(DG11File) },
+        { PassportService.EF_DG12, typeof(DG12File) },
+        { PassportService.EF_DG14, typeof(DG14File) },
+        { PassportService.EF_DG15, typeof(DG15File) },
+        { PassportService.EF_SOD, typeof(SODFile) },
+        { PassportService.EF_CVCA, typeof(CVCAFile) },
+    };
+
+    [Theory]
+    [MemberData(nameof(ParsedFiles))]
+    public void GetLdsFileParsesEachFileType(short fid, Type type)
+    {
+        byte[] encoded = Encode(fid);
+
+        AbstractLDSFile file = LDSFileUtil.GetLDSFile(fid, new MemoryStream(encoded));
+
+        Assert.IsType(type, file);
+        Assert.Equal(encoded, file.GetEncoded());
+    }
+
+    [Theory]
+    [MemberData(nameof(ParsedFiles))]
+    public void TypedGettersParseEachFileType(short fid, Type type)
+    {
+        byte[] encoded = Encode(fid);
+        Func<Stream, AbstractLDSFile> getter = fid switch
+        {
+            PassportService.EF_COM => LDSFileUtil.GetCOMFile,
+            PassportService.EF_DG1 => LDSFileUtil.GetDG1File,
+            PassportService.EF_DG2 => LDSFileUtil.GetDG2File,
+            PassportService.EF_DG3 => LDSFileUtil.GetDG3File,
+            PassportService.EF_DG4 => LDSFileUtil.GetDG4File,
+            PassportService.EF_DG5 => LDSFileUtil.GetDG5File,
+            PassportService.EF_DG6 => LDSFileUtil.GetDG6File,
+            PassportService.EF_DG7 => LDSFileUtil.GetDG7File,
+            PassportService.EF_DG11 => LDSFileUtil.GetDG11File,
+            PassportService.EF_DG12 => LDSFileUtil.GetDG12File,
+            PassportService.EF_DG14 => LDSFileUtil.GetDG14File,
+            PassportService.EF_DG15 => LDSFileUtil.GetDG15File,
+            PassportService.EF_SOD => LDSFileUtil.GetSODFile,
+            _ => LDSFileUtil.GetCVCAFile,
+        };
+
+        Assert.IsType(type, getter(new MemoryStream(encoded)));
+    }
+
+    [Fact]
+    public void CvcaFileUnderAnotherFidIsParsedByTheFallback()
+    {
+        const short fid = 0x0120; // an EF.CVCA under a FID given by the chip (not one of the LDS files)
+        byte[] encoded = new CVCAFile(fid, "NLCVCA00001").GetEncoded()!;
+
+        var file = Assert.IsType<CVCAFile>(LDSFileUtil.GetLDSFile(fid, new MemoryStream(encoded)));
+
+        Assert.Equal(fid, file.GetFID());
+    }
+
+    [Fact]
+    public void LookupsOfUnknownValuesFallBackOrFail()
+    {
+        Assert.Throws<FormatException>(() => LDSFileUtil.LookupDataGroupNumberByFID(0x0042));
+        Assert.Equal("File with tag 0x42", LDSFileUtil.LookupFileNameByTag(0x42));
+        Assert.Equal("File with FID 0x42", LDSFileUtil.LookupFileNameByFID(0x0042));
+        Assert.Equal(PassportService.EF_CVCA, LDSFileUtil.LookupFIDBySFI(PassportService.SFI_CVCA));
+    }
+
+    [Fact]
+    public void DataGroupNumbersOfMissingFilesAreEmpty()
+    {
+        Assert.Empty(LDSFileUtil.GetDataGroupNumbers((SODFile?)null));
+        Assert.Empty(LDSFileUtil.GetDataGroupNumbers((COMFile?)null));
+    }
+
+    private static byte[] Encode(short fid) => fid switch
+    {
+        PassportService.EF_COM => Jmrtd.Lds.Icao.COMFileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_DG1 => Jmrtd.Lds.Icao.DG1FileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_DG2 => Jmrtd.Lds.Icao.DG2FileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_DG3 => Jmrtd.Lds.Icao.DG3FileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_DG4 => Jmrtd.Lds.Icao.DG4FileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_DG5 => new DG5File([new DisplayedImageInfo(ImageInfoTypes.TYPE_PORTRAIT, [0x01, 0x02])]).GetEncoded()!,
+        PassportService.EF_DG6 => [0x66, 0x08, 0x02, 0x01, 0x01, 0x5F, 0x40, 0x02, 0x01, 0x02],
+        PassportService.EF_DG7 => Jmrtd.Lds.Icao.DG7FileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_DG11 => Jmrtd.Lds.Icao.DG11FileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_DG12 => Jmrtd.Lds.Icao.DG12FileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_DG14 => new DG14File([new TerminalAuthenticationInfo()]).GetEncoded()!,
+        PassportService.EF_DG15 => Jmrtd.Lds.Icao.DG15FileTest.CreateTestObject().GetEncoded()!,
+        PassportService.EF_SOD => Jmrtd.Lds.SODFileTest.CreateTestObject("SHA-256", "SHA256WithRSA").GetEncoded()!,
+        _ => new CVCAFile(PassportService.EF_CVCA, "NLCVCA00001").GetEncoded()!,
+    };
+
     [Fact]
     public void DataGroupNumbersOfComSkipUnknownTags()
     {

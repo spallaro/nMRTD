@@ -110,6 +110,12 @@ internal sealed class SimulatedChip : CardService
 
         /// <summary>Active Authentication: the signature over the challenge is corrupted.</summary>
         ActiveAuthenticationSignature,
+
+        /// <summary>PACE-CAM: the step 4 response has no encrypted Chip Authentication data (no 0x8A object).</summary>
+        PaceCamNoChipAuthenticationData,
+
+        /// <summary>PACE-CAM: the encrypted Chip Authentication data is not a whole number of cipher blocks.</summary>
+        PaceCamUndecryptableChipAuthenticationData,
     }
 
     // ---- Observations ----
@@ -696,7 +702,11 @@ internal sealed class SimulatedChip : CardService
         {
             response = response[..4];
         }
-        if (pace.Mapping == 6 && Fault is not (ChipFault.PaceNoToken or ChipFault.PaceTruncatedToken))
+        if (Fault == ChipFault.PaceCamUndecryptableChipAuthenticationData)
+        {
+            response = [.. response, .. Tlv.Encode(0x8A, new byte[15])];
+        }
+        else if (pace.Mapping == 6 && Fault is not (ChipFault.PaceNoToken or ChipFault.PaceTruncatedToken or ChipFault.PaceCamNoChipAuthenticationData))
         {
             var ec = (ECDomainParameters)pace.StaticParameters;
             var staticKey = (ECPrivateKeyParameters)ChipAuthenticationKeys

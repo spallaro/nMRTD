@@ -83,6 +83,29 @@ public class ChipAuthenticationEndToEndTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PaceCamWithoutUsableChipAuthenticationDataStillEstablishesSecureMessaging(bool undecryptable)
+    {
+        var document = new SimulatedDocument();
+        document.Pace.Add(new SimulatedChip.PaceSupport(SecurityInfo.ID_PACE_ECDH_CAM_AES_CBC_CMAC_128, 13));
+        document.ChipAuthenticationKeys.Add(Key(SecurityInfo.ID_CA_ECDH_AES_CBC_CMAC_128, 13, null));
+        SimulatedChip chip = document.Build();
+        chip.Fault = undecryptable
+            ? SimulatedChip.ChipFault.PaceCamUndecryptableChipAuthenticationData
+            : SimulatedChip.ChipFault.PaceCamNoChipAuthenticationData;
+        PassportService service = Open(chip);
+
+        // The chip is authenticated by the token; without (decryptable) CA_PICC the result has no Chip Authentication
+        // data, and the terminal cannot check the static key (JMRTD 0.8.10, 42744048; before, this threw).
+        var result = Assert.IsType<PACECAMResult>(DoPace(service, PaceKeySpec.CreateMrzKey(SimulatedDocument.BacKey)));
+
+        Assert.Null(result.GetChipAuthenticationData());
+        Assert.NotNull(service.GetWrapper());
+        Assert.NotEmpty(Read(service, PassportService.EF_COM));
+    }
+
+    [Theory]
     [InlineData(SecurityInfo.ID_PACE_ECDH_CAM_AES_CBC_CMAC_128, 13)]
     [InlineData(SecurityInfo.ID_PACE_ECDH_CAM_AES_CBC_CMAC_192, 15)]
     [InlineData(SecurityInfo.ID_PACE_ECDH_CAM_AES_CBC_CMAC_256, 17)]
