@@ -147,12 +147,19 @@ public sealed class TlvInputStream : IDisposable
         return value;
     }
 
-    /// <summary>Standard <c>InputStream</c>-like skip; used with a known length to skip a value without decoding it.</summary>
+    /// <summary>
+    /// Standard <c>InputStream</c>-like skip; used with a known length to skip a value without decoding it. Over a
+    /// card file, the skipped bytes are not read from the card.
+    /// </summary>
     public long Skip(long n)
     {
         if (n <= 0)
         {
             return 0;
+        }
+        if (_stream is CardFileInputStream cardFile)
+        {
+            return cardFile.Skip(n);
         }
         long skipped = 0;
         byte[] discard = new byte[(int)Math.Min(n, 4096)];

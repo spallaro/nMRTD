@@ -5,8 +5,8 @@ namespace nMRTD.Tests.Scuba;
 
 /// <summary>
 /// Port of SCUBA's <c>net.sf.scuba.smartcards.CardFileInputStreamTest</c> (SCUBA 0.1.0, 83dc2c5): reading card files
-/// with <see cref="CardFileInputStream"/>. Not ported: the <c>skip</c> tests, since nMRTD's stream is a forward-only
-/// <see cref="Stream"/> without a skip method.
+/// with <see cref="CardFileInputStream"/>, and skipping forward with <see cref="CardFileInputStream.Skip"/>. The
+/// tests after those of SCUBA check that skipped bytes are not read from the card.
 /// </summary>
 public class CardFileInputStreamTest
 {
@@ -88,6 +88,70 @@ public class CardFileInputStreamTest
         fs.Failure = null;
         Assert.Equal(300, input.Position);
         Assert.Equal(Contents[300], input.ReadByte());
+    }
+
+    [Fact]
+    public void skip_beyondEndOfFile_stopsAtEnd()
+    {
+        var input = new CardFileInputStream(100, new StubFileSystem(Contents.Length));
+        Assert.Equal(Contents[0], input.ReadByte());
+        Assert.Equal(Contents.Length - 1, input.Skip(5000));
+        Assert.Equal(Contents.Length, input.Position);
+        Assert.Equal(0, input.Skip(1));
+        Assert.Equal(-1, input.ReadByte());
+    }
+
+    [Fact]
+    public void skip_withinAndBeyondBlock_readsFromNewPosition()
+    {
+        var input = new CardFileInputStream(100, new StubFileSystem(Contents.Length));
+        input.ReadByte();
+        Assert.Equal(10, input.Skip(10));
+        Assert.Equal(Contents[11], input.ReadByte());
+        Assert.Equal(500, input.Skip(500));
+        Assert.Equal(Contents[512], input.ReadByte());
+    }
+
+    [Fact]
+    public void skip_negative_skipsNothing()
+    {
+        var input = new CardFileInputStream(100, new StubFileSystem(Contents.Length));
+        input.ReadByte();
+        Assert.Equal(0, input.Skip(-5));
+        Assert.Equal(1, input.Position);
+        Assert.Equal(Contents[1], input.ReadByte());
+    }
+
+    [Fact]
+    public void skip_hugeCount_stopsAtEnd()
+    {
+        var input = new CardFileInputStream(100, new StubFileSystem(Contents.Length));
+        Assert.Equal(Contents.Length, input.Skip(long.MaxValue));
+        Assert.Equal(-1, input.ReadByte());
+    }
+
+    // nMRTD only.
+
+    [Fact]
+    public void skip_doesNotReadTheSkippedBytes()
+    {
+        var fs = new StubFileSystem(Contents.Length);
+        var input = new CardFileInputStream(100, fs);
+        Assert.Equal(950, input.Skip(950));
+        Assert.Equal(0, fs.ReadBinaryCount);
+        Assert.Equal(Contents[950..], ReadAll(input, 50));
+        Assert.Equal(1, fs.ReadBinaryCount);
+    }
+
+    [Fact]
+    public void tlvSkip_overCardFile_doesNotReadTheSkippedBytes()
+    {
+        var fs = new StubFileSystem(Contents.Length);
+        var input = new CardFileInputStream(100, fs);
+        using var tlv = new TlvInputStream(input, leaveOpen: true);
+        Assert.Equal(500, tlv.Skip(500));
+        Assert.Equal(0, fs.ReadBinaryCount);
+        Assert.Equal(Contents[500], input.ReadByte());
     }
 
     [Fact]

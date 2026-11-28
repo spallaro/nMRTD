@@ -7,6 +7,13 @@ code it is based on.
 
 Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.
 
+### Added
+
+- **`CardFileInputStream.Skip`**, a forward skip that only moves the position: the skipped bytes are
+  not read from the card. It stops at the end of the file, and a negative count skips nothing, as
+  SCUBA 0.1.0's `skip`. `TlvInputStream.Skip` uses it when it wraps a card file, so skipping a value
+  no longer reads it with READ BINARY. SCUBA's `CardFileInputStreamTest` skip cases are ported.
+
 ### Changed
 
 - **`TlvInputStream` rejects nested data objects that do not fit in their parent**, as SCUBA 0.1.0's
@@ -15,7 +22,8 @@ Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.
   values directly from the wrapped stream, or with other readers over it, so the check works with
   the position of the wrapped stream rather than with a count of the bytes read; it is skipped for
   a stream that does not report its position. With this, SCUBA's `TLVInputStreamTest` is ported
-  except `skipToTag_carrierSkipsNothing_stillFindsTag`, which does not apply: nMRTD skips by reading.
+  except `skipToTag_carrierSkipsNothing_stillFindsTag`, which does not apply: nMRTD
+  does not depend on a skip of the wrapped stream that can skip nothing.
 
 ## 0.8.10-alpha (2026-11-28)
 

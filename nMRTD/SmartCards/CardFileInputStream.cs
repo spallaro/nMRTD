@@ -17,7 +17,8 @@ namespace nMRTD.SmartCards;
 /// Port of <c>net.sf.scuba.smartcards.CardFileInputStream</c>. A lazily-reading, forward-only stream over
 /// one file of a <see cref="IFileSystemStructured"/>, read in <c>maxBlockSize</c>-sized chunks via
 /// <see cref="IFileSystemStructured.ReadBinary"/>. Consumed only as a generic <see cref="Stream"/> by LDS
-/// file parsers, so only the standard read/position/length surface is implemented.
+/// file parsers, so only the standard read/position/length surface is implemented, plus a forward
+/// <see cref="Skip"/> that does not read the skipped bytes.
 ///
 /// As in SCUBA, the stream is bound to the file that is selected when it is created: it captures that
 /// path and length, and re-selects the path before reading if another file has been selected since
@@ -110,6 +111,24 @@ public sealed class CardFileInputStream : Stream
         }
 
         return totalRead;
+    }
+
+    /// <summary>
+    /// Skips forward without reading the skipped bytes from the card: only the position moves, and the next read
+    /// starts there (SCUBA's <c>skip</c>). It stops at the end of the file; a negative or zero count skips nothing
+    /// (SCUBA 0.1.0 fixed a negative count moving back, and a huge one overflowing the position).
+    /// </summary>
+    /// <param name="n">the number of bytes to skip</param>
+    /// <returns>the number of bytes skipped</returns>
+    public long Skip(long n)
+    {
+        long count = Math.Min(n, (long)_fileLength - _position);
+        if (count <= 0)
+        {
+            return 0;
+        }
+        _position += (int)count;
+        return count;
     }
 
     /// <summary>Reads the next block at <see cref="_position"/>. Only called before the end of the file.</summary>
