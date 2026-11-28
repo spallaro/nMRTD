@@ -3,6 +3,15 @@
 nMRTD has its own version numbers, independent of JMRTD's; each release says which JMRTD and SCUBA
 code it is based on.
 
+## Unreleased
+
+Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.
+
+### Changed
+
+- **The package has its own, shorter README** (`README-NUGET.md`), without badges or images: an
+  overview, the features and links to the full README and documentation on GitHub.
+
 ## 0.8.11-alpha (2026-11-28)
 
 Based on JMRTD 0.8.11-SNAPSHOT (`bb62243e`) and SCUBA 0.1.0.
